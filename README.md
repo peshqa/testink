@@ -1,2 +1,3 @@
 # testink
- random code
+
+Just a collection of some random stuff. Nothing too interesting xD

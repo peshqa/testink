@@ -9,6 +9,7 @@
 #include <string>
 
 #include "simple_qr.h"
+#include "ppm_image_loader.h"
 
 #pragma comment (lib, "Gdi32.lib")
 #pragma comment (lib, "User32.lib")
@@ -74,6 +75,24 @@ int DrawQR(W32BitBuffer *bitBuff, QRCode *qr)
 	return 0;
 }
 
+int DrawPepew(W32BitBuffer *bitBuff)
+{
+	SimpleImage image{};
+	LoadPPMImage("assets\\pepew.ppm", &image);
+	if (image.pixels != 0)
+	{
+		for (int y = 0; y < image.height && y < bitBuff->height; y++)
+		{
+			for (int x = 0; x < image.width && x < bitBuff->width; x++)
+			{
+				((int*)bitBuff->bits)[y*bitBuff->width+x] = image.pixels[y*image.width+x];
+			}
+		}
+		delete [] image.pixels;
+	}
+	return 0;
+}
+
 int PaintW32BitBuffer(W32BitBuffer *bitBuff)
 {
 	for (int i = 0; i < bitBuff->width*bitBuff->height; i++)
@@ -96,6 +115,8 @@ int PaintW32BitBuffer(W32BitBuffer *bitBuff)
 	ApplyDataAndMask(&qr);
 	DrawQR(bitBuff, &qr);
 	TerminateQRCode(&qr);
+	
+	DrawPepew(bitBuff);
 	
 	return 0;
 }
@@ -304,9 +325,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 {
 	SharedState shared_state{};
 	
-	int screenWidth = 100;
-	int screenHeight = 100;
-	shared_state.scale = 8;
+	int screenWidth = 205;
+	int screenHeight = 205;
+	shared_state.scale = 2;
 	
 	shared_state.client_width = screenWidth*shared_state.scale;
 	shared_state.client_height = screenHeight*shared_state.scale;
