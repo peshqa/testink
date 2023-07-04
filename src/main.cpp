@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <chrono>
 #include <string>
+#include <vector>
 
 #include "simple_qr.h"
 #include "ppm_image_loader.h"
@@ -28,6 +29,7 @@ typedef struct
 	int client_width;
 	int client_height;
 	int scale;
+	std::vector<SimpleImage*> images;
 } SharedState;
 
 int ResizeW32BitBuffer(W32BitBuffer *p, int screenWidth, int screenHeight)
@@ -75,24 +77,6 @@ int DrawQR(W32BitBuffer *bitBuff, QRCode *qr)
 	return 0;
 }
 
-int DrawPepew(W32BitBuffer *bitBuff)
-{
-	SimpleImage image{};
-	LoadPPMImage("assets\\pepew.ppm", &image);
-	if (image.pixels != 0)
-	{
-		for (int y = 0; y < image.height && y < bitBuff->height; y++)
-		{
-			for (int x = 0; x < image.width && x < bitBuff->width; x++)
-			{
-				((int*)bitBuff->bits)[y*bitBuff->width+x] = image.pixels[y*image.width+x];
-			}
-		}
-		delete [] image.pixels;
-	}
-	return 0;
-}
-
 int PaintW32BitBuffer(W32BitBuffer *bitBuff)
 {
 	for (int i = 0; i < bitBuff->width*bitBuff->height; i++)
@@ -116,8 +100,6 @@ int PaintW32BitBuffer(W32BitBuffer *bitBuff)
 	DrawQR(bitBuff, &qr);
 	TerminateQRCode(&qr);
 	
-	DrawPepew(bitBuff);
-	
 	return 0;
 }
 
@@ -128,6 +110,18 @@ int Win32DrawPixel(W32BitBuffer *bitBuff, int x, int y, int xxrrggbb=0x00000000)
 		return -1;
 	}
 	((int*)(bitBuff->bits))[y*bitBuff->width+x] = xxrrggbb;
+	return 0;
+}
+
+int DrawImage(W32BitBuffer *bitBuff, SimpleImage *image, int x_offset, int y_offset)
+{
+	for (int y = 0; y < image->height; y++)
+	{
+		for (int x = 0; x < image->width; x++)
+		{
+			Win32DrawPixel(bitBuff, x+x_offset, y+y_offset, image->pixels[y*image->width+x]);
+		}
+	}
 	return 0;
 }
 
@@ -325,8 +319,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 {
 	SharedState shared_state{};
 	
-	int screenWidth = 205;
-	int screenHeight = 205;
+	
+	SimpleImage *image = new SimpleImage{};
+	int res = LoadPPMImage("assets\\pepew.ppm", image);
+	if (res == 0)
+	{
+		shared_state.images.push_back(image);
+	}
+	
+	int screenWidth = 201;
+	int screenHeight = 200;
 	shared_state.scale = 2;
 	
 	shared_state.client_width = screenWidth*shared_state.scale;
@@ -335,7 +337,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	DWORD window_styles = WS_OVERLAPPEDWINDOW;
 	
 	RECT window_rect = {0, 0, shared_state.client_width, shared_state.client_height};
-	AdjustWindowRect(&window_rect, window_styles, 0);
+	AdjustWindowRectEx(&window_rect, window_styles, 0, 0);
 	
     // Register the window class.
     const wchar_t CLASS_NAME[]  = L"Main Window Class";
@@ -355,10 +357,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         0,                              // Optional window styles.
         CLASS_NAME,                     // Window class
         L"Learn to Program Windows",    // Window text
-        window_styles,            // Window style
+        window_styles,            		// Window style
 
         // position and size
-        100, 100, window_rect.right, window_rect.bottom,
+        100, 100, window_rect.right - window_rect.left, window_rect.bottom - window_rect.top,
 
         NULL,       // Parent window    
         NULL,       // Menu
@@ -409,17 +411,29 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		
 		prevTime = currTime;
 		currTime = std::chrono::steady_clock::now();
-		std::chrono::duration<double> dur = currTime - prevTime;
-		double elapsedTime = dur.count();
+		std::chrono::duration<float> dur = currTime - prevTime;
+		float elapsedTime = dur.count();
 		
 		//std::wstring title = std::to_wstring((elapsedTime));
 		//SetWindowTextW(hwnd, title.c_str());
+		static int lol = 0;
+		lol++;
+		for (SimpleImage* img : shared_state.images)
+		{
+			DrawImage(&bitBuff, img, lol%100, lol%69);
+		}
 		
 		HDC hdc = GetDC(hwnd);
 		W32UpdateDisplay(hdc, shared_state.client_width, shared_state.client_height, &bitBuff);
 		ReleaseDC(hwnd, hdc);
 		
 		Sleep(50); // ms
+	}
+	
+	for (SimpleImage* img : shared_state.images)
+	{
+		TerminatePPMImage(img);
+		delete img;
 	}
 
     return 0;

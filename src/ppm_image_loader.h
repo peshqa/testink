@@ -54,7 +54,13 @@ int LoadPPMImage(const char file_path[], SimpleImage *image)
 	FILE *file;
 	file = fopen(file_path, "rb");
 	
+	if (file == 0)
+	{
+		return 1;
+	}
+	
 	// TODO: completely redo this terrible code below
+	// perhaps implementing a parser is required
 	
 	char buffer[255]{};
 	
@@ -70,6 +76,10 @@ int LoadPPMImage(const char file_path[], SimpleImage *image)
 	image->width = width;
 	image->height = height;
 	
+	if (image->pixels != 0)
+	{
+		delete [] image->pixels;
+	}
 	image->pixels = new int[width*height]{};
 	
 	for (int y = 0; y < height; y++)

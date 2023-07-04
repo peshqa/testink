@@ -9,6 +9,6 @@ cl && (
 )
 
 
-cl -Zi ..\src\main.cpp
+cl -Zi -EHsc ..\src\main.cpp
 
 popd
