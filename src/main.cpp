@@ -321,15 +321,15 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	
 	
 	SimpleImage *image = new SimpleImage{};
-	int res = LoadPPMImage("assets\\pepew.ppm", image);
+	/*int res = LoadPPMImage("assets\\pepew.ppm", image);
 	if (res == 0)
 	{
 		shared_state.images.push_back(image);
-	}
+	}*/
 	
-	int screenWidth = 201;
-	int screenHeight = 200;
-	shared_state.scale = 2;
+	int screenWidth = 21;
+	int screenHeight = 21;
+	shared_state.scale = 16;
 	
 	shared_state.client_width = screenWidth*shared_state.scale;
 	shared_state.client_height = screenHeight*shared_state.scale;
