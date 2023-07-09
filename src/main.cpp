@@ -62,15 +62,15 @@ int DrawQR(W32BitBuffer *bitBuff, QRCode *qr)
 		{
 			if (qr->code_bytes[y*qr_size+x] == QR_DARK)
 			{
-				((int*)bitBuff->bits)[y*bitBuff->width+x] = 0x00000000;
+				((int*)bitBuff->bits)[(y+qr->quiet_zone_size)*bitBuff->width+x+qr->quiet_zone_size] = 0x00000000;
 			}
 			else if (qr->code_bytes[y*qr_size+x] == QR_UNASSIGNED)
 			{
-				((int*)bitBuff->bits)[y*bitBuff->width+x] = 0x00777777;
+				((int*)bitBuff->bits)[(y+qr->quiet_zone_size)*bitBuff->width+x+qr->quiet_zone_size] = 0x00777777;
 			}
 			else if (qr->code_bytes[y*qr_size+x] == QR_RESERVED)
 			{
-				((int*)bitBuff->bits)[y*bitBuff->width+x] = 0x003333FF;
+				((int*)bitBuff->bits)[(y+qr->quiet_zone_size)*bitBuff->width+x+qr->quiet_zone_size] = 0x003333FF;
 			}
 		}
 	}
@@ -96,7 +96,7 @@ int PaintW32BitBuffer(W32BitBuffer *bitBuff)
 	ApplyAlignmentPatterns(&qr);
 	ReserveFormatInformation(&qr);
 	ReserveVersionInformation(&qr);
-	ApplyDataAndMask(&qr);
+	ApplyDataAndMask(&qr, "wow", 3, QR_ERROR_CORRECTION_LEVEL_L, 1);
 	DrawQR(bitBuff, &qr);
 	TerminateQRCode(&qr);
 	
@@ -327,8 +327,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		shared_state.images.push_back(image);
 	}*/
 	
-	int screenWidth = 21;
-	int screenHeight = 21;
+	int screenWidth = 21+4*2;
+	int screenHeight = 21+4*2;
 	shared_state.scale = 16;
 	
 	shared_state.client_width = screenWidth*shared_state.scale;

@@ -7,10 +7,10 @@ int abs(int i) { return (i < 0) ? -i : i; }
 
 enum QRVersion : int
 {
-	QR_VER_M4 = -4,
-	QR_VER_M3,
-	QR_VER_M2,
-	QR_VER_M1
+	QR_VERSION_M1 = 41,
+	QR_VERSION_M2,
+	QR_VERSION_M3,
+	QR_VERSION_M4
 };
 
 enum QRModule : unsigned char
@@ -21,29 +21,34 @@ enum QRModule : unsigned char
 	QR_DARK
 };
 
-// contains information necessary to display the image
+enum QRErrorCorrectionLevel : unsigned char
+{
+	QR_ERROR_CORRECTION_LEVEL_L = 0b01,
+	QR_ERROR_CORRECTION_LEVEL_M = 0b00,
+	QR_ERROR_CORRECTION_LEVEL_Q = 0b11,
+	QR_ERROR_CORRECTION_LEVEL_H = 0b10
+};
+
 typedef struct
 {
 	int version; // determines size
 	unsigned char *code_bytes;
-} QRCode;
-
-typedef struct
-{
-	unsigned char error_correction;
+	
+	unsigned char error_correction_level;
 	unsigned char mode;
-	int num_of_chars;
-	unsigned char *encoded_data;
-} QRData;
+	wchar_t *data;
+	int data_length;
+	int quiet_zone_size; // this field doesn't serve much purpose, just a recommendation to add padding around the qr code
+} QRCode;
 
 int VersionToSize(int version)
 {
-	if (version > 40)
+	if (version < 0)
 	{
 		return -1;
 	}
 	
-	if (version < 0)
+	if (version > 40)
 	{
 		return -1; // TODO mini versions
 	}
@@ -275,11 +280,24 @@ int AlphaExpToInt(int e)
 	return i;
 }
 
-int ApplyDataAndMask(QRCode *qr)
+BOOL MaskFunc0(int x, int y) { return (x+y) % 2 == 0; }
+BOOL MaskFunc1(int x, int y) { return y % 2 == 0; }
+BOOL MaskFunc2(int x, int y) { return x % 3 == 0; }
+BOOL MaskFunc3(int x, int y) { return (x+y) % 3 == 0; }
+BOOL MaskFunc4(int x, int y) { return ((y/2)+(x/3)) % 2 == 0; }
+BOOL MaskFunc5(int x, int y) { return x*y%2 + x*y%3 == 0; }
+BOOL MaskFunc6(int x, int y) { return (x*y%2 + x*y%3) % 2 == 0; }
+BOOL MaskFunc7(int x, int y) { return ((x+y)%2 + x*y%3) % 2 == 0; }
+
+int ApplyDataAndMask(QRCode *qr, const char data[], int data_count, int ec_level, int version)
 {
-	unsigned char *data_modules = new unsigned char[26*8]{}; // 26 total codewords, 19 data, 7 error correction
-	char data[] = "This is working!";
-	int data_count = 16;
+	int total_codeword_count = 26;
+	int data_codeword_count = 19;
+	int ec_codeword_count = total_codeword_count - data_codeword_count;
+	unsigned char *data_modules = new unsigned char[total_codeword_count*8]{};
+	
+	char mask = 7;
+
 	int counter = 0;
 	int size = VersionToSize(qr->version);
 	
@@ -289,18 +307,13 @@ int ApplyDataAndMask(QRCode *qr)
 	data_modules[counter++] = QR_WHITE;
 	data_modules[counter++] = QR_WHITE;
 	
-	// Number of characters - 16 (0001 0000)
-	data_modules[counter++] = QR_WHITE;
-	data_modules[counter++] = QR_WHITE;
-	data_modules[counter++] = QR_WHITE;
-	data_modules[counter++] = QR_DARK;
+	// Number of characters - 8 bits with version 1 & byte mode
+	for (int bit = 7; bit >= 0; bit--)
+	{
+		data_modules[counter++] = (data_count & (1 << bit)) == (1 << bit);
+	}
 	
-	data_modules[counter++] = QR_WHITE;
-	data_modules[counter++] = QR_WHITE;
-	data_modules[counter++] = QR_WHITE;
-	data_modules[counter++] = QR_WHITE;
-	
-	// Data string - "Hello everynyan!"
+	// Data string of size "data_count"
 	for (int j = 0; j < data_count; j++)
 	{
 		for (int bit = 0; bit < 8; bit++)
@@ -315,22 +328,40 @@ int ApplyDataAndMask(QRCode *qr)
 	data_modules[counter++] = QR_WHITE;
 	
 	// Pad Codewords 1110 1100 and 0001 0001 to fill all remaining data codewords
-	data_modules[counter++] = QR_DARK;
-	data_modules[counter++] = QR_DARK;
-	data_modules[counter++] = QR_DARK;
-	data_modules[counter++] = QR_WHITE;
-	
-	data_modules[counter++] = QR_DARK;
-	data_modules[counter++] = QR_DARK;
-	data_modules[counter++] = QR_WHITE;
-	data_modules[counter++] = QR_WHITE;
+	for (int i = 0; i < data_codeword_count - data_count - 2; i++)
+	{
+		if ((i & 1) == 0)
+		{
+			data_modules[counter++] = QR_DARK;
+			data_modules[counter++] = QR_DARK;
+			data_modules[counter++] = QR_DARK;
+			data_modules[counter++] = QR_WHITE;
+			
+			data_modules[counter++] = QR_DARK;
+			data_modules[counter++] = QR_DARK;
+			data_modules[counter++] = QR_WHITE;
+			data_modules[counter++] = QR_WHITE;
+		} else {
+			data_modules[counter++] = QR_WHITE;
+			data_modules[counter++] = QR_WHITE;
+			data_modules[counter++] = QR_WHITE;
+			data_modules[counter++] = QR_DARK;
+			
+			data_modules[counter++] = QR_WHITE;
+			data_modules[counter++] = QR_WHITE;
+			data_modules[counter++] = QR_WHITE;
+			data_modules[counter++] = QR_DARK;
+		}
+	}
 	
 	// Error correction modules
-	int alpha_exponents[256]{};
+	
+	// Initialize int to alpha exponent table
+	int int_to_alpha_exp[256]{};
 	int integer = 1;
 	for (int i = 0; i < 255; i++)
 	{
-		alpha_exponents[integer] = i;
+		int_to_alpha_exp[integer] = i;
 		integer = integer * 2;
 		if (integer > 255)
 		{
@@ -338,7 +369,7 @@ int ApplyDataAndMask(QRCode *qr)
 		}
 	}
 	
-	unsigned char message_polynomial[26]{};
+	unsigned char *message_polynomial = new unsigned char[total_codeword_count]{};
 	for (int i = 18; i >= 0; i--)
 	{
 		for (int bit = 7; bit >= 0; bit--)
@@ -347,17 +378,17 @@ int ApplyDataAndMask(QRCode *qr)
 		}
 	}
 	
-	for (int i = 0; i < 19; i++)
+	for (int i = 0; i < data_codeword_count; i++)
 	{
 		int lead_term = message_polynomial[25-i];
-		message_polynomial[25-i] = AlphaExpToInt(0		+alpha_exponents[lead_term]) ^ message_polynomial[25-i];
-		message_polynomial[24-i] = AlphaExpToInt(87		+alpha_exponents[lead_term]) ^ message_polynomial[24-i];
-		message_polynomial[23-i] = AlphaExpToInt(229	+alpha_exponents[lead_term]) ^ message_polynomial[23-i];
-		message_polynomial[22-i] = AlphaExpToInt(146	+alpha_exponents[lead_term]) ^ message_polynomial[22-i];
-		message_polynomial[21-i] = AlphaExpToInt(149	+alpha_exponents[lead_term]) ^ message_polynomial[21-i];
-		message_polynomial[20-i] = AlphaExpToInt(238	+alpha_exponents[lead_term]) ^ message_polynomial[20-i];
-		message_polynomial[19-i] = AlphaExpToInt(102	+alpha_exponents[lead_term]) ^ message_polynomial[19-i];
-		message_polynomial[18-i] = AlphaExpToInt(21		+alpha_exponents[lead_term]) ^ message_polynomial[18-i];
+		message_polynomial[25-i] = AlphaExpToInt(0		+ int_to_alpha_exp[lead_term]) ^ message_polynomial[25-i];
+		message_polynomial[24-i] = AlphaExpToInt(87		+ int_to_alpha_exp[lead_term]) ^ message_polynomial[24-i];
+		message_polynomial[23-i] = AlphaExpToInt(229	+ int_to_alpha_exp[lead_term]) ^ message_polynomial[23-i];
+		message_polynomial[22-i] = AlphaExpToInt(146	+ int_to_alpha_exp[lead_term]) ^ message_polynomial[22-i];
+		message_polynomial[21-i] = AlphaExpToInt(149	+ int_to_alpha_exp[lead_term]) ^ message_polynomial[21-i];
+		message_polynomial[20-i] = AlphaExpToInt(238	+ int_to_alpha_exp[lead_term]) ^ message_polynomial[20-i];
+		message_polynomial[19-i] = AlphaExpToInt(102	+ int_to_alpha_exp[lead_term]) ^ message_polynomial[19-i];
+		message_polynomial[18-i] = AlphaExpToInt(21		+ int_to_alpha_exp[lead_term]) ^ message_polynomial[18-i];
 	}
 	
 	for (int i = 0; i < 7; i++)
@@ -366,6 +397,21 @@ int ApplyDataAndMask(QRCode *qr)
 		{
 			data_modules[counter++] = (message_polynomial[6-i] & (1 << bit)) == (1 << bit) ? 1 : 0;
 		}
+	}
+	
+	// Selecting mask
+	BOOL (*MaskFunc)(int, int);
+	switch (mask)
+	{
+		default:
+		case 0: { MaskFunc = &MaskFunc0; } break;
+		case 1: { MaskFunc = &MaskFunc1; } break;
+		case 2: { MaskFunc = &MaskFunc2; } break;
+		case 3: { MaskFunc = &MaskFunc3; } break;
+		case 4: { MaskFunc = &MaskFunc4; } break;
+		case 5: { MaskFunc = &MaskFunc5; } break;
+		case 6: { MaskFunc = &MaskFunc6; } break;
+		case 7: { MaskFunc = &MaskFunc7; } break;
 	}
 	
 	// Applying modules
@@ -402,49 +448,14 @@ int ApplyDataAndMask(QRCode *qr)
 				{
 					continue;
 				}
-				if (iterator < 26*8)
+				if (iterator < total_codeword_count*8)
 				{
-					qr->code_bytes[y1*size+x1+x_offset] = ((x1+x_offset+y1) % 2 == 0) ^ data_modules[iterator++];
+					qr->code_bytes[y1*size+x1+x_offset] = MaskFunc(x1+x_offset, y1) ^ data_modules[iterator++];
 				}
 			}
 		}
 		
 	}
-	
-	/*unsigned char message_polynomial2[26]{};
-	message_polynomial2[25] = 32;
-	message_polynomial2[24] = 91;
-	message_polynomial2[23] = 11;
-	message_polynomial2[22] = 120;
-	message_polynomial2[21] = 209;
-	message_polynomial2[20] = 114;
-	message_polynomial2[19] = 220;
-	message_polynomial2[18] = 77;
-	message_polynomial2[17] = 67;
-	message_polynomial2[16] = 64;
-	message_polynomial2[15] = 236;
-	message_polynomial2[14] = 17;
-	message_polynomial2[13] = 236;
-	message_polynomial2[12] = 17;
-	message_polynomial2[11] = 236;
-	message_polynomial2[10] = 17;
-	
-	for (int i = 0; i < 16; i++)
-	{
-		int lead_term = message_polynomial2[25-i];
-		message_polynomial2[25-i] = AlphaExpToInt(0		+alpha_exponents[lead_term]) ^ message_polynomial2[25-i];
-		message_polynomial2[24-i] = AlphaExpToInt(251	+alpha_exponents[lead_term]) ^ message_polynomial2[24-i];
-		message_polynomial2[23-i] = AlphaExpToInt(67	+alpha_exponents[lead_term]) ^ message_polynomial2[23-i];
-		message_polynomial2[22-i] = AlphaExpToInt(46	+alpha_exponents[lead_term]) ^ message_polynomial2[22-i];
-		message_polynomial2[21-i] = AlphaExpToInt(61	+alpha_exponents[lead_term]) ^ message_polynomial2[21-i];
-		message_polynomial2[20-i] = AlphaExpToInt(118	+alpha_exponents[lead_term]) ^ message_polynomial2[20-i];
-		message_polynomial2[19-i] = AlphaExpToInt(70	+alpha_exponents[lead_term]) ^ message_polynomial2[19-i];
-		message_polynomial2[18-i] = AlphaExpToInt(64	+alpha_exponents[lead_term]) ^ message_polynomial2[18-i];
-		message_polynomial2[17-i] = AlphaExpToInt(94	+alpha_exponents[lead_term]) ^ message_polynomial2[17-i];
-		message_polynomial2[16-i] = AlphaExpToInt(32	+alpha_exponents[lead_term]) ^ message_polynomial2[16-i];
-		message_polynomial2[15-i] = AlphaExpToInt(45	+alpha_exponents[lead_term]) ^ message_polynomial2[15-i];
-	}
-	*/
 	
 	// Calculate & apply format information
 	
@@ -454,12 +465,18 @@ int ApplyDataAndMask(QRCode *qr)
 	unsigned char polynomial2[15]{};
 	counter = 0;
 	// low level error correction
-	polynomial1[counter] = format_string[counter] = 0; counter++;
-	polynomial1[counter] = format_string[counter] = 1; counter++;
+	for (int bit = 1; bit >= 0; bit--)
+	{
+		polynomial1[counter] = format_string[counter] = (ec_level & (1 << bit)) == (1 << bit);
+		counter++;
+	}
+	
 	// mask pattern bits
-	polynomial1[counter] = format_string[counter] = 0; counter++;
-	polynomial1[counter] = format_string[counter] = 0; counter++;
-	polynomial1[counter] = format_string[counter] = 0; counter++;
+	for (int bit = 2; bit >= 0; bit--)
+	{
+		polynomial1[counter] = format_string[counter] = (mask & (1 << bit)) == (1 << bit);
+		counter++;
+	}
 	
 	counter = 0;
 	polynomial2[counter++] = 1;
@@ -511,6 +528,9 @@ int ApplyDataAndMask(QRCode *qr)
 		}
 	}
 	
+	qr->quiet_zone_size = 4;
+	
+	delete [] message_polynomial;
 	delete [] data_modules;
 	return 0;
 }
