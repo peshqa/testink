@@ -49,6 +49,63 @@ int TerminatePPMImage(SimpleImage *image)
 
 int LoadPPMImage(const char file_path[], SimpleImage *image)
 {
+	std::ifstream file(file_path, std::ifstream::binary);
+	
+	if (!file.is_open())
+	{
+		return 1;
+	}
+	
+	std::string magic_number;
+	file >> magic_number;
+	
+	if (magic_number != "P6")
+	{
+		return 2;
+	}
+	
+	unsigned int width;
+	unsigned int height;
+	int max_value;
+	file >> width >> height >> max_value;
+	
+	if (max_value > 255)
+	{
+		return 3;
+	}
+	
+	file.ignore();
+	image->width = width;
+	image->height = height;
+	
+	if (image->pixels != 0)
+	{
+		delete [] image->pixels;
+	}
+	image->pixels = new int[width*height]{};
+	
+	char *buffer = new char[width*height*3]{};
+	file.read(buffer, width*height*3);
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			int pixel = 0;
+			pixel += buffer[y*width*3+x*3] << 16;
+			pixel += buffer[y*width*3+x*3+1] << 8;
+			pixel += buffer[y*width*3+x*3+2];
+			
+			image->pixels[y*width+x] = pixel;
+		}
+	}
+	
+	delete [] buffer;
+	file.close();
+	return 0;
+}
+
+/*int LoadPPMImage(const char file_path[], SimpleImage *image)
+{
 	unsigned char sample{};
 	
 	FILE *file;
@@ -99,4 +156,4 @@ int LoadPPMImage(const char file_path[], SimpleImage *image)
 	
 	fclose(file);
 	return 0;
-}
+}*/

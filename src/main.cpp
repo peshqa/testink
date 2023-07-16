@@ -15,6 +15,15 @@
 #pragma comment (lib, "Gdi32.lib")
 #pragma comment (lib, "User32.lib")
 
+enum RGBColor : int
+{
+	COLOR_WHITE = 0x00FFFFFF,
+	COLOR_BLACK = 0x00000000,
+	COLOR_RED 	= 0x00FF0000,
+	COLOR_GREEN = 0x0000FF00,
+	COLOR_BLUE 	= 0x000000FF
+};
+
 typedef struct
 {
 	int width;
@@ -53,6 +62,16 @@ int ResizeW32BitBuffer(W32BitBuffer *p, int screenWidth, int screenHeight)
 	return 0;
 }
 
+int Win32DrawPixel(W32BitBuffer *bitBuff, int x, int y, int xxrrggbb=COLOR_BLACK)
+{
+	if (x < 0 || x >= bitBuff->width || y < 0 || y >= bitBuff->height)
+	{
+		return -1;
+	}
+	((int*)(bitBuff->bits))[y*bitBuff->width+x] = xxrrggbb;
+	return 0;
+}
+
 int DrawQR(W32BitBuffer *bitBuff, QRCode *qr)
 {
 	int qr_size = VersionToSize(qr->version);
@@ -60,32 +79,47 @@ int DrawQR(W32BitBuffer *bitBuff, QRCode *qr)
 	{
 		for (int x = 0; x < qr_size; x++)
 		{
+			int color = 0x00FFFFFF;
 			if (qr->code_bytes[y*qr_size+x] == QR_DARK)
 			{
-				((int*)bitBuff->bits)[(y+qr->quiet_zone_size)*bitBuff->width+x+qr->quiet_zone_size] = 0x00000000;
+				color = 0x00000000;
 			}
 			else if (qr->code_bytes[y*qr_size+x] == QR_UNASSIGNED)
 			{
-				((int*)bitBuff->bits)[(y+qr->quiet_zone_size)*bitBuff->width+x+qr->quiet_zone_size] = 0x00777777;
+				color = 0x00777777;
 			}
 			else if (qr->code_bytes[y*qr_size+x] == QR_RESERVED)
 			{
-				((int*)bitBuff->bits)[(y+qr->quiet_zone_size)*bitBuff->width+x+qr->quiet_zone_size] = 0x003333FF;
+				color = 0x003333FF;
 			}
+			
+			Win32DrawPixel(bitBuff, x+qr->quiet_zone_size, y+qr->quiet_zone_size, color);
 		}
 	}
 	return 0;
 }
 
-int PaintW32BitBuffer(W32BitBuffer *bitBuff)
+int FillW32BitBuffer(W32BitBuffer *bitBuff, int color)
 {
 	for (int i = 0; i < bitBuff->width*bitBuff->height; i++)
 	{
-		int r = rand() % 0x100;
-		((int*)bitBuff->bits)[i] = rand()%256+(r<<8)+(r<<16);
+		((int*)bitBuff->bits)[i] = color;
+	}
+	
+	return 0;
+}
+
+int PaintW32BitBuffer(W32BitBuffer *bitBuff)
+{
+	/*for (int i = 0; i < bitBuff->width*bitBuff->height; i++)
+	{
+		//int r = rand() % 0x100;
+		//((int*)bitBuff->bits)[i] = rand()%256+(r<<8)+(r<<16);
 		//((int*)bitBuff.bits)[i] = (rand()%0x100)+(rand()%0x100<<8)+(rand()%0x100<<16);
 		((int*)bitBuff->bits)[i] = 0x00FFFFFF;
-	}
+		((int*)bitBuff->bits)[i] = 0x00000000;
+	}*/
+	FillW32BitBuffer(bitBuff, COLOR_WHITE);
 	
 	QRCode qr{};
 	InitQRCode(&qr, 1);
@@ -103,23 +137,13 @@ int PaintW32BitBuffer(W32BitBuffer *bitBuff)
 	return 0;
 }
 
-int Win32DrawPixel(W32BitBuffer *bitBuff, int x, int y, int xxrrggbb=0x00000000)
-{
-	if (x < 0 || x >= bitBuff->width || y < 0 || y >= bitBuff->height)
-	{
-		return -1;
-	}
-	((int*)(bitBuff->bits))[y*bitBuff->width+x] = xxrrggbb;
-	return 0;
-}
-
 int DrawImage(W32BitBuffer *bitBuff, SimpleImage *image, int x_offset, int y_offset)
 {
 	for (int y = 0; y < image->height; y++)
 	{
 		for (int x = 0; x < image->width; x++)
 		{
-			Win32DrawPixel(bitBuff, x+x_offset, y+y_offset, image->pixels[y*image->width+x]);
+			Win32DrawPixel(bitBuff, x+x_offset, y+y_offset, image->pixels[y*image->width+x] & 0x00888888);
 		}
 	}
 	return 0;
@@ -319,17 +343,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 {
 	SharedState shared_state{};
 	
-	
 	SimpleImage *image = new SimpleImage{};
-	/*int res = LoadPPMImage("assets\\pepew.ppm", image);
+	int res = LoadPPMImage("C:\\Users\\Pavel\\Desktop\\testink\\assets\\pepew.ppm", image);
 	if (res == 0)
 	{
 		shared_state.images.push_back(image);
-	}*/
+	}
 	
-	int screenWidth = 21+4*2;
-	int screenHeight = 21+4*2;
-	shared_state.scale = 16;
+	int screenWidth = 15*21+4*2;
+	int screenHeight = 10*21+4*2;
+	shared_state.scale = 3;
 	
 	shared_state.client_width = screenWidth*shared_state.scale;
 	shared_state.client_height = screenHeight*shared_state.scale;
