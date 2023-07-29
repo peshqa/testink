@@ -11,6 +11,7 @@
 
 #include "simple_qr.h"
 #include "ppm_image_loader.h"
+#include "snake_game.h"
 
 #pragma comment (lib, "Gdi32.lib")
 #pragma comment (lib, "User32.lib")
@@ -39,6 +40,7 @@ typedef struct
 	int client_height;
 	int scale;
 	std::vector<SimpleImage*> images;
+	char dir;
 } SharedState;
 
 int ResizeW32BitBuffer(W32BitBuffer *p, int screenWidth, int screenHeight)
@@ -130,7 +132,7 @@ int PaintW32BitBuffer(W32BitBuffer *bitBuff)
 	ApplyAlignmentPatterns(&qr);
 	ReserveFormatInformation(&qr);
 	ReserveVersionInformation(&qr);
-	ApplyDataAndMask(&qr, "wow", 3, QR_ERROR_CORRECTION_LEVEL_L, 1);
+	ApplyDataAndMask(&qr, "Snake? Snake!", 13, QR_ERROR_CORRECTION_LEVEL_L, 1);
 	DrawQR(bitBuff, &qr);
 	TerminateQRCode(&qr);
 	
@@ -143,7 +145,7 @@ int DrawImage(W32BitBuffer *bitBuff, SimpleImage *image, int x_offset, int y_off
 	{
 		for (int x = 0; x < image->width; x++)
 		{
-			Win32DrawPixel(bitBuff, x+x_offset, y+y_offset, image->pixels[y*image->width+x] & 0x00888888);
+			Win32DrawPixel(bitBuff, x+x_offset, y+y_offset, image->pixels[y*image->width+x]);
 		}
 	}
 	return 0;
@@ -203,6 +205,28 @@ int Win32DrawLine(W32BitBuffer *bitBuff, int x1, int y1, int x2, int y2)
             y1 = y1 + sy;
         }
     }
+	
+	return 0;
+}
+
+int DrawSnakeGame(W32BitBuffer *bitBuff, SnakeGameState *state)
+{
+	FillW32BitBuffer(bitBuff, 0x00111111);
+	DoubleLinkedNode* node = state->snake_segments.first;
+	while (node)
+	{
+		Point2i* p = (Point2i*)(node->data);
+		Win32DrawPixel(bitBuff, p->x, p->y, COLOR_GREEN);
+		node = node->next;
+	}
+	node = state->fruits.first;
+	while (node)
+	{
+		Point2i* p = (Point2i*)(node->data);
+		Win32DrawPixel(bitBuff, p->x, p->y, COLOR_RED);
+		node = node->next;
+	}
+	
 	
 	return 0;
 }
@@ -275,6 +299,27 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		}
 		break;
 		
+	case WM_KEYDOWN:
+		{
+			SharedState *shared_state{};
+			shared_state = (SharedState*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+			
+			if (wParam == VK_LEFT)
+			{
+				shared_state->dir = 'l';
+			} else if (wParam == VK_UP)
+			{
+				shared_state->dir = 'u';
+			} else if (wParam == VK_RIGHT)
+			{
+				shared_state->dir = 'r';
+			} else if (wParam == VK_DOWN)
+			{
+				shared_state->dir = 'd';
+			}
+		}
+		break;
+		
 	case WM_SIZE:
 		{
 			SharedState *shared_state{};
@@ -341,18 +386,22 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
+	SnakeGameState snake_game{};
+	InitSnakeGame(&snake_game, 10, 10);
+	
 	SharedState shared_state{};
+	shared_state.dir = 'l';
 	
 	SimpleImage *image = new SimpleImage{};
-	int res = LoadPPMImage("C:\\Users\\Pavel\\Desktop\\testink\\assets\\pepew.ppm", image);
+	/*int res = LoadPPMImage("C:\\Users\\Pavel\\Desktop\\testink\\assets\\pepew.ppm", image);
 	if (res == 0)
 	{
 		shared_state.images.push_back(image);
-	}
+	}*/
 	
-	int screenWidth = 15*21+4*2;
-	int screenHeight = 10*21+4*2;
-	shared_state.scale = 3;
+	int screenWidth = 10;
+	int screenHeight = 10;
+	shared_state.scale = 20;
 	
 	shared_state.client_width = screenWidth*shared_state.scale;
 	shared_state.client_height = screenHeight*shared_state.scale;
@@ -432,13 +481,37 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 			DispatchMessage(&msg);
 		}
 		
+		// Timing
 		prevTime = currTime;
 		currTime = std::chrono::steady_clock::now();
 		std::chrono::duration<float> dur = currTime - prevTime;
 		float elapsedTime = dur.count();
 		
-		//std::wstring title = std::to_wstring((elapsedTime));
-		//SetWindowTextW(hwnd, title.c_str());
+		// Input (TODO)
+		
+		// Update
+		if (shared_state.dir == 'l')
+		{
+			snake_game.snake_direction.x = -1;
+			snake_game.snake_direction.y = 0;
+		} else if (shared_state.dir == 'r')
+		{
+			snake_game.snake_direction.x = 1;
+			snake_game.snake_direction.y = 0;
+		} else if (shared_state.dir == 'u')
+		{
+			snake_game.snake_direction.x = 0;
+			snake_game.snake_direction.y = -1;
+		} else if (shared_state.dir == 'd')
+		{
+			snake_game.snake_direction.x = 0;
+			snake_game.snake_direction.y = 1;
+		}
+		UpdateSnakeGameState(&snake_game);
+		
+		// Render
+		std::wstring title = std::to_wstring((elapsedTime));
+		SetWindowTextW(hwnd, title.c_str());
 		static int lol = 0;
 		lol++;
 		for (SimpleImage* img : shared_state.images)
@@ -446,11 +519,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 			DrawImage(&bitBuff, img, lol%100, lol%69);
 		}
 		
+		DrawSnakeGame(&bitBuff, &snake_game);
+		
 		HDC hdc = GetDC(hwnd);
 		W32UpdateDisplay(hdc, shared_state.client_width, shared_state.client_height, &bitBuff);
 		ReleaseDC(hwnd, hdc);
 		
-		Sleep(50); // ms
+		Sleep(500); // ms
 	}
 	
 	for (SimpleImage* img : shared_state.images)
