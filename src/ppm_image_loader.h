@@ -28,6 +28,7 @@ Each PPM image consists of the following:
 8. A single whitespace character (usually a newline).
 9. A raster of Height rows, in order from top to bottom. Each row consists of Width pixels, in order from left to right. Each pixel is a triplet of red, green, and blue samples, in that order. Each sample is represented in pure binary by either 1 or 2 bytes. If the Maxval is less than 256, it is 1 byte. Otherwise, it is 2 bytes. The most significant byte is first.
 */
+#pragma once
 
 #include <iostream>
 #include <fstream>

@@ -1,113 +1,9 @@
-typedef struct DoubleLinkedNode
-{
-	void *data;
-	DoubleLinkedNode* next;
-	DoubleLinkedNode* prev;
-} DoubleLinkedNode;
-
-typedef struct DoubleLinkedList
-{
-	DoubleLinkedNode* first;
-	DoubleLinkedNode* last;
-} DoubleLinkedList;
-
-void InitDoubleLinkedList(DoubleLinkedList *list)
-{
-	list->first = 0;
-	list->last = 0;
-}
-
-int AddNodeAtFront(DoubleLinkedList *list, void *data)
-{
-	DoubleLinkedNode *node = new DoubleLinkedNode;
-	node->data = data;
-	node->prev = 0;
-	node->next = list->first;
-	
-	if (list->first == 0)
-	{
-		list->first = list->last = node;
-		return 0;
-	}
-	
-	DoubleLinkedNode *first_node = list->first;
-	first_node->prev = node;
-	
-	list->first = node;
-	
-	return 0;
-}
-
-int AddNodeAtBack(DoubleLinkedList *list, void *data)
-{
-	DoubleLinkedNode *node = new DoubleLinkedNode;
-	node->data = data;
-	node->prev = list->last;
-	node->next = 0;
-	
-	if (list->first == 0)
-	{
-		list->first = list->last = node;
-		return 0;
-	}
-	
-	DoubleLinkedNode *last_node = list->last;
-	last_node->next = node;
-	
-	list->last = node;
-	
-	return 0;
-}
-
-void *RemoveNodeAtFront(DoubleLinkedList *list)
-{
-	if (list->first == 0)
-	{
-		return 0;
-	}
-	
-	DoubleLinkedNode *node = list->first;
-	void *data = node->data;
-	
-	DoubleLinkedNode *first_node = node->next;
-	
-	list->first = first_node;
-	
-	if (first_node != 0)
-	{
-		first_node->prev = 0;
-	} else {
-		list->last = 0;
-	}
-	
-	delete node;
-	return data;
-}
-
-void *RemoveNodeAtBack(DoubleLinkedList *list)
-{
-	if (list->first == 0)
-	{
-		return 0;
-	}
-	
-	DoubleLinkedNode *node = list->last;
-	void *data = node->data;
-	
-	DoubleLinkedNode *last_node = node->prev;
-	
-	list->last = last_node;
-	
-	if (last_node != 0)
-	{
-		last_node->next = 0;
-	} else {
-		list->first = 0;
-	}
-	
-	delete node;
-	return data;
-}
+/*
+snake_game.h - good old snake game made for coding practice
+2023/07/29, peshqa
+*/
+#pragma once
+#include "double_linked_list.h"
 
 typedef struct
 {
@@ -145,10 +41,14 @@ int InitSnakeGame(SnakeGameState *state, int field_width, int field_height)
 	return 0;
 }
 
+int InitSnakeGame(SnakeGameState *state)
+{
+	return InitSnakeGame(state, 10, 10);
+}
+
 int UpdateSnakeGameState(SnakeGameState *state)
 {
 	DoubleLinkedNode* h = state->snake_segments.first;
-	//Point2i* head = (Point2i*)((state->snake_segments.first).data);
 	Point2i* head = (Point2i*)(state->snake_segments.first->data);
 	Point2i* p1 = new Point2i{head->x + state->snake_direction.x, head->y + state->snake_direction.y};
 	
@@ -197,7 +97,6 @@ int UpdateSnakeGameState(SnakeGameState *state)
 		Point2i* p = (Point2i*)RemoveNodeAtBack(&state->snake_segments);
 		delete p;
 	} else {
-		//Point2i* head = (Point2i*)(state->snake_segments.first->data);
 		Point2i* p = (Point2i*)(state->fruits.first->data);
 		p->x = rand() % state->field_width;
 		p->y = rand() % state->field_height;

@@ -2,6 +2,7 @@
 simple_qr.h - header file made for work with Quick Response (QR) codes xD
 2023/06/22, peshqa
 */
+#pragma once
 
 int abs(int i) { return (i < 0) ? -i : i; }
 
