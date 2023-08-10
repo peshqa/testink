@@ -52,19 +52,31 @@ int UpdateProjectSnakeGame(SharedState* state)
 	}
 	UpdateSnakeGameState(game_state);
 	
-	FillW32BitBuffer(state->bitBuff, 0x00111111);
+	FillW32BitBuffer(state->bitBuff, 0x00222222);
 	DoubleLinkedNode* node = game_state->snake_segments.first;
+	int odd = 0;
 	while (node)
 	{
 		Point2i* p = (Point2i*)(node->data);
-		Win32DrawPixel(state->bitBuff, p->x, p->y, COLOR_GREEN);
+		Win32FillRect(state->bitBuff,
+			ConvertRelXToX((float)p->x/(float)game_state->field_width, state->bitBuff),
+			ConvertRelYToY((float)p->y/(float)game_state->field_height, state->bitBuff),
+			ConvertRelXToX((float)(p->x+1)/(float)game_state->field_width, state->bitBuff)-1,
+			ConvertRelYToY((float)(p->y+1)/(float)game_state->field_height, state->bitBuff)-1,
+			(odd) ? COLOR_GREEN : 0x00008800);
+		odd = 1 - odd;
 		node = node->next;
 	}
 	node = game_state->fruits.first;
 	while (node)
 	{
 		Point2i* p = (Point2i*)(node->data);
-		Win32DrawPixel(state->bitBuff, p->x, p->y, COLOR_RED);
+		Win32FillRect(state->bitBuff,
+			ConvertRelXToX((float)p->x/(float)game_state->field_width, state->bitBuff),
+			ConvertRelYToY((float)p->y/(float)game_state->field_height, state->bitBuff),
+			ConvertRelXToX((float)(p->x+1)/(float)game_state->field_width, state->bitBuff)-1,
+			ConvertRelYToY((float)(p->y+1)/(float)game_state->field_height, state->bitBuff)-1,
+			COLOR_RED);
 		node = node->next;
 	}
 	

@@ -147,6 +147,18 @@ int Win32DrawLine(W32BitBuffer *bitBuff, int x1, int y1, int x2, int y2)
 	return 0;
 }
 
+int Win32FillRect(W32BitBuffer *bitBuff, int left, int top, int right, int bottom, int color)
+{
+	for (int y = top; y <= bottom; y++)
+	{
+		for (int x = left; x <= right; x++)
+		{
+			Win32DrawPixel(bitBuff, x, y, color);
+		}
+	}
+	return 0;
+}
+
 int W32UpdateDisplay(HDC hdc, int screenWidth, int screenHeight, W32BitBuffer *bitBuff)
 {
 	int res = StretchDIBits(
@@ -166,6 +178,15 @@ int W32UpdateDisplay(HDC hdc, int screenWidth, int screenHeight, W32BitBuffer *b
 	);
 	
 	return res;
+}
+
+int ConvertRelXToX(float rel_x, W32BitBuffer *bitBuff)
+{
+	return (int)bitBuff->width*rel_x;
+}
+int ConvertRelYToY(float rel_y, W32BitBuffer *bitBuff)
+{
+	return (int)bitBuff->height*rel_y;
 }
 
 int PaintW32BitBuffer(W32BitBuffer *bitBuff)

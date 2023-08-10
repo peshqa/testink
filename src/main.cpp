@@ -28,9 +28,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		return 0;
 	}
 	
-	int screenWidth = 10;
-	int screenHeight = 10;
-	shared_state.scale = 20;
+	int screenWidth = 700;
+	int screenHeight = 700;
+	shared_state.scale = 1;
 	
 	shared_state.client_width = screenWidth*shared_state.scale;
 	shared_state.client_height = screenHeight*shared_state.scale;
