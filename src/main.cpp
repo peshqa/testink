@@ -130,7 +130,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		W32UpdateDisplay(hdc, shared_state.client_width, shared_state.client_height, &bitBuff);
 		ReleaseDC(hwnd, hdc);
 		
-		Sleep(100); // ms
+		Sleep(50); // ms
 	}
 
     return 0;

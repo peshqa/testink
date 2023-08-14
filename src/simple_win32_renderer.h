@@ -173,9 +173,9 @@ int Win32DrawLine(W32BitBuffer *bitBuff, int x1, int y1, int x2, int y2)
 
 int Win32FillRect(W32BitBuffer *bitBuff, int left, int top, int right, int bottom, int color)
 {
-	for (int y = top; y <= bottom; y++)
+	for (int y = top; y < bottom; y++)
 	{
-		for (int x = left; x <= right; x++)
+		for (int x = left; x < right; x++)
 		{
 			Win32DrawPixel(bitBuff, x, y, color);
 		}
@@ -206,11 +206,22 @@ int W32UpdateDisplay(HDC hdc, int screenWidth, int screenHeight, W32BitBuffer *b
 
 int ConvertRelXToX(float rel_x, W32BitBuffer *bitBuff)
 {
-	return (int)bitBuff->width*rel_x;
+	return (int)(bitBuff->width)*rel_x;
 }
 int ConvertRelYToY(float rel_y, W32BitBuffer *bitBuff)
 {
-	return (int)bitBuff->height*rel_y;
+	return (int)(bitBuff->height)*rel_y;
+}
+
+int ConvertRelXToXse(float rel_x, int start, int end)
+{
+	int length = end - start;
+	return (int)(length)*rel_x + start;
+}
+int ConvertRelYToYse(float rel_y, int start, int end)
+{
+	int length = end - start;
+	return (int)(length)*rel_y + start;
 }
 
 int PaintW32BitBuffer(W32BitBuffer *bitBuff)
@@ -356,6 +367,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	default:
 		{
+			// TODO: there is an issue with windows' moving and sizing 'modal mode'
+			// which causes the app to freeze while user holds LMB on one of the window borders
+			// https://stackoverflow.com/questions/3102074/win32-my-application-freezes-while-the-user-resizes-the-window
 			res = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		}
 		break;

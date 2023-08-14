@@ -62,17 +62,38 @@ int UpdateProjectSnakeGame(SharedState* state)
 		UpdateSnakeGameState(game_state);
 	}
 	
-	FillW32BitBuffer(state->bitBuff, 0x00222222);
+	FillW32BitBuffer(state->bitBuff, 0x00000000);
+	
+	int start_x{};
+	int end_x = state->client_width;
+	int start_y{};
+	int end_y = state->client_height;
+	if (state->client_width >= state->client_height)
+	{
+		start_x = 0.5f*(state->client_width - state->client_height);
+		end_x = start_x + state->client_height;
+	} else {
+		start_y = 0.5f*(state->client_height - state->client_width);
+		end_y = start_y + state->client_width;
+	}
+	
+	Win32FillRect(state->bitBuff,
+		ConvertRelXToXse(0.0f, start_x, end_x),
+		ConvertRelYToYse(0.0f, start_y, end_y),
+		ConvertRelXToXse(1.0f, start_x, end_x),
+		ConvertRelYToYse(1.0f, start_y, end_y),
+		0x00222222);
+			
 	DoubleLinkedNode* node = game_state->snake_segments.first;
 	int odd = 0;
 	while (node)
 	{
 		Point2i* p = (Point2i*)(node->data);
 		Win32FillRect(state->bitBuff,
-			ConvertRelXToX((float)p->x/(float)game_state->field_width, state->bitBuff),
-			ConvertRelYToY((float)p->y/(float)game_state->field_height, state->bitBuff),
-			ConvertRelXToX((float)(p->x+1)/(float)game_state->field_width, state->bitBuff)-1,
-			ConvertRelYToY((float)(p->y+1)/(float)game_state->field_height, state->bitBuff)-1,
+			ConvertRelXToXse((float)p->x/(float)game_state->field_width, 		start_x, end_x),
+			ConvertRelYToYse((float)p->y/(float)game_state->field_height, 		start_y, end_y),
+			ConvertRelXToXse((float)(p->x+1)/(float)game_state->field_width, 	start_x, end_x),
+			ConvertRelYToYse((float)(p->y+1)/(float)game_state->field_height, 	start_y, end_y),
 			(odd) ? COLOR_GREEN : 0x00008800);
 		odd = 1 - odd;
 		node = node->next;
@@ -82,10 +103,10 @@ int UpdateProjectSnakeGame(SharedState* state)
 	{
 		Point2i* p = (Point2i*)(node->data);
 		Win32FillRect(state->bitBuff,
-			ConvertRelXToX((float)p->x/(float)game_state->field_width, state->bitBuff),
-			ConvertRelYToY((float)p->y/(float)game_state->field_height, state->bitBuff),
-			ConvertRelXToX((float)(p->x+1)/(float)game_state->field_width, state->bitBuff)-1,
-			ConvertRelYToY((float)(p->y+1)/(float)game_state->field_height, state->bitBuff)-1,
+			ConvertRelXToXse((float)p->x/(float)game_state->field_width, 		start_x, end_x),
+			ConvertRelYToYse((float)p->y/(float)game_state->field_height, 		start_y, end_y),
+			ConvertRelXToXse((float)(p->x+1)/(float)game_state->field_width, 	start_x, end_x),
+			ConvertRelYToYse((float)(p->y+1)/(float)game_state->field_height, 	start_y, end_y),
 			COLOR_RED);
 		node = node->next;
 	}
