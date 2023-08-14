@@ -26,12 +26,16 @@ int InitProjectSnakeGame(SharedState* state)
 	InitSnakeGame(snake_game, 10, 10);
 	state->project_state = snake_game;
 	
+	CalculateDeltaTime(state);
+	
 	return 0;
 }
 
 int UpdateProjectSnakeGame(SharedState* state)
 {
 	SnakeGameState *game_state = (SnakeGameState*)(state->project_state);
+	
+	float delta_time = CalculateDeltaTime(state);
 	
 	if (state->dir == 'l')
 	{
@@ -50,7 +54,13 @@ int UpdateProjectSnakeGame(SharedState* state)
 		game_state->snake_direction.x = 0;
 		game_state->snake_direction.y = 1;
 	}
-	UpdateSnakeGameState(game_state);
+	
+	game_state->time_since_last_update += delta_time;
+	if (game_state->time_since_last_update >= game_state->update_interval)
+	{
+		game_state->time_since_last_update -= game_state->update_interval;
+		UpdateSnakeGameState(game_state);
+	}
 	
 	FillW32BitBuffer(state->bitBuff, 0x00222222);
 	DoubleLinkedNode* node = game_state->snake_segments.first;

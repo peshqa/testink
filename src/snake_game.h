@@ -18,6 +18,9 @@ typedef struct
 	DoubleLinkedList snake_segments;
 	DoubleLinkedList fruits;
 	Point2i snake_direction;
+	
+	float update_interval;
+	float time_since_last_update;
 } SnakeGameState;
 
 int InitSnakeGame(SnakeGameState *state, int field_width, int field_height)
@@ -37,6 +40,10 @@ int InitSnakeGame(SnakeGameState *state, int field_width, int field_height)
 	
 	state->snake_direction.x = -1;
 	state->snake_direction.y = 0;
+	
+	
+	state->update_interval = 0.5;
+	state->time_since_last_update = 0;
 	
 	return 0;
 }

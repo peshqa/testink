@@ -16,6 +16,7 @@ simple_win32_renderer.h - core of all smaller projects that draws things on the 
 #include <vector>
 
 #include "ppm_image_loader.h"
+//#include "project.h"
 
 #pragma comment (lib, "Gdi32.lib")
 #pragma comment (lib, "User32.lib")
@@ -40,13 +41,35 @@ typedef struct
 typedef struct
 {
 	W32BitBuffer* bitBuff;
+	void *callback_update_func;
 	int client_width;
 	int client_height;
 	int scale;
 	std::vector<SimpleImage*> images;
 	char dir;
+	//Project *project;
 	void *project_state;
+	std::chrono::steady_clock::time_point curr_time;
+	std::chrono::steady_clock::time_point prev_time;
 } SharedState;
+
+typedef int (*CallbackUpdateFunction)(SharedState*);
+
+float CalculateDeltaTime(SharedState* state)
+{
+	state->prev_time = state->curr_time;
+	state->curr_time = std::chrono::steady_clock::now();
+	std::chrono::duration<float> dur = state->curr_time - state->prev_time;
+	float elapsedTime = dur.count();
+	return elapsedTime;
+}
+
+float GetDeltaTime(SharedState* state)
+{
+	std::chrono::duration<float> dur = state->curr_time - state->prev_time;
+	float elapsedTime = dur.count();
+	return elapsedTime;
+}
 
 int ResizeW32BitBuffer(W32BitBuffer *p, int screenWidth, int screenHeight)
 {
@@ -119,6 +142,7 @@ int Win32DrawLine(W32BitBuffer *bitBuff, int x1, int y1, int x2, int y2)
 	}*/
 	
 	// https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+	// TODO: add edge cases for horizontal and vertical lines
 	int dx = abs(x2 - x1);
     int sx = x1 < x2 ? 1 : -1;
     int dy = -abs(y2 - y1);
@@ -280,7 +304,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				shared_state->client_height = height;
 				
 				ResizeW32BitBuffer(bitBuff, width/shared_state->scale, height/shared_state->scale);
-				PaintW32BitBuffer(bitBuff);
+				CallbackUpdateFunction UpdateFunc = (CallbackUpdateFunction)(shared_state->callback_update_func);
+				if (UpdateFunc == 0)
+				{
+					PaintW32BitBuffer(bitBuff);
+				} else {
+					UpdateFunc(shared_state);
+				}
 				HDC hdc = GetDC(hwnd);
 				W32UpdateDisplay(hdc, width, height, bitBuff);
 				ReleaseDC(hwnd, hdc);
@@ -310,7 +340,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				shared_state->client_height = height;
 				
 				ResizeW32BitBuffer(bitBuff, width/shared_state->scale, height/shared_state->scale);
-				PaintW32BitBuffer(bitBuff);
+				CallbackUpdateFunction UpdateFunc = (CallbackUpdateFunction)(shared_state->callback_update_func);
+				if (UpdateFunc == 0)
+				{
+					PaintW32BitBuffer(bitBuff);
+				} else {
+					UpdateFunc(shared_state);
+				}
 				W32UpdateDisplay(hdc, width, height, bitBuff);
 				ReleaseDC(hwnd, hdc);
 			}

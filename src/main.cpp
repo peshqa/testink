@@ -21,6 +21,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	UpdateProjectFunction UpdateProjectFunc = (UpdateProjectFunction)(projects[current_project].UpdateFunc);
 	
 	SharedState shared_state{};
+	shared_state.callback_update_func = projects[current_project].UpdateFunc;
 	shared_state.dir = 'l';
 	
 	if (InitProjectFunc(&shared_state) != 0)
@@ -120,8 +121,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		
 		// Update & Render
 
-		std::wstring title = std::to_wstring((elapsedTime));
-		SetWindowTextW(hwnd, title.c_str());
+		//std::wstring title = std::to_wstring((elapsedTime));
+		//SetWindowTextW(hwnd, title.c_str());
 		
 		UpdateProjectFunc(&shared_state);
 		
@@ -129,7 +130,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		W32UpdateDisplay(hdc, shared_state.client_width, shared_state.client_height, &bitBuff);
 		ReleaseDC(hwnd, hdc);
 		
-		Sleep(500); // ms
+		Sleep(100); // ms
 	}
 
     return 0;
