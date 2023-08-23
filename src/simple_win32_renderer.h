@@ -112,6 +112,28 @@ int FillW32BitBuffer(W32BitBuffer *bitBuff, int color)
 	return 0;
 }
 
+int GrayscaleW32BitBuffer(W32BitBuffer *bitBuff)
+{
+	for (int i = 0; i < bitBuff->width*bitBuff->height; i++)
+	{
+		int color = ((int*)(bitBuff->bits))[i];
+		color = (((color & 0x00FF0000) >> 16) + ((color & 0x0000FF00) >> 8) + (color & 0x000000FF)) / 3;
+		((int*)bitBuff->bits)[i] = color + (color << 8) + (color << 16);
+	}
+	
+	return 0;
+}
+int RedW32BitBuffer(W32BitBuffer *bitBuff)
+{
+	for (int i = 0; i < bitBuff->width*bitBuff->height; i++)
+	{
+		int color = ((int*)(bitBuff->bits))[i];
+		((int*)bitBuff->bits)[i] = color & 0x00FF0000;
+	}
+	
+	return 0;
+}
+
 int Win32DrawLine(W32BitBuffer *bitBuff, int x1, int y1, int x2, int y2)
 {
 	// naive algorithm
@@ -229,6 +251,26 @@ int PaintW32BitBuffer(W32BitBuffer *bitBuff)
 	FillW32BitBuffer(bitBuff, COLOR_WHITE);
 	
 	return 0;
+}
+
+int Win32GoBorderlessFullscreen(HWND hwnd)
+{
+	int w = GetSystemMetrics(SM_CXSCREEN);
+	int h = GetSystemMetrics(SM_CYSCREEN);
+	SetWindowLongPtr(hwnd, GWL_STYLE, WS_VISIBLE | WS_POPUP);
+	SetWindowPos(hwnd, HWND_TOP, 0, 0, w, h, SWP_FRAMECHANGED);
+	return 0;
+}
+int Win32GoFullscreen(HWND hwnd)
+{
+	// TODO: figure out how to implement fullscreen mode
+	/*DEVMODE dev{};
+	dev.dmBitsPerPel = 32;
+	dmPelsWidth = 1;
+	dmPelsHeight = 1;
+	dmDisplayFlags = DM_BITSPERPEL;
+	ChangeDisplaySettings(0, CDS_FULLSCREEN);*/
+	return 1;
 }
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)

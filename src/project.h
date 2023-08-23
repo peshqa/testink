@@ -77,13 +77,31 @@ int UpdateProjectSnakeGame(SharedState* state)
 		end_y = start_y + state->client_width;
 	}
 	
+	// render background
 	Win32FillRect(state->bitBuff,
 		ConvertRelXToXse(0.0f, start_x, end_x),
 		ConvertRelYToYse(0.0f, start_y, end_y),
 		ConvertRelXToXse(1.0f, start_x, end_x),
 		ConvertRelYToYse(1.0f, start_y, end_y),
 		0x00222222);
-			
+	for (int i = 0; i < game_state->field_height; i++)
+	{
+		for (int j = 0; j < game_state->field_width; j++)
+		{
+			if (((i+j)&1)==1)
+			{
+				continue;
+			}
+			Win32FillRect(state->bitBuff,
+				ConvertRelXToXse((float)j/(float)game_state->field_width, start_x, end_x),
+				ConvertRelYToYse((float)i/(float)game_state->field_height, start_y, end_y),
+				ConvertRelXToXse((float)(j+1)/(float)game_state->field_width, start_x, end_x),
+				ConvertRelYToYse((float)(i+1)/(float)game_state->field_height, start_y, end_y),
+				0x00202020);
+		}
+	}
+	
+	// render snake
 	DoubleLinkedNode* node = game_state->snake_segments.first;
 	int odd = 0;
 	while (node)
@@ -94,10 +112,11 @@ int UpdateProjectSnakeGame(SharedState* state)
 			ConvertRelYToYse((float)p->y/(float)game_state->field_height, 		start_y, end_y),
 			ConvertRelXToXse((float)(p->x+1)/(float)game_state->field_width, 	start_x, end_x),
 			ConvertRelYToYse((float)(p->y+1)/(float)game_state->field_height, 	start_y, end_y),
-			(odd) ? COLOR_GREEN : 0x00008800);
+			(odd) ? 0x0010EE10 : 0x00108810);
 		odd = 1 - odd;
 		node = node->next;
 	}
+	// render food
 	node = game_state->fruits.first;
 	while (node)
 	{
@@ -107,9 +126,12 @@ int UpdateProjectSnakeGame(SharedState* state)
 			ConvertRelYToYse((float)p->y/(float)game_state->field_height, 		start_y, end_y),
 			ConvertRelXToXse((float)(p->x+1)/(float)game_state->field_width, 	start_x, end_x),
 			ConvertRelYToYse((float)(p->y+1)/(float)game_state->field_height, 	start_y, end_y),
-			COLOR_RED);
+			0x00FF1111);
 		node = node->next;
 	}
+	
+	//GrayscaleW32BitBuffer(state->bitBuff);
+	//RedW32BitBuffer(state->bitBuff);
 	
 	return 0;
 }

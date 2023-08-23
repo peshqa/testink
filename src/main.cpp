@@ -7,11 +7,20 @@ Console isn't used by the app (initially), so 'wWinMain' is the main function.
 #define UNICODE
 #endif
 
+#include "simple_wasapi_renderer.h"
 #include "simple_win32_renderer.h"
 #include "project.h"
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
+	srand(time(NULL));
+	
+	int res = InitWASAPIRenderer();
+	if (res != 0)
+	{
+		return 1;
+	}
+	
 	int default_project = 0;
 	int current_project = default_project;
 	Project* projects{};
@@ -76,6 +85,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     }
 
     ShowWindow(hwnd, nCmdShow);
+	Win32GoFullscreen(hwnd);
 
 	W32BitBuffer bitBuff{};
 	shared_state.bitBuff = &bitBuff;
