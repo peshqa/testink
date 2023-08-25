@@ -7,8 +7,11 @@ https://learn.microsoft.com/en-us/windows/win32/coreaudio/rendering-a-stream
 #pragma once
 #include <audioclient.h>
 #include <mmdeviceapi.h>
+#include <cmath>
 
 #pragma comment (lib, "Ole32.lib")
+
+# define PI_DOUBLE           3.14159265358979323846
 
 enum WASAPIRenderType : int
 {
@@ -16,9 +19,36 @@ enum WASAPIRenderType : int
 	AUDIO_FLOAT
 };
 
+int GenerateSineSamples(BYTE* Buffer, size_t BufferLength, DWORD Frequency, WORD ChannelCount, DWORD SamplesPerSecond, double* InitialTheta)
+{
+    double sampleIncrement = (Frequency * (PI_DOUBLE * 2)) / (double)SamplesPerSecond;
+    float* dataBuffer = (float*)Buffer;
+    double theta = (InitialTheta != NULL ? *InitialTheta : 0);
+
+    for (size_t i = 0; i < BufferLength / sizeof(float); i += ChannelCount)
+    {
+        //float sinValue = ((int)(theta/4) %2) ? 0.5f: -0.5f;
+		float sinValue = sin(theta);
+        for (size_t j = 0; j < ChannelCount; j++)
+        {
+            dataBuffer[i + j] = sinValue;
+        }
+        theta += sampleIncrement;
+    }
+
+    if (InitialTheta != NULL)
+    {
+        *InitialTheta = theta;
+    }
+	
+	return 0;
+}
+
 int InitWASAPIRenderer()
 {
 	int TARGET_LATENCY = 30;
+	
+	//OutputDebugStringW(L"Initializing WASAPI Renderer\n");
 	
 	// Step 1: Initialize the COM library
 	if (FAILED(CoInitializeEx(0, COINIT_APARTMENTTHREADED)))
@@ -86,7 +116,7 @@ int InitWASAPIRenderer()
 	// Step 5: Initialize WASAPI in event driven mode
 	if (FAILED(audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
         0, //AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_NOPERSIST, // <- enables event driven system
-        TARGET_LATENCY * (long long)10000,
+        1000 * (long long)10000,
         0,
         mix_format,
         NULL)))
@@ -116,7 +146,9 @@ int InitWASAPIRenderer()
 	
 	// Load the initial data into the shared buffer.
 	DWORD flags = 0;
+	double theta{};
     //hr = pMySource->LoadData(bufferFrameCount, pData, &flags);
+	GenerateSineSamples(pData, bufferFrameCount, 440,2, 48000, &theta);
 
     if (FAILED(pRenderClient->ReleaseBuffer(bufferFrameCount, flags)))
 	{
@@ -134,7 +166,7 @@ int InitWASAPIRenderer()
 		return 13;
 	}
 	
-	int max_cycles = 50;
+	int max_cycles = 2;
 	// Each loop fills about half of the shared buffer.
     while (flags != AUDCLNT_BUFFERFLAGS_SILENT)
     {
@@ -158,6 +190,7 @@ int InitWASAPIRenderer()
 
         // Get next 1/2-second of data from the audio source.
         //hr = pMySource->LoadData(numFramesAvailable, pData, &flags);
+		GenerateSineSamples(pData, numFramesAvailable, 440,2, 48000, &theta);
 
         if (FAILED(pRenderClient->ReleaseBuffer(numFramesAvailable, flags)))
 		{
