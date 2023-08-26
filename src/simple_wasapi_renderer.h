@@ -11,7 +11,7 @@ https://learn.microsoft.com/en-us/windows/win32/coreaudio/rendering-a-stream
 
 #pragma comment (lib, "Ole32.lib")
 
-# define PI_DOUBLE           3.14159265358979323846
+# define PI_DOUBLE 3.14159265358979323846
 
 enum WASAPIRenderType : int
 {
@@ -19,19 +19,19 @@ enum WASAPIRenderType : int
 	AUDIO_FLOAT
 };
 
-int GenerateSineSamples(BYTE* Buffer, size_t BufferLength, DWORD Frequency, WORD ChannelCount, DWORD SamplesPerSecond, double* InitialTheta)
+int GenerateSineSamples(BYTE* Buffer, size_t frame_count, DWORD Frequency, WORD ChannelCount, DWORD SamplesPerSecond, double* InitialTheta)
 {
     double sampleIncrement = (Frequency * (PI_DOUBLE * 2)) / (double)SamplesPerSecond;
     float* dataBuffer = (float*)Buffer;
     double theta = (InitialTheta != NULL ? *InitialTheta : 0);
 
-    for (size_t i = 0; i < BufferLength / sizeof(float); i += ChannelCount)
+    for (size_t i = 0; i < frame_count; i++)
     {
         //float sinValue = ((int)(theta/4) %2) ? 0.5f: -0.5f;
-		float sinValue = sin(theta);
+		float sinValue = sin(theta)*0.1f;
         for (size_t j = 0; j < ChannelCount; j++)
         {
-            dataBuffer[i + j] = sinValue;
+            dataBuffer[ChannelCount*i + j] = sinValue;
         }
         theta += sampleIncrement;
     }
@@ -166,9 +166,9 @@ int InitWASAPIRenderer()
 		return 13;
 	}
 	
-	int max_cycles = 2;
+	int max_cycles = 5;
 	// Each loop fills about half of the shared buffer.
-    while (flags != AUDCLNT_BUFFERFLAGS_SILENT)
+    while (/*flags != AUDCLNT_BUFFERFLAGS_SILENT*/max_cycles--)
     {
         // Sleep for half the buffer duration.
         Sleep((DWORD)(hnsActualDuration/REFTIMES_PER_MILLISEC/2));
@@ -196,9 +196,6 @@ int InitWASAPIRenderer()
 		{
 			return 16;
 		}
-		
-		if (max_cycles-- <= 0)
-			break;
     }
 
     // Wait for last data in buffer to play before stopping.
