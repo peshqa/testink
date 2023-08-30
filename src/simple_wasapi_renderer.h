@@ -9,6 +9,8 @@ https://learn.microsoft.com/en-us/windows/win32/coreaudio/rendering-a-stream
 #include <mmdeviceapi.h>
 #include <cmath>
 
+#include "wav_audio_loader.h"
+
 #pragma comment (lib, "Ole32.lib")
 
 # define PI_DOUBLE 3.14159265358979323846
@@ -144,11 +146,25 @@ int InitWASAPIRenderer()
 		return 11;
 	}
 	
+	/* testing wav file loader */
+	int num_samples{};
+	float *samples;
+	if (LoadWavFile(samples, num_samples) != 0)
+	{
+		return 100;
+	}
+	
 	// Load the initial data into the shared buffer.
 	DWORD flags = 0;
 	double theta{};
     //hr = pMySource->LoadData(bufferFrameCount, pData, &flags);
-	GenerateSineSamples(pData, bufferFrameCount, 440,2, 48000, &theta);
+	//GenerateSineSamples(pData, bufferFrameCount, 440, 2, 48000, &theta);
+	float *fbuf = (float*)pData;
+	for (int i = 0; i < bufferFrameCount && i < num_samples; i++)
+	{
+		fbuf[2*i] = samples[i];
+		fbuf[2*i+1] = samples[i];
+	}
 
     if (FAILED(pRenderClient->ReleaseBuffer(bufferFrameCount, flags)))
 	{
@@ -166,7 +182,7 @@ int InitWASAPIRenderer()
 		return 13;
 	}
 	
-	int max_cycles = 5;
+	int max_cycles = 0;
 	// Each loop fills about half of the shared buffer.
     while (/*flags != AUDCLNT_BUFFERFLAGS_SILENT*/max_cycles--)
     {
@@ -190,7 +206,7 @@ int InitWASAPIRenderer()
 
         // Get next 1/2-second of data from the audio source.
         //hr = pMySource->LoadData(numFramesAvailable, pData, &flags);
-		GenerateSineSamples(pData, numFramesAvailable, 440,2, 48000, &theta);
+		GenerateSineSamples(pData, numFramesAvailable, 440, 2, 48000, &theta);
 
         if (FAILED(pRenderClient->ReleaseBuffer(numFramesAvailable, flags)))
 		{
