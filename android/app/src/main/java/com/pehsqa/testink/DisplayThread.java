@@ -7,15 +7,25 @@ import android.graphics.Paint;
 
 import android.widget.Toast;
 
+import android.graphics.Bitmap;
+import android.graphics.Matrix;
+import android.util.DisplayMetrics;
+import android.content.ContextWrapper;
+import android.graphics.Rect;
+
+import android.util.Log;
+
 public class DisplayThread extends Thread
 {
 	volatile boolean isRunning = false;
 	SurfaceHolder surfaceHolder;
+	Context context;
 	
 	DisplayThread(SurfaceHolder surfaceHolder, Context context)
 	{
 		super();
 		this.surfaceHolder = surfaceHolder;
+		this.context = context;
 		//Toast.makeText(context,"Hello",Toast.LENGTH_SHORT).show();
 	}
 	
@@ -26,35 +36,12 @@ public class DisplayThread extends Thread
 		while (isRunning)
 		{
 			GameEngine gameEngine = GameEngine.getInstance();
-			//Updates the game objects buisiness logic
-			gameEngine.Update();
-	
-			//locking the canvas
-			Canvas canvas = surfaceHolder.lockCanvas(null);
-	
-			if (canvas != null)
-			{
-				//Clears the screen with black paint and draws
-				//object on the canvas
-				Paint p = new Paint();
-				p.setColor(0xFF00FF00);
-				synchronized (surfaceHolder)
-				{
-					canvas.drawRect(
-						0,
-						0,
-						canvas.getWidth(),
-						canvas.getHeight(), p);
+			gameEngine.UpdateAndRender(surfaceHolder, context);
 			
-					gameEngine.Draw(canvas);
-				}
-				//unlocking the Canvas
-				surfaceHolder.unlockCanvasAndPost(canvas);
-			}
 			//delay time
 			try
 			{
-				Thread.sleep(30); // ms
+				Thread.sleep(100); // ms
 			}
 			catch (InterruptedException ex)
 			{
@@ -62,4 +49,6 @@ public class DisplayThread extends Thread
 			}
 		}
 	}
+	
+	
 }
