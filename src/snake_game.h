@@ -65,7 +65,7 @@ int UpdateSnakeGameState(SnakeGameState *state)
 		return 1; // out of bounds
 	}
 	
-	BOOL occupied_by_snake = 0;
+	int occupied_by_snake = 0;
 	DoubleLinkedNode* node = state->snake_segments.first;
 	while (node->next)
 	{
@@ -84,7 +84,7 @@ int UpdateSnakeGameState(SnakeGameState *state)
 		return 2; // snake has bitten itself :(
 	}
 	
-	BOOL occupied_by_fruit = 0;
+	int occupied_by_fruit = 0;
 	node = state->fruits.first;
 	while (node)
 	{

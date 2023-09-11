@@ -12,14 +12,39 @@ import android.graphics.Rect;
 
 public class GameEngine
 {
-	public static GameEngine instance = null;
+	public native void updateBitmap(Bitmap bitmap);
+	public native long initData();
+	public native void updateAndRenderGame(long data, Bitmap bitmap);
+	public native void itHappen(long data, char c);
 	
-	public static GameEngine getInstance() {
+	public static GameEngine instance = null;
+	public long data;
+	
+	public void itH(int x, int y, int w, int h)
+	{
+		char dir = 'd';
+		if (x < w*0.3) {
+			dir = 'l';
+		} else if (x > w*0.7) {
+			dir = 'r';
+		} else if (y < h*0.5) {
+			dir = 'u';
+		}
+		itHappen(data, dir);
+	}
+	
+	public static GameEngine getInstance()
+	{
         if (instance == null) {
             instance = new GameEngine();
         }
         return instance;
     }
+	
+	GameEngine()
+	{
+		data = initData();
+	}
 	
 	public boolean UpdateAndRender(SurfaceHolder surfaceHolder, Context context)
 	{
@@ -39,7 +64,8 @@ public class GameEngine
 
 				Bitmap.Config conf = Bitmap.Config.ARGB_8888; // see other conf types
 				Bitmap bmp = Bitmap.createBitmap(w, h, conf); // this creates a MUTABLE bitmap0
-				updateBitmap(bmp);
+				//updateBitmap(bmp);
+				updateAndRenderGame(data, bmp);
 				Matrix mat = new Matrix();
 				canvas.drawBitmap(bmp, null, new Rect(0,0,w,h), null);
 				
@@ -51,5 +77,4 @@ public class GameEngine
 		return true;
 	}
 	
-	public native void updateBitmap(Bitmap bitmap);
 }

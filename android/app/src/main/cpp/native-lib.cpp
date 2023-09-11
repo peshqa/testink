@@ -6,6 +6,7 @@
 // src path: testink\android\app\src\main\cpp
 // dest path: testink\src
 #include "..\..\..\..\..\src\test_string.h"
+#include "..\..\..\..\..\src\android_lib.h"
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_peshqa_testink_MainActivity_stringFromJNI(
@@ -19,13 +20,13 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_peshqa_testink_GameEngine_updateBitmap(
 		JNIEnv *env,
 		jobject thiz,
-		jobject canvas)
+		jobject bitmap)
 {
 	AndroidBitmapInfo info;
 	void *pixels;
 	
-	// Get info about the Canvas bitmap
-	if (AndroidBitmap_getInfo(env, canvas, &info) < 0)
+	// Get info about the bitmap
+	if (AndroidBitmap_getInfo(env, bitmap, &info) < 0)
 	{
 		return;
 	}
@@ -35,8 +36,8 @@ Java_com_peshqa_testink_GameEngine_updateBitmap(
 		return;
 	}
 	
-	// Lock the Canvas bitmap to access its pixels
-	if (AndroidBitmap_lockPixels(env, canvas, &pixels) < 0)
+	// Lock the bitmap to access its pixels
+	if (AndroidBitmap_lockPixels(env, bitmap, &pixels) < 0)
 	{
 		return;
 	}
@@ -51,7 +52,7 @@ Java_com_peshqa_testink_GameEngine_updateBitmap(
 		}
 	}
 	
-	// Unlock the Canvas to apply changes
-	AndroidBitmap_unlockPixels(env, canvas);
+	// Unlock the bitmap to apply changes
+	AndroidBitmap_unlockPixels(env, bitmap);
 }
 

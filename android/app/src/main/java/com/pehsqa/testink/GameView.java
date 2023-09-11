@@ -4,12 +4,45 @@ import android.view.SurfaceView;
 import android.content.Context;
 import android.view.SurfaceHolder;
 
+import android.view.View;
+import android.view.MotionEvent;
+
+import android.util.DisplayMetrics;
+import android.content.ContextWrapper;
+import android.graphics.Rect;
+
 //import android.widget.Toast;
 
 public class GameView extends SurfaceView
 {
 	public Context context;
 	public DisplayThread displayThread = null;
+	
+	@Override
+	public boolean onTouchEvent(MotionEvent event)
+	{
+		int x = (int) event.getX();
+		int y = (int) event.getY();
+
+		switch (event.getAction()) {
+			case MotionEvent.ACTION_DOWN: {
+				GameEngine ge = GameEngine.getInstance();
+				ContextWrapper wra = new ContextWrapper(context);
+				DisplayMetrics metrics = wra.getBaseContext().getResources().getDisplayMetrics();         
+				int w = metrics.widthPixels;
+				int h = metrics.heightPixels;
+				ge.itH(x, y, w, h);
+				return true;
+				//break;
+			}
+			case MotionEvent.ACTION_MOVE: {
+
+				break;
+			}
+		}
+
+		return false;
+	}
 	
 	GameView(Context context)
 	{
