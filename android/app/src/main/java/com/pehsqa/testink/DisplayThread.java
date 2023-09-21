@@ -41,7 +41,7 @@ public class DisplayThread extends Thread
 			//delay time
 			try
 			{
-				Thread.sleep(50); // ms
+				Thread.sleep(10); // ms
 			}
 			catch (InterruptedException ex)
 			{

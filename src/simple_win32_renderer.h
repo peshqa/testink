@@ -1,8 +1,10 @@
 /*
-simple_win32_renderer.h - core of all smaller projects that draws things on the screen
+simple_win32_renderer.h - (Windows specific) core of all smaller projects that draws things on the screen
 2023/08/09, peshqa
 */
 #pragma once
+
+#include "platform_simple_renderer.h"
 
 #ifndef UNICODE
 #define UNICODE
@@ -11,24 +13,13 @@ simple_win32_renderer.h - core of all smaller projects that draws things on the 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <stdlib.h>
-#include <chrono>
 #include <string>
 #include <vector>
 
-#include "ppm_image_loader.h"
 //#include "project.h"
 
 #pragma comment (lib, "Gdi32.lib")
 #pragma comment (lib, "User32.lib")
-
-enum RGBColor : int
-{
-	COLOR_WHITE = 0x00FFFFFF,
-	COLOR_BLACK = 0x00000000,
-	COLOR_RED 	= 0x00FF0000,
-	COLOR_GREEN = 0x0000FF00,
-	COLOR_BLUE 	= 0x000000FF
-};
 
 typedef struct
 {
@@ -38,38 +29,7 @@ typedef struct
 	BITMAPINFO info;
 } W32BitBuffer;
 
-typedef struct
-{
-	W32BitBuffer* bitBuff;
-	void *callback_update_func;
-	int client_width;
-	int client_height;
-	int scale;
-	std::vector<SimpleImage*> images;
-	char dir;
-	//Project *project;
-	void *project_state;
-	std::chrono::steady_clock::time_point curr_time;
-	std::chrono::steady_clock::time_point prev_time;
-} SharedState;
-
 typedef int (*CallbackUpdateFunction)(SharedState*);
-
-float CalculateDeltaTime(SharedState* state)
-{
-	state->prev_time = state->curr_time;
-	state->curr_time = std::chrono::steady_clock::now();
-	std::chrono::duration<float> dur = state->curr_time - state->prev_time;
-	float elapsedTime = dur.count();
-	return elapsedTime;
-}
-
-float GetDeltaTime(SharedState* state)
-{
-	std::chrono::duration<float> dur = state->curr_time - state->prev_time;
-	float elapsedTime = dur.count();
-	return elapsedTime;
-}
 
 int ResizeW32BitBuffer(W32BitBuffer *p, int screenWidth, int screenHeight)
 {
@@ -101,6 +61,21 @@ int Win32DrawPixel(W32BitBuffer *bitBuff, int x, int y, int xxrrggbb=COLOR_BLACK
 	((int*)(bitBuff->bits))[y*bitBuff->width+x] = xxrrggbb;
 	return 0;
 }
+int PlatformDrawPixel(PlatformBitBuffer *bB, int x, int y, int color)
+{
+	W32BitBuffer *bitBuff = (W32BitBuffer*)bB;
+	if (x < 0 || x >= bitBuff->width || y < 0 || y >= bitBuff->height)
+	{
+		return -1;
+	}
+	((int*)(bitBuff->bits))[y*bitBuff->width+x] = color;
+	return 0;
+}
+
+int MakeColor(int a, int r, int g, int b)
+{
+	return (a<<24) + (r<<16) + (g<<8) + b;
+}
 
 int FillW32BitBuffer(W32BitBuffer *bitBuff, int color)
 {
@@ -111,6 +86,10 @@ int FillW32BitBuffer(W32BitBuffer *bitBuff, int color)
 	
 	return 0;
 }
+/*int FillPlatformBitBuffer(PlatformBitBuffer *bitBuff, int color)
+{
+	return FillW32BitBuffer((W32BitBuffer*)bitBuff, color);
+}*/
 
 int GrayscaleW32BitBuffer(W32BitBuffer *bitBuff)
 {
@@ -193,18 +172,6 @@ int Win32DrawLine(W32BitBuffer *bitBuff, int x1, int y1, int x2, int y2)
 	return 0;
 }
 
-int Win32FillRect(W32BitBuffer *bitBuff, int left, int top, int right, int bottom, int color)
-{
-	for (int y = top; y < bottom; y++)
-	{
-		for (int x = left; x < right; x++)
-		{
-			Win32DrawPixel(bitBuff, x, y, color);
-		}
-	}
-	return 0;
-}
-
 int W32UpdateDisplay(HDC hdc, int screenWidth, int screenHeight, W32BitBuffer *bitBuff)
 {
 	int res = StretchDIBits(
@@ -226,26 +193,6 @@ int W32UpdateDisplay(HDC hdc, int screenWidth, int screenHeight, W32BitBuffer *b
 	return res;
 }
 
-int ConvertRelXToX(float rel_x, W32BitBuffer *bitBuff)
-{
-	return (int)(bitBuff->width)*rel_x;
-}
-int ConvertRelYToY(float rel_y, W32BitBuffer *bitBuff)
-{
-	return (int)(bitBuff->height)*rel_y;
-}
-
-int ConvertRelXToXse(float rel_x, int start, int end)
-{
-	int length = end - start;
-	return (int)(length)*rel_x + start;
-}
-int ConvertRelYToYse(float rel_y, int start, int end)
-{
-	int length = end - start;
-	return (int)(length)*rel_y + start;
-}
-
 int PaintW32BitBuffer(W32BitBuffer *bitBuff)
 {
 	FillW32BitBuffer(bitBuff, COLOR_WHITE);
@@ -264,6 +211,7 @@ int Win32GoBorderlessFullscreen(HWND hwnd)
 int Win32GoFullscreen(HWND hwnd)
 {
 	// TODO: figure out how to implement fullscreen mode
+	// TODO: read this https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
 	/*DEVMODE dev{};
 	dev.dmBitsPerPel = 32;
 	dmPelsWidth = 1;
@@ -276,6 +224,8 @@ int Win32GoFullscreen(HWND hwnd)
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT res = 0;
+	SharedState *shared_state{};
+	shared_state = (SharedState*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 	
     switch (uMsg)
     {
@@ -287,44 +237,19 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		
 	case WM_LBUTTONDOWN:
 	//case WM_MOUSEMOVE:
+	//case WM_RBUTTONDOWN:
 		{
 			int x = LOWORD(lParam);
             int y = HIWORD(lParam);
 			
-			SharedState *shared_state{};
-			shared_state = (SharedState*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-			
 			if (shared_state != 0)
 			{
-				W32BitBuffer *bitBuff = shared_state->bitBuff;
-				//Win32DrawLine(bitBuff, 200/shared_state->scale, 200/shared_state->scale, x/shared_state->scale, y/shared_state->scale);
-				Win32DrawPixel(bitBuff, x/shared_state->scale, y/shared_state->scale);
-			}
-		}
-		break;
-		
-	case WM_RBUTTONDOWN:
-		{
-			int x = LOWORD(lParam);
-            int y = HIWORD(lParam);
-			
-			SharedState *shared_state{};
-			shared_state = (SharedState*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-			
-			if (shared_state != 0)
-			{
-				W32BitBuffer *bitBuff = shared_state->bitBuff;
-				//Win32DrawLine(bitBuff, 200/shared_state->scale, 200/shared_state->scale, x/shared_state->scale, y/shared_state->scale);
-				Win32DrawPixel(bitBuff, x/shared_state->scale, y/shared_state->scale, RGB(255,255,255));
 			}
 		}
 		break;
 		
 	case WM_KEYDOWN:
 		{
-			SharedState *shared_state{};
-			shared_state = (SharedState*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-			
 			if (wParam == VK_LEFT)
 			{
 				shared_state->dir = 'l';
@@ -343,15 +268,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		
 	case WM_SIZE:
 		{
-			SharedState *shared_state{};
-			shared_state = (SharedState*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-			
 			UINT width = LOWORD(lParam);
             UINT height = HIWORD(lParam);
 			
 			if (shared_state != 0)
 			{
-				W32BitBuffer *bitBuff = shared_state->bitBuff;
+				W32BitBuffer *bitBuff = (W32BitBuffer*)shared_state->bitBuff;
 				
 				shared_state->client_width = width;
 				shared_state->client_height = height;
@@ -362,7 +284,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				{
 					PaintW32BitBuffer(bitBuff);
 				} else {
-					UpdateFunc(shared_state);
+					UpdateFunc((SharedState*)shared_state);
 				}
 				HDC hdc = GetDC(hwnd);
 				W32UpdateDisplay(hdc, width, height, bitBuff);
@@ -379,15 +301,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			RECT clientRect{};
 			GetClientRect(hwnd, &clientRect);
 			
-			SharedState *shared_state{};
-			shared_state = (SharedState*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-			
 			UINT width = clientRect.right - clientRect.left;
             UINT height = clientRect.bottom - clientRect.top;
 			
 			if (shared_state != 0)
 			{
-				W32BitBuffer *bitBuff = shared_state->bitBuff;
+				W32BitBuffer *bitBuff = (W32BitBuffer*)shared_state->bitBuff;
 				
 				shared_state->client_width = width;
 				shared_state->client_height = height;
@@ -398,7 +317,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				{
 					PaintW32BitBuffer(bitBuff);
 				} else {
-					UpdateFunc(shared_state);
+					UpdateFunc((SharedState*)shared_state);
 				}
 				W32UpdateDisplay(hdc, width, height, bitBuff);
 				ReleaseDC(hwnd, hdc);

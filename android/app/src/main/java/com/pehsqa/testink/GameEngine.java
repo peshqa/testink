@@ -10,6 +10,8 @@ import android.util.DisplayMetrics;
 import android.content.ContextWrapper;
 import android.graphics.Rect;
 
+import android.view.View;
+
 public class GameEngine
 {
 	public native void updateBitmap(Bitmap bitmap);
@@ -31,6 +33,12 @@ public class GameEngine
 			dir = 'u';
 		}
 		itHappen(data, dir);
+	}
+	
+	public native void onScreenResize(long data, int format, int width, int height);
+	public void screenResize(int format, int width, int height)
+	{
+		onScreenResize(data, format, width, height);
 	}
 	
 	public static GameEngine getInstance()
@@ -71,6 +79,7 @@ public class GameEngine
 				
 			}
 			//unlocking the Canvas
+			
 			surfaceHolder.unlockCanvasAndPost(canvas);
 		}
 		

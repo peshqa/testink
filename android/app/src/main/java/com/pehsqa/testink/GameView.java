@@ -51,10 +51,10 @@ public class GameView extends SurfaceView
 		
 		super.getHolder().addCallback(new SurfaceHolder.Callback() {
 			//@Override
-			public void surfaceChanged(SurfaceHolder arg0, int arg1, int arg2, int arg3)
+			public void surfaceChanged(SurfaceHolder holder, int format, int width, int height)
 			{
-				/*DO NOTHING*/
-				//Toast.makeText(context,"one",Toast.LENGTH_SHORT).show();
+				GameEngine ge = GameEngine.getInstance();
+				ge.screenResize(format, width, height);
 			}
 		
 			//@Override

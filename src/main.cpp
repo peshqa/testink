@@ -3,23 +3,22 @@ main.cpp - entry point
 Console isn't used by the app (initially), so 'wWinMain' is the main function.
 2023/08/10, peshqa
 */
-#ifndef UNICODE
 #define UNICODE
-#endif
 
+#include "project.h"
 #include "simple_wasapi_renderer.h"
 #include "simple_win32_renderer.h"
-#include "project.h"
+
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
 	srand(time(NULL));
 	
-	int res = InitWASAPIRenderer();
+	/*int res = InitWASAPIRenderer();
 	if (res != 0)
 	{
 		return 1;
-	}
+	}*/
 	
 	int default_project = 0;
 	int current_project = default_project;
@@ -88,7 +87,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	Win32GoFullscreen(hwnd);
 
 	W32BitBuffer bitBuff{};
-	shared_state.bitBuff = &bitBuff;
+	shared_state.bitBuff = (PlatformBitBuffer*)&bitBuff;
 	ResizeW32BitBuffer(&bitBuff, screenWidth, screenHeight);
 	
 	// init screen buffer
