@@ -147,8 +147,8 @@ typedef struct
 int InitProject3DCube(SharedState* state)
 {
 	ProjectState3DCube *p_state = new ProjectState3DCube{};
-	p_state->x_offset = 0.0f;
-	p_state->y_offset = 0.0f;
+	p_state->x_offset = 1.0f;
+	p_state->y_offset = 0.5f;
 	p_state->z_offset = 2.0f;
 	state->project_state = p_state;
 	CalculateDeltaTime(state);
@@ -164,48 +164,92 @@ typedef struct
 
 typedef struct
 {
-	Vec3f p1;
-	Vec3f p2;
-	Vec3f p3;
+	Vec3f p[3];
 } Tri3f;
 
-typedef struct
+void MultiplyVecMat4x4(float *v_in, float *mat, float *v_out)
 {
-	std::vector<Tri3f> mesh;
-} Mesh3f;
+	for (int col = 0; col < 4; col++)
+	{
+		v_out[col] = 0;
+		for (int row = 0; row < 4; row++)
+		{
+			v_out[col] += mat[row*4+col]*v_in[row];
+		}
+	}
+}
 
 int UpdateProject3DCube(SharedState* state)
 {
 	ProjectState3DCube *game_state = (ProjectState3DCube*)(state->project_state);
-	
 	float delta_time = CalculateDeltaTime(state);
 	
-	int fov_deg = 90;
-	int z_near = 1;
-	int z_far = 10;
+	double pi = 3.1415926535;
 	
-	FillPlatformBitBuffer(state->bitBuff, MakeColor(255,25,12,6));
+	float fov_deg = 90.0f;
+	float z_near = 0.1f;
+	float z_far = 100.0f;
+	float aspect_ratio = (float)state->bitBuff->height/state->bitBuff->width;
+	float f = 1/tanf(fov_deg*pi/180/2);
+	float q = z_far*(z_far-z_near);
 	
-	game_state->x_offset += 0.01f*delta_time;
-	game_state->y_offset+= 0.005f *delta_time;
-	game_state->z_offset-= 0.01f *delta_time;
 	float ox = game_state->x_offset;
 	float oy = game_state->y_offset;
 	float oz = game_state->z_offset;
+	
+	float proj_mat4x4[16] = {aspect_ratio*f,0.0f,0.0f,0.0f,	0.0f,f,0.0f,0.0f,	0.0f,0.0f,q,1.0f,	0.0f,0.0f,-q*z_near,0.0f};
+	static float lol = 0;
+	lol += delta_time*0.6f*2;
+	float x_rot_mat4x4[16]{};
+	x_rot_mat4x4[0] = 1;
+	x_rot_mat4x4[5] = cosf(lol);
+	x_rot_mat4x4[6] = -sinf(lol);
+	x_rot_mat4x4[9] = sinf(lol);
+	x_rot_mat4x4[10] = cosf(lol);
+	x_rot_mat4x4[15] = 1;
+	
+	static float lol2{};
+	lol2 += delta_time*0.2f*2;
+	float y_rot_mat4x4[16]{};
+	y_rot_mat4x4[0] = cosf(lol2);
+	y_rot_mat4x4[2] = sinf(lol2);
+	y_rot_mat4x4[5] = y_rot_mat4x4[15] = 1;
+	y_rot_mat4x4[8] = -sinf(lol2);
+	y_rot_mat4x4[10] = cosf(lol2);
+	
+	float translate_mat4x4[16]{};
+	translate_mat4x4[0] = translate_mat4x4[5] = translate_mat4x4[10] = 1;
+	translate_mat4x4[12] = ox;
+	translate_mat4x4[13] = oy;
+	translate_mat4x4[14] = oz;
+	translate_mat4x4[15] = 1;
+	
+	float scale_mat4x4[16]{};
+	scale_mat4x4[0] = 0.3f;
+	scale_mat4x4[5] = 0.3f;
+	scale_mat4x4[10] = 0.3f;
+	scale_mat4x4[15] = 1;
+	
+	FillPlatformBitBuffer(state->bitBuff, MakeColor(255,25,12,6));
+	
+	/*game_state->x_offset += 0.01f*delta_time;
+	game_state->y_offset+= 0.005f *delta_time;
+	game_state->z_offset-= 0.01f *delta_time;*/
+	
 	std::vector<Tri3f> mesh;
 	// counterclockwise order (maybe)
-	Tri3f t1 = {1.0f+ox, 0.0f+oy, 0.0f+oz,	0.0f+ox, 1.0f+oy, 0.0f+oz,	1.0f+ox, 1.0f+oy, 0.0f+oz};
-	Tri3f t2 = {1.0f+ox, 0.0f+oy, 0.0f+oz,	0.0f+ox, 0.0f+oy, 0.0f+oz,	0.0f+ox, 1.0f+oy, 0.0f+oz};
-	Tri3f t3 = {1.0f+ox, 0.0f+oy, 1.0f+oz,	0.0f+ox, 1.0f+oy, 1.0f+oz,	1.0f+ox, 1.0f+oy, 1.0f+oz};
-	Tri3f t4 = {1.0f+ox, 0.0f+oy, 1.0f+oz,	0.0f+ox, 0.0f+oy, 1.0f+oz,	0.0f+ox, 1.0f+oy, 1.0f+oz};
-	Tri3f t5 = {0.0f+ox, 1.0f+oy, 0.0f+oz,	0.0f+ox, 0.0f+oy, 1.0f+oz,	0.0f+ox, 1.0f+oy, 1.0f+oz};
-	Tri3f t6 = {0.0f+ox, 1.0f+oy, 0.0f+oz,	0.0f+ox, 0.0f+oy, 0.0f+oz,	0.0f+ox, 0.0f+oy, 1.0f+oz};
-	Tri3f t7 = {1.0f+ox, 1.0f+oy, 0.0f+oz,	1.0f+ox, 0.0f+oy, 1.0f+oz,	1.0f+ox, 1.0f+oy, 1.0f+oz};
-	Tri3f t8 = {1.0f+ox, 1.0f+oy, 0.0f+oz,	1.0f+ox, 0.0f+oy, 0.0f+oz,	1.0f+ox, 0.0f+oy, 1.0f+oz};
-	Tri3f t9 = {1.0f+ox, 1.0f+oy, 0.0f+oz,	0.0f+ox, 1.0f+oy, 1.0f+oz,	1.0f+ox, 1.0f+oy, 1.0f+oz};
-	Tri3f t10= {1.0f+ox, 1.0f+oy, 0.0f+oz,	0.0f+ox, 1.0f+oy, 0.0f+oz,	0.0f+ox, 1.0f+oy, 1.0f+oz};
-	Tri3f t11= {1.0f+ox, 0.0f+oy, 0.0f+oz,	0.0f+ox, 0.0f+oy, 1.0f+oz,	1.0f+ox, 0.0f+oy, 1.0f+oz};
-	Tri3f t12= {1.0f+ox, 0.0f+oy, 0.0f+oz,	0.0f+ox, 0.0f+oy, 0.0f+oz,	0.0f+ox, 0.0f+oy, 1.0f+oz};
+	Tri3f t1 = {1.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f,	1.0f, 1.0f, 0.0f};
+	Tri3f t2 = {1.0f, 0.0f, 0.0f,	0.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f};
+	Tri3f t3 = {1.0f, 0.0f, 1.0f,	0.0f, 1.0f, 1.0f,	1.0f, 1.0f, 1.0f};
+	Tri3f t4 = {1.0f, 0.0f, 1.0f,	0.0f, 0.0f, 1.0f,	0.0f, 1.0f, 1.0f};
+	Tri3f t5 = {0.0f, 1.0f, 0.0f,	0.0f, 0.0f, 1.0f,	0.0f, 1.0f, 1.0f};
+	Tri3f t6 = {0.0f, 1.0f, 0.0f,	0.0f, 0.0f, 0.0f,	0.0f, 0.0f, 1.0f};
+	Tri3f t7 = {1.0f, 1.0f, 0.0f,	1.0f, 0.0f, 1.0f,	1.0f, 1.0f, 1.0f};
+	Tri3f t8 = {1.0f, 1.0f, 0.0f,	1.0f, 0.0f, 0.0f,	1.0f, 0.0f, 1.0f};
+	Tri3f t9 = {1.0f, 1.0f, 0.0f,	0.0f, 1.0f, 1.0f,	1.0f, 1.0f, 1.0f};
+	Tri3f t10= {1.0f, 1.0f, 0.0f,	0.0f, 1.0f, 0.0f,	0.0f, 1.0f, 1.0f};
+	Tri3f t11= {1.0f, 0.0f, 0.0f,	0.0f, 0.0f, 1.0f,	1.0f, 0.0f, 1.0f};
+	Tri3f t12= {1.0f, 0.0f, 0.0f,	0.0f, 0.0f, 0.0f,	0.0f, 0.0f, 1.0f};
 	mesh.push_back(t1); mesh.push_back(t2);
 	mesh.push_back(t3); mesh.push_back(t4);
 	mesh.push_back(t5); mesh.push_back(t6);
@@ -213,28 +257,43 @@ int UpdateProject3DCube(SharedState* state)
 	mesh.push_back(t9); mesh.push_back(t10);
 	mesh.push_back(t11); mesh.push_back(t12);
 	
-	double pi = 3.1415926535;
 	int clr = MakeColor(255,255,255,255);
 	for (Tri3f t: mesh)
 	{
-		PlatformDrawLine(state->bitBuff,
-			ConvertRelXToXse((t.p1.x*state->client_height/state->client_width)/t.p1.z, 0, state->client_width),
-			ConvertRelYToYse(t.p1.y/t.p1.z, 0, state->client_height),
-			ConvertRelXToXse((t.p2.x*state->client_height/state->client_width)/t.p2.z, 0, state->client_width),
-			ConvertRelYToYse(t.p2.y/t.p2.z, 0, state->client_height),
-			clr);
-		PlatformDrawLine(state->bitBuff,
-			ConvertRelXToXse((t.p3.x*state->client_height/state->client_width)/t.p3.z, 0, state->client_width),
-			ConvertRelYToYse(t.p3.y/t.p3.z, 0, state->client_height),
-			ConvertRelXToXse((t.p2.x*state->client_height/state->client_width)/t.p2.z, 0, state->client_width),
-			ConvertRelYToYse(t.p2.y/t.p2.z, 0, state->client_height),
-			clr);
-		PlatformDrawLine(state->bitBuff,
-			ConvertRelXToXse((t.p1.x*state->client_height/state->client_width)/t.p1.z, 0, state->client_width), 
-			ConvertRelYToYse(t.p1.y/t.p1.z, 0, state->client_height),
-			ConvertRelXToXse((t.p3.x*state->client_height/state->client_width)/t.p3.z, 0, state->client_width), 
-			ConvertRelYToYse(t.p3.y/t.p3.z, 0, state->client_height), 
-			clr);
+		for (int i = 1; i <= 3; i++)
+		{
+			float v_in1[4] = {t.p[i%3].x, t.p[i%3].y, t.p[i%3].z, 1};
+			float v_in2[4] = {t.p[i-1].x, t.p[i-1].y, t.p[i-1].z, 1};
+			float v_out1[4];
+			float v_out2[4];
+			MultiplyVecMat4x4(v_in1, y_rot_mat4x4, v_out1);
+			MultiplyVecMat4x4(v_in2, y_rot_mat4x4, v_out2);
+			
+			MultiplyVecMat4x4(v_out1, x_rot_mat4x4, v_in1);
+			MultiplyVecMat4x4(v_out2, x_rot_mat4x4, v_in2);
+			
+			MultiplyVecMat4x4(v_in1, scale_mat4x4, v_out1);
+			MultiplyVecMat4x4(v_in2, scale_mat4x4, v_out2);
+			
+			MultiplyVecMat4x4(v_out1, translate_mat4x4, v_in1);
+			MultiplyVecMat4x4(v_out2, translate_mat4x4, v_in2);
+			
+			MultiplyVecMat4x4(v_in1, proj_mat4x4, v_out1);
+			MultiplyVecMat4x4(v_in2, proj_mat4x4, v_out2);
+
+			PlatformDrawLine(state->bitBuff,
+					ConvertRelXToXse(v_out1[0]/v_out1[3], 0, state->client_width),
+					ConvertRelYToYse(v_out1[1]/v_out1[3], 0, state->client_height),
+					ConvertRelXToXse(v_out2[0]/v_out2[3], 0, state->client_width),
+					ConvertRelYToYse(v_out2[1]/v_out2[3], 0, state->client_height),
+					clr);
+			/*PlatformDrawLine(state->bitBuff,
+					ConvertRelXToXse(v_in1[0]/v_in1[3], 0, state->client_width),
+					ConvertRelYToYse(v_in1[1]/v_in1[3], 0, state->client_height),
+					ConvertRelXToXse(v_in2[0]/v_in2[3], 0, state->client_width),
+					ConvertRelYToYse(v_in2[1]/v_in2[3], 0, state->client_height),
+					clr);*/
+		}
 	}
 	
 	PlatformDrawLine(state->bitBuff,
@@ -250,10 +309,10 @@ int UpdateProject3DCube(SharedState* state)
 			ConvertRelYToYse((1.0f+oy)/oz, 0, state->client_height), 
 			MakeColor(255,0,255,0));
 	PlatformDrawLine(state->bitBuff,
+			ConvertRelXToXse(((0.0f+ox)*state->client_height/state->client_width)/(oz+1.0f), 0, state->client_width), 
+			ConvertRelYToYse((0.0f+oy)/(oz+1.0f), 0, state->client_height),
 			ConvertRelXToXse(((0.0f+ox)*state->client_height/state->client_width)/oz, 0, state->client_width), 
 			ConvertRelYToYse((0.0f+oy)/oz, 0, state->client_height),
-			ConvertRelXToXse(((0.0f+ox)*state->client_height/state->client_width)/oz, 0, state->client_width), 
-			ConvertRelYToYse((0.0f+oy)/(oz+1.0f), 0, state->client_height), 
 			MakeColor(255,0,0,255));
 	
 	return 0;
