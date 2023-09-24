@@ -147,7 +147,7 @@ typedef struct
 int InitProject3DCube(SharedState* state)
 {
 	ProjectState3DCube *p_state = new ProjectState3DCube{};
-	p_state->x_offset = 1.0f;
+	p_state->x_offset = 0.5f;
 	p_state->y_offset = 0.5f;
 	p_state->z_offset = 2.0f;
 	state->project_state = p_state;
@@ -178,7 +178,7 @@ void MultiplyVecMat4x4(float *v_in, float *mat, float *v_out)
 		}
 	}
 }
-void MultiplyMats4x4(float *m1, float *m2, float* out)
+void MultiplyMats4x4(float *m1, float *m2, float *out)
 {
 	for (int i = 0; i < 4; i++)
 	{
@@ -191,6 +191,12 @@ void MultiplyMats4x4(float *m1, float *m2, float* out)
 			}
 		}
 	}
+}
+void CrossProductVec3f(Vec3f &v1, Vec3f &v2, Vec3f &out)
+{
+	out.x = v1.y*v2.z - v1.z*v2.y;
+	out.y = v1.z*v2.x - v1.x*v2.z;
+	out.z = v1.x*v2.y - v1.y*v2.x;
 }
 
 int UpdateProject3DCube(SharedState* state)
@@ -211,9 +217,11 @@ int UpdateProject3DCube(SharedState* state)
 	float oy = game_state->y_offset;
 	float oz = game_state->z_offset;
 	
+	float rot_speed = 1.0f;
+	
 	float proj_mat4x4[16] = {aspect_ratio*f,0.0f,0.0f,0.0f,	0.0f,f,0.0f,0.0f,	0.0f,0.0f,q,1.0f,	0.0f,0.0f,-q*z_near,0.0f};
 	static float lol = 0;
-	lol += delta_time*0.6f*2;
+	lol += delta_time*0.6f*2*rot_speed;
 	float x_rot_mat4x4[16]{};
 	x_rot_mat4x4[0] = 1;
 	x_rot_mat4x4[5] = cosf(lol);
@@ -223,7 +231,7 @@ int UpdateProject3DCube(SharedState* state)
 	x_rot_mat4x4[15] = 1;
 	
 	static float lol2{};
-	lol2 += delta_time*0.2f*2;
+	lol2 += delta_time*0.2f*2*rot_speed;
 	float y_rot_mat4x4[16]{};
 	y_rot_mat4x4[0] = cosf(lol2);
 	y_rot_mat4x4[2] = sinf(lol2);
@@ -264,19 +272,19 @@ int UpdateProject3DCube(SharedState* state)
 	game_state->z_offset-= 0.01f *delta_time;*/
 	
 	std::vector<Tri3f> mesh;
-	// counterclockwise order (maybe)
-	Tri3f t1 = {1.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f,	1.0f, 1.0f, 0.0f};
-	Tri3f t2 = {1.0f, 0.0f, 0.0f,	0.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f};
-	Tri3f t3 = {1.0f, 0.0f, 1.0f,	0.0f, 1.0f, 1.0f,	1.0f, 1.0f, 1.0f};
-	Tri3f t4 = {1.0f, 0.0f, 1.0f,	0.0f, 0.0f, 1.0f,	0.0f, 1.0f, 1.0f};
-	Tri3f t5 = {0.0f, 1.0f, 0.0f,	0.0f, 0.0f, 1.0f,	0.0f, 1.0f, 1.0f};
-	Tri3f t6 = {0.0f, 1.0f, 0.0f,	0.0f, 0.0f, 0.0f,	0.0f, 0.0f, 1.0f};
-	Tri3f t7 = {1.0f, 1.0f, 0.0f,	1.0f, 0.0f, 1.0f,	1.0f, 1.0f, 1.0f};
-	Tri3f t8 = {1.0f, 1.0f, 0.0f,	1.0f, 0.0f, 0.0f,	1.0f, 0.0f, 1.0f};
-	Tri3f t9 = {1.0f, 1.0f, 0.0f,	0.0f, 1.0f, 1.0f,	1.0f, 1.0f, 1.0f};
-	Tri3f t10= {1.0f, 1.0f, 0.0f,	0.0f, 1.0f, 0.0f,	0.0f, 1.0f, 1.0f};
-	Tri3f t11= {1.0f, 0.0f, 0.0f,	0.0f, 0.0f, 1.0f,	1.0f, 0.0f, 1.0f};
-	Tri3f t12= {1.0f, 0.0f, 0.0f,	0.0f, 0.0f, 0.0f,	0.0f, 0.0f, 1.0f};
+	// clockwise order
+	Tri3f t1 = {1.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f,	1.0f, 1.0f, 0.0f};//
+	Tri3f t2 = {1.0f, 0.0f, 0.0f,	0.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f};//
+	Tri3f t3 = {1.0f, 0.0f, 1.0f,	1.0f, 1.0f, 1.0f,	0.0f, 1.0f, 1.0f};//?
+	Tri3f t4 = {1.0f, 0.0f, 1.0f,	0.0f, 1.0f, 1.0f,	0.0f, 0.0f, 1.0f};//?
+	Tri3f t5 = {0.0f, 1.0f, 0.0f,	0.0f, 0.0f, 1.0f,	0.0f, 1.0f, 1.0f};//
+	Tri3f t6 = {0.0f, 1.0f, 0.0f,	0.0f, 0.0f, 0.0f,	0.0f, 0.0f, 1.0f};//
+	Tri3f t7 = {1.0f, 1.0f, 0.0f,	1.0f, 1.0f, 1.0f,	1.0f, 0.0f, 1.0f};//?
+	Tri3f t8 = {1.0f, 1.0f, 0.0f,	1.0f, 0.0f, 1.0f,	1.0f, 0.0f, 0.0f};//?
+	Tri3f t9 = {1.0f, 1.0f, 0.0f,	0.0f, 1.0f, 1.0f,	1.0f, 1.0f, 1.0f};//
+	Tri3f t10= {1.0f, 1.0f, 0.0f,	0.0f, 1.0f, 0.0f,	0.0f, 1.0f, 1.0f};//
+	Tri3f t11= {1.0f, 0.0f, 0.0f,	1.0f, 0.0f, 1.0f,	0.0f, 0.0f, 1.0f};//?
+	Tri3f t12= {1.0f, 0.0f, 0.0f,	0.0f, 0.0f, 1.0f,	0.0f, 0.0f, 0.0f};//?
 	mesh.push_back(t1); mesh.push_back(t2);
 	mesh.push_back(t3); mesh.push_back(t4);
 	mesh.push_back(t5); mesh.push_back(t6);
@@ -284,10 +292,69 @@ int UpdateProject3DCube(SharedState* state)
 	mesh.push_back(t9); mesh.push_back(t10);
 	mesh.push_back(t11); mesh.push_back(t12);
 	
+	std::vector<Tri3f> translated_mesh;//?
 	int clr = MakeColor(255,255,255,255);
 	for (Tri3f t: mesh)
 	{
-		for (int i = 1; i <= 3; i++)
+		Tri3f tra_t;
+		for (int i = 0; i < 3; i++)
+		{
+			float v_in1[4] = {t.p[i].x, t.p[i].y, t.p[i].z, 1};
+			float v_out1[4];
+
+			MultiplyVecMat4x4(v_in1, combined_mat4x4, v_out1);
+			
+			tra_t.p[i].x = v_out1[0];
+			tra_t.p[i].y = v_out1[1];
+			tra_t.p[i].z = v_out1[2];
+		}
+		Vec3f norm;
+		Vec3f v1 = {tra_t.p[1].x-tra_t.p[0].x, tra_t.p[1].y-tra_t.p[0].y, tra_t.p[1].z-tra_t.p[0].z};
+		Vec3f v2 = {tra_t.p[2].x-tra_t.p[0].x, tra_t.p[2].y-tra_t.p[0].y, tra_t.p[2].z-tra_t.p[0].z};
+		CrossProductVec3f(v1, v2, norm);
+		float norm_len = sqrtf(norm.x*norm.x+norm.y*norm.y+norm.z*norm.z)*5;
+		norm.x /= norm_len; norm.y /= norm_len; norm.z /= norm_len;
+		float v_in3[4] = {norm.x+tra_t.p[0].x, norm.y+tra_t.p[0].y, norm.z+tra_t.p[0].z, 1};
+		float v_out3[4];
+		MultiplyVecMat4x4(v_in3, proj_mat4x4, v_out3);
+		float xd1{};
+		float xd2{};
+		//if (norm.z <= 0)
+		if (norm.x*(tra_t.p[0].x-0/*cam pos*/)+norm.y*(tra_t.p[0].y-0)+norm.z*(tra_t.p[0].z-0/*cam pos*/) <= 0)
+		{
+			for (int i = 1; i <= 3; i++)
+			{
+				float v_in1[4] = {tra_t.p[i%3].x, tra_t.p[i%3].y, tra_t.p[i%3].z, 1};
+				float v_in2[4] = {tra_t.p[i-1].x, tra_t.p[i-1].y, tra_t.p[i-1].z, 1};
+				
+				float v_out1[4];
+				float v_out2[4];
+				
+				MultiplyVecMat4x4(v_in1, proj_mat4x4, v_out1);
+				MultiplyVecMat4x4(v_in2, proj_mat4x4, v_out2);
+				
+				if (i==1)
+				{
+					xd1 = v_out2[0]/v_out2[3];
+					xd2 = v_out2[1]/v_out2[3];
+				}
+
+				PlatformDrawLinef(state->bitBuff,
+						v_out1[0]/v_out1[3],
+						v_out1[1]/v_out1[3],
+						v_out2[0]/v_out2[3],
+						v_out2[1]/v_out2[3],
+						clr);
+			}
+			PlatformDrawLinef(state->bitBuff,
+						xd1, 
+						xd2,
+						v_out3[0]/v_out3[3],
+						v_out3[1]/v_out3[3],
+						MakeColor(255,255,255,0));
+		}
+		
+		/*for (int i = 1; i <= 3; i++)
 		{
 			float v_in1[4] = {t.p[i%3].x, t.p[i%3].y, t.p[i%3].z, 1};
 			float v_in2[4] = {t.p[i-1].x, t.p[i-1].y, t.p[i-1].z, 1};
@@ -297,32 +364,32 @@ int UpdateProject3DCube(SharedState* state)
 			MultiplyVecMat4x4(v_in1, combined2_mat4x4, v_out1);
 			MultiplyVecMat4x4(v_in2, combined2_mat4x4, v_out2);
 
-			PlatformDrawLine(state->bitBuff,
-					ConvertRelXToXse(v_out1[0]/v_out1[3], 0, state->client_width),
-					ConvertRelYToYse(v_out1[1]/v_out1[3], 0, state->client_height),
-					ConvertRelXToXse(v_out2[0]/v_out2[3], 0, state->client_width),
-					ConvertRelYToYse(v_out2[1]/v_out2[3], 0, state->client_height),
+			PlatformDrawLinef(state->bitBuff,
+					v_out1[0]/v_out1[3],
+					v_out1[1]/v_out1[3],
+					v_out2[0]/v_out2[3],
+					v_out2[1]/v_out2[3],
 					clr);
-		}
+		}*/
 	}
 	
-	PlatformDrawLine(state->bitBuff,
-			ConvertRelXToXse(((0.0f+ox)*state->client_height/state->client_width)/oz, 0, state->client_width), 
-			ConvertRelYToYse((0.0f+oy)/oz, 0, state->client_height),
-			ConvertRelXToXse(((1.0f+ox)*state->client_height/state->client_width)/oz, 0, state->client_width), 
-			ConvertRelYToYse((0.0f+oy)/oz, 0, state->client_height), 
+	PlatformDrawLinef(state->bitBuff,
+			((0.0f+ox)*state->client_height/state->client_width)/oz, 
+			(0.0f+oy)/oz,
+			((1.0f+ox)*state->client_height/state->client_width)/oz, 
+			(0.0f+oy)/oz,
 			MakeColor(255,255,0,0));
-	PlatformDrawLine(state->bitBuff,
-			ConvertRelXToXse(((0.0f+ox)*state->client_height/state->client_width)/oz, 0, state->client_width), 
-			ConvertRelYToYse((0.0f+oy)/oz, 0, state->client_height),
-			ConvertRelXToXse(((0.0f+ox)*state->client_height/state->client_width)/oz, 0, state->client_width), 
-			ConvertRelYToYse((1.0f+oy)/oz, 0, state->client_height), 
+	PlatformDrawLinef(state->bitBuff,
+			((0.0f+ox)*state->client_height/state->client_width)/oz,
+			(0.0f+oy)/oz,
+			((0.0f+ox)*state->client_height/state->client_width)/oz,
+			(1.0f+oy)/oz,
 			MakeColor(255,0,255,0));
-	PlatformDrawLine(state->bitBuff,
-			ConvertRelXToXse(((0.0f+ox)*state->client_height/state->client_width)/(oz+1.0f), 0, state->client_width), 
-			ConvertRelYToYse((0.0f+oy)/(oz+1.0f), 0, state->client_height),
-			ConvertRelXToXse(((0.0f+ox)*state->client_height/state->client_width)/oz, 0, state->client_width), 
-			ConvertRelYToYse((0.0f+oy)/oz, 0, state->client_height),
+	PlatformDrawLinef(state->bitBuff,
+			((0.0f+ox)*state->client_height/state->client_width)/(oz+1.0f),
+			(0.0f+oy)/(oz+1.0f),
+			((0.0f+ox)*state->client_height/state->client_width)/oz,
+			(0.0f+oy)/oz,
 			MakeColor(255,0,0,255));
 	
 	return 0;

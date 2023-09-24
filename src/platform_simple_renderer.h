@@ -42,6 +42,12 @@ struct SharedState
 
 int MakeColor(int a, int r, int g, int b);
 
+int ConvertRelToPlain(float rel, int start, int end)
+{
+	int length = end - start;
+	return (int)(length)*rel + start;
+}
+
 float CalculateDeltaTime(SharedState* state)
 {
 	state->prev_time = state->curr_time;
@@ -122,6 +128,17 @@ int PlatformDrawLine(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2,
 	
 	return 0;
 }
+int PlatformDrawLinef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, float y2, int color)
+{
+	int end_x = bitBuff->width;
+	int end_y = bitBuff->height;
+	return PlatformDrawLine(bitBuff,
+			ConvertRelToPlain(x1, 0, end_x),
+			ConvertRelToPlain(y1, 0, end_y),
+			ConvertRelToPlain(x2, 0, end_x),
+			ConvertRelToPlain(y2, 0, end_y),
+			color);
+}
 
 int PlatformFillRect(PlatformBitBuffer *bitBuff, int left, int top, int right, int bottom, int color)
 {
@@ -159,6 +176,7 @@ int ConvertRelYToY(float rel_y, PlatformBitBuffer *bitBuff)
 {
 	return (int)(bitBuff->height)*rel_y;
 }
+// TODO: get rid of those two below
 int ConvertRelXToXse(float rel_x, int start, int end)
 {
 	int length = end - start;
