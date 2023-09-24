@@ -178,6 +178,20 @@ void MultiplyVecMat4x4(float *v_in, float *mat, float *v_out)
 		}
 	}
 }
+void MultiplyMats4x4(float *m1, float *m2, float* out)
+{
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			out[i*4+j] = 0;
+			for (int k = 0; k < 4; k++)
+			{
+				out[i*4+j] += m1[i*4+k]*m2[k*4+j];
+			}
+		}
+	}
+}
 
 int UpdateProject3DCube(SharedState* state)
 {
@@ -230,6 +244,19 @@ int UpdateProject3DCube(SharedState* state)
 	scale_mat4x4[10] = 0.3f;
 	scale_mat4x4[15] = 1;
 	
+	float combined_mat4x4[16]{};
+	float combined2_mat4x4[16]{};
+	/*combined_mat4x4[0] = 1;
+	combined_mat4x4[5] = 1;
+	combined_mat4x4[10] = 1;
+	combined_mat4x4[15] = 1;*/
+	
+	
+	MultiplyMats4x4(x_rot_mat4x4, y_rot_mat4x4, combined_mat4x4);
+	MultiplyMats4x4(combined_mat4x4, scale_mat4x4, combined2_mat4x4);
+	MultiplyMats4x4(combined2_mat4x4, translate_mat4x4, combined_mat4x4);
+	MultiplyMats4x4(combined_mat4x4, proj_mat4x4, combined2_mat4x4);
+	
 	FillPlatformBitBuffer(state->bitBuff, MakeColor(255,25,12,6));
 	
 	/*game_state->x_offset += 0.01f*delta_time;
@@ -266,20 +293,9 @@ int UpdateProject3DCube(SharedState* state)
 			float v_in2[4] = {t.p[i-1].x, t.p[i-1].y, t.p[i-1].z, 1};
 			float v_out1[4];
 			float v_out2[4];
-			MultiplyVecMat4x4(v_in1, y_rot_mat4x4, v_out1);
-			MultiplyVecMat4x4(v_in2, y_rot_mat4x4, v_out2);
-			
-			MultiplyVecMat4x4(v_out1, x_rot_mat4x4, v_in1);
-			MultiplyVecMat4x4(v_out2, x_rot_mat4x4, v_in2);
-			
-			MultiplyVecMat4x4(v_in1, scale_mat4x4, v_out1);
-			MultiplyVecMat4x4(v_in2, scale_mat4x4, v_out2);
-			
-			MultiplyVecMat4x4(v_out1, translate_mat4x4, v_in1);
-			MultiplyVecMat4x4(v_out2, translate_mat4x4, v_in2);
-			
-			MultiplyVecMat4x4(v_in1, proj_mat4x4, v_out1);
-			MultiplyVecMat4x4(v_in2, proj_mat4x4, v_out2);
+
+			MultiplyVecMat4x4(v_in1, combined2_mat4x4, v_out1);
+			MultiplyVecMat4x4(v_in2, combined2_mat4x4, v_out2);
 
 			PlatformDrawLine(state->bitBuff,
 					ConvertRelXToXse(v_out1[0]/v_out1[3], 0, state->client_width),
@@ -287,12 +303,6 @@ int UpdateProject3DCube(SharedState* state)
 					ConvertRelXToXse(v_out2[0]/v_out2[3], 0, state->client_width),
 					ConvertRelYToYse(v_out2[1]/v_out2[3], 0, state->client_height),
 					clr);
-			/*PlatformDrawLine(state->bitBuff,
-					ConvertRelXToXse(v_in1[0]/v_in1[3], 0, state->client_width),
-					ConvertRelYToYse(v_in1[1]/v_in1[3], 0, state->client_height),
-					ConvertRelXToXse(v_in2[0]/v_in2[3], 0, state->client_width),
-					ConvertRelYToYse(v_in2[1]/v_in2[3], 0, state->client_height),
-					clr);*/
 		}
 	}
 	
