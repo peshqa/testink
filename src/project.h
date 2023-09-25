@@ -297,6 +297,7 @@ int UpdateProject3DCube(SharedState* state)
 	for (Tri3f t: mesh)
 	{
 		Tri3f tra_t;
+		Tri3f projected_tri;
 		for (int i = 0; i < 3; i++)
 		{
 			float v_in1[4] = {t.p[i].x, t.p[i].y, t.p[i].z, 1};
@@ -322,30 +323,38 @@ int UpdateProject3DCube(SharedState* state)
 		//if (norm.z <= 0)
 		if (norm.x*(tra_t.p[0].x-0/*cam pos*/)+norm.y*(tra_t.p[0].y-0)+norm.z*(tra_t.p[0].z-0/*cam pos*/) <= 0)
 		{
-			for (int i = 1; i <= 3; i++)
+			for (int i = 0; i < 3; i++)
 			{
-				float v_in1[4] = {tra_t.p[i%3].x, tra_t.p[i%3].y, tra_t.p[i%3].z, 1};
-				float v_in2[4] = {tra_t.p[i-1].x, tra_t.p[i-1].y, tra_t.p[i-1].z, 1};
-				
+				float v_in1[4] = {tra_t.p[i].x, tra_t.p[i].y, tra_t.p[i].z, 1};
 				float v_out1[4];
-				float v_out2[4];
 				
 				MultiplyVecMat4x4(v_in1, proj_mat4x4, v_out1);
-				MultiplyVecMat4x4(v_in2, proj_mat4x4, v_out2);
 				
-				if (i==1)
+				if (i==0)
 				{
-					xd1 = v_out2[0]/v_out2[3];
-					xd2 = v_out2[1]/v_out2[3];
+					xd1 = v_out1[0]/v_out1[3];
+					xd2 = v_out1[1]/v_out1[3];
 				}
-
-				PlatformDrawLinef(state->bitBuff,
+				projected_tri.p[i].x = v_out1[0]/v_out1[3];
+				projected_tri.p[i].y = v_out1[1]/v_out1[3];
+				projected_tri.p[i].z = v_out1[2];
+				/*PlatformDrawLinef(state->bitBuff,
 						v_out1[0]/v_out1[3],
 						v_out1[1]/v_out1[3],
 						v_out2[0]/v_out2[3],
 						v_out2[1]/v_out2[3],
-						clr);
+						clr);*/
 			}
+			FillTrianglef(state->bitBuff,
+						projected_tri.p[0].x, projected_tri.p[0].y,
+						projected_tri.p[1].x, projected_tri.p[1].y,
+						projected_tri.p[2].x, projected_tri.p[2].y,
+						clr);
+			/*DrawTrianglef(state->bitBuff,
+						projected_tri.p[0].x, projected_tri.p[0].y,
+						projected_tri.p[1].x, projected_tri.p[1].y,
+						projected_tri.p[2].x, projected_tri.p[2].y,
+						clr);*/
 			PlatformDrawLinef(state->bitBuff,
 						xd1, 
 						xd2,
@@ -354,23 +363,6 @@ int UpdateProject3DCube(SharedState* state)
 						MakeColor(255,255,255,0));
 		}
 		
-		/*for (int i = 1; i <= 3; i++)
-		{
-			float v_in1[4] = {t.p[i%3].x, t.p[i%3].y, t.p[i%3].z, 1};
-			float v_in2[4] = {t.p[i-1].x, t.p[i-1].y, t.p[i-1].z, 1};
-			float v_out1[4];
-			float v_out2[4];
-
-			MultiplyVecMat4x4(v_in1, combined2_mat4x4, v_out1);
-			MultiplyVecMat4x4(v_in2, combined2_mat4x4, v_out2);
-
-			PlatformDrawLinef(state->bitBuff,
-					v_out1[0]/v_out1[3],
-					v_out1[1]/v_out1[3],
-					v_out2[0]/v_out2[3],
-					v_out2[1]/v_out2[3],
-					clr);
-		}*/
 	}
 	
 	PlatformDrawLinef(state->bitBuff,

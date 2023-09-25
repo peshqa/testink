@@ -139,7 +139,129 @@ int PlatformDrawLinef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, 
 			ConvertRelToPlain(y2, 0, end_y),
 			color);
 }
-
+// util function to draw filled triangle
+int PlatformGetLineXValues(int x1, int y1, int x2, int y2, std::vector<int> &v)
+{
+	int dx = abs(x2 - x1);
+    int sx = x1 < x2 ? 1 : -1;
+    int dy = -abs(y2 - y1);
+    int sy = y1 < y2 ? 1 : -1;
+    int error = dx + dy;
+	
+	int last_x = x1-1;
+	int last_y = y1;
+    
+    while (true)
+	{
+        //PlatformDrawPixel(bitBuff, x1, y1, color);
+		if (last_y != y1)
+		{
+			v.push_back(x1);
+		}
+		last_y = y1;
+		last_x = x1;
+        if (x1 == x2 && y1 == y2) break;
+        int e2 = 2 * error;
+        if (e2 >= dy)
+		{
+            if (x1 == x2) break;
+            error = error + dy;
+            x1 = x1 + sx;
+        }
+        if (e2 <= dx)
+		{
+            if (y1 == y2) break;
+            error = error + dx;
+            y1 = y1 + sy;
+        }
+    }
+	v.push_back(last_x);
+	return 0;
+}
+int DrawHorizontalLine(PlatformBitBuffer *bitBuff, int x1, int x2, int y, int color)
+{
+	int tmp;
+	if (x2 < x1)
+	{
+		tmp = x1;
+		x1 = x2;
+		x2 = x1;
+	}
+	for (int i = x1; i <= x2; i++)
+	{
+		PlatformDrawPixel(bitBuff, i, y, color);
+	}
+	return 0;
+}
+int DrawTrianglef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, float y2, float x3, float y3, int color)
+{
+	PlatformDrawLinef(bitBuff, x1, y1, x2, y2, color);
+	PlatformDrawLinef(bitBuff, x1, y1, x3, y3, color);
+	PlatformDrawLinef(bitBuff, x2, y2, x3, y3, color);
+	return 0;
+}
+int FillTriangle(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2, int x3, int y3, int color)
+{
+	// Sort the points so that y1 <= y2 <= y3
+	int tmp;
+	if (y2 < y1)
+	{
+		tmp = y1;
+		y1 = y2;
+		y2 = y1;
+		tmp = x1;
+		x1 = x2;
+		x2 = x1;
+	}
+	if (y3 < y1)
+	{
+		tmp = y1;
+		y1 = y3;
+		y3 = y1;
+		tmp = x1;
+		x1 = x3;
+		x3 = x1;
+	}
+	if (y3 < y2)
+	{
+		tmp = y2;
+		y2 = y3;
+		y3 = y2;
+		tmp = x2;
+		x2 = x3;
+		x3 = x2;
+	}
+	
+	// Compute the x coordinates of the triangle edges
+	std::vector<int> v1;
+	std::vector<int> v2;
+	PlatformGetLineXValues(x1, y1, x2, y2, v1);
+	v1.pop_back();
+	PlatformGetLineXValues(x2, y2, x3, y3, v1);
+	PlatformGetLineXValues(x1, y1, x3, y3, v2);
+	
+	int idx = 0;
+	for (int i = y1; i <= y3; i++)
+	{
+		DrawHorizontalLine(bitBuff, v1[idx], v2[idx], i, color);
+		idx++;
+	}
+	
+	return 0;
+}
+int FillTrianglef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, float y2, float x3, float y3, int color)
+{
+	int end_x = bitBuff->width;
+	int end_y = bitBuff->height;
+	return FillTriangle(bitBuff,
+			ConvertRelToPlain(x1, 0, end_x),
+			ConvertRelToPlain(y1, 0, end_y),
+			ConvertRelToPlain(x2, 0, end_x),
+			ConvertRelToPlain(y2, 0, end_y),
+			ConvertRelToPlain(x3, 0, end_x),
+			ConvertRelToPlain(y3, 0, end_y),
+			color);
+}
 int PlatformFillRect(PlatformBitBuffer *bitBuff, int left, int top, int right, int bottom, int color)
 {
 	for (int y = top; y < bottom; y++)
