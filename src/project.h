@@ -309,18 +309,25 @@ int UpdateProject3DCube(SharedState* state)
 			tra_t.p[i].y = v_out1[1];
 			tra_t.p[i].z = v_out1[2];
 		}
+		
 		Vec3f norm;
 		Vec3f v1 = {tra_t.p[1].x-tra_t.p[0].x, tra_t.p[1].y-tra_t.p[0].y, tra_t.p[1].z-tra_t.p[0].z};
 		Vec3f v2 = {tra_t.p[2].x-tra_t.p[0].x, tra_t.p[2].y-tra_t.p[0].y, tra_t.p[2].z-tra_t.p[0].z};
 		CrossProductVec3f(v1, v2, norm);
-		float norm_len = sqrtf(norm.x*norm.x+norm.y*norm.y+norm.z*norm.z)*5;
+		float norm_len = sqrtf(norm.x*norm.x+norm.y*norm.y+norm.z*norm.z);
 		norm.x /= norm_len; norm.y /= norm_len; norm.z /= norm_len;
 		float v_in3[4] = {norm.x+tra_t.p[0].x, norm.y+tra_t.p[0].y, norm.z+tra_t.p[0].z, 1};
 		float v_out3[4];
 		MultiplyVecMat4x4(v_in3, proj_mat4x4, v_out3);
 		float xd1{};
 		float xd2{};
-		//if (norm.z <= 0)
+		
+		Vec3f light_dir = {0.0f, 0.0f, -1.0f};
+		float v_len = sqrtf(light_dir.x*light_dir.x+light_dir.y*light_dir.y+light_dir.z*light_dir.z);
+		light_dir.x /= v_len; light_dir.y /= v_len; light_dir.z /= v_len;
+		float koef = abs(norm.x*light_dir.x+norm.y*light_dir.y+norm.z*light_dir.z);
+		int tri_color = MakeColor(255,255*koef,255*koef,255*koef);
+
 		if (norm.x*(tra_t.p[0].x-0/*cam pos*/)+norm.y*(tra_t.p[0].y-0)+norm.z*(tra_t.p[0].z-0/*cam pos*/) <= 0)
 		{
 			for (int i = 0; i < 3; i++)
@@ -349,18 +356,18 @@ int UpdateProject3DCube(SharedState* state)
 						projected_tri.p[0].x, projected_tri.p[0].y,
 						projected_tri.p[1].x, projected_tri.p[1].y,
 						projected_tri.p[2].x, projected_tri.p[2].y,
-						clr);
+						tri_color);
 			/*DrawTrianglef(state->bitBuff,
 						projected_tri.p[0].x, projected_tri.p[0].y,
 						projected_tri.p[1].x, projected_tri.p[1].y,
 						projected_tri.p[2].x, projected_tri.p[2].y,
-						clr);*/
-			PlatformDrawLinef(state->bitBuff,
+						MakeColor(255,0,0,0));*/
+			/*PlatformDrawLinef(state->bitBuff,
 						xd1, 
 						xd2,
 						v_out3[0]/v_out3[3],
 						v_out3[1]/v_out3[3],
-						MakeColor(255,255,255,0));
+						MakeColor(255,255,255,0));*/
 		}
 		
 	}

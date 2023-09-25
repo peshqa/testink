@@ -185,7 +185,7 @@ int DrawHorizontalLine(PlatformBitBuffer *bitBuff, int x1, int x2, int y, int co
 	{
 		tmp = x1;
 		x1 = x2;
-		x2 = x1;
+		x2 = tmp;
 	}
 	for (int i = x1; i <= x2; i++)
 	{
@@ -208,28 +208,28 @@ int FillTriangle(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2, int
 	{
 		tmp = y1;
 		y1 = y2;
-		y2 = y1;
+		y2 = tmp;
 		tmp = x1;
 		x1 = x2;
-		x2 = x1;
+		x2 = tmp;
 	}
 	if (y3 < y1)
 	{
 		tmp = y1;
 		y1 = y3;
-		y3 = y1;
+		y3 = tmp;
 		tmp = x1;
 		x1 = x3;
-		x3 = x1;
+		x3 = tmp;
 	}
 	if (y3 < y2)
 	{
 		tmp = y2;
 		y2 = y3;
-		y3 = y2;
+		y3 = tmp;
 		tmp = x2;
 		x2 = x3;
-		x3 = x2;
+		x3 = tmp;
 	}
 	
 	// Compute the x coordinates of the triangle edges
