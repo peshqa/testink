@@ -155,110 +155,37 @@ int InitProject3DCube(SharedState* state)
 	return 0;
 }
 
-typedef struct
-{
-	float x;
-	float y;
-	float z;
-} Vec3f;
-
-typedef struct
-{
-	Vec3f p[3];
-} Tri3f;
-
-void MultiplyVecMat4x4(float *v_in, float *mat, float *v_out)
-{
-	for (int col = 0; col < 4; col++)
-	{
-		v_out[col] = 0;
-		for (int row = 0; row < 4; row++)
-		{
-			v_out[col] += mat[row*4+col]*v_in[row];
-		}
-	}
-}
-void MultiplyMats4x4(float *m1, float *m2, float *out)
-{
-	for (int i = 0; i < 4; i++)
-	{
-		for (int j = 0; j < 4; j++)
-		{
-			out[i*4+j] = 0;
-			for (int k = 0; k < 4; k++)
-			{
-				out[i*4+j] += m1[i*4+k]*m2[k*4+j];
-			}
-		}
-	}
-}
-void CrossProductVec3f(Vec3f &v1, Vec3f &v2, Vec3f &out)
-{
-	out.x = v1.y*v2.z - v1.z*v2.y;
-	out.y = v1.z*v2.x - v1.x*v2.z;
-	out.z = v1.x*v2.y - v1.y*v2.x;
-}
-
 int UpdateProject3DCube(SharedState* state)
 {
 	ProjectState3DCube *game_state = (ProjectState3DCube*)(state->project_state);
 	float delta_time = CalculateDeltaTime(state);
-	
-	double pi = 3.1415926535;
-	
-	float fov_deg = 90.0f;
-	float z_near = 0.1f;
-	float z_far = 100.0f;
-	float aspect_ratio = (float)state->bitBuff->height/state->bitBuff->width;
-	float f = 1/tanf(fov_deg*pi/180/2);
-	float q = z_far*(z_far-z_near);
 	
 	float ox = game_state->x_offset;
 	float oy = game_state->y_offset;
 	float oz = game_state->z_offset;
 	
 	float rot_speed = 1.0f;
-	
-	float proj_mat4x4[16] = {aspect_ratio*f,0.0f,0.0f,0.0f,	0.0f,f,0.0f,0.0f,	0.0f,0.0f,q,1.0f,	0.0f,0.0f,-q*z_near,0.0f};
+
+	float proj_mat4x4[16];
+	InitProjectionMat4x4(proj_mat4x4, 90.0f, 1, state->bitBuff->width, state->bitBuff->height, 0.1f, 100.0f);
 	static float lol = 0;
 	lol += delta_time*0.6f*2*rot_speed;
-	float x_rot_mat4x4[16]{};
-	x_rot_mat4x4[0] = 1;
-	x_rot_mat4x4[5] = cosf(lol);
-	x_rot_mat4x4[6] = -sinf(lol);
-	x_rot_mat4x4[9] = sinf(lol);
-	x_rot_mat4x4[10] = cosf(lol);
-	x_rot_mat4x4[15] = 1;
+	float x_rot_mat4x4[16];
+	InitXRotMat4x4(x_rot_mat4x4, lol);
 	
 	static float lol2{};
 	lol2 += delta_time*0.2f*2*rot_speed;
 	float y_rot_mat4x4[16]{};
-	y_rot_mat4x4[0] = cosf(lol2);
-	y_rot_mat4x4[2] = sinf(lol2);
-	y_rot_mat4x4[5] = y_rot_mat4x4[15] = 1;
-	y_rot_mat4x4[8] = -sinf(lol2);
-	y_rot_mat4x4[10] = cosf(lol2);
+	InitYRotMat4x4(y_rot_mat4x4, lol2);
 	
-	float translate_mat4x4[16]{};
-	translate_mat4x4[0] = translate_mat4x4[5] = translate_mat4x4[10] = 1;
-	translate_mat4x4[12] = ox;
-	translate_mat4x4[13] = oy;
-	translate_mat4x4[14] = oz;
-	translate_mat4x4[15] = 1;
+	float translate_mat4x4[16];
+	InitTranslationMat4x4(translate_mat4x4, ox, oy, oz);
 	
-	float scale_mat4x4[16]{};
-	scale_mat4x4[0] = 0.3f;
-	scale_mat4x4[5] = 0.3f;
-	scale_mat4x4[10] = 0.3f;
-	scale_mat4x4[15] = 1;
+	float scale_mat4x4[16];
+	InitScaleMat4x4(scale_mat4x4, 0.3f, 0.3f, 0.3f);
 	
 	float combined_mat4x4[16]{};
 	float combined2_mat4x4[16]{};
-	/*combined_mat4x4[0] = 1;
-	combined_mat4x4[5] = 1;
-	combined_mat4x4[10] = 1;
-	combined_mat4x4[15] = 1;*/
-	
 	
 	MultiplyMats4x4(x_rot_mat4x4, y_rot_mat4x4, combined_mat4x4);
 	MultiplyMats4x4(combined_mat4x4, scale_mat4x4, combined2_mat4x4);
@@ -267,24 +194,20 @@ int UpdateProject3DCube(SharedState* state)
 	
 	FillPlatformBitBuffer(state->bitBuff, MakeColor(255,25,12,6));
 	
-	/*game_state->x_offset += 0.01f*delta_time;
-	game_state->y_offset+= 0.005f *delta_time;
-	game_state->z_offset-= 0.01f *delta_time;*/
-	
 	std::vector<Tri3f> mesh;
 	// clockwise order
-	Tri3f t1 = {1.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f,	1.0f, 1.0f, 0.0f};//
-	Tri3f t2 = {1.0f, 0.0f, 0.0f,	0.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f};//
-	Tri3f t3 = {1.0f, 0.0f, 1.0f,	1.0f, 1.0f, 1.0f,	0.0f, 1.0f, 1.0f};//?
-	Tri3f t4 = {1.0f, 0.0f, 1.0f,	0.0f, 1.0f, 1.0f,	0.0f, 0.0f, 1.0f};//?
-	Tri3f t5 = {0.0f, 1.0f, 0.0f,	0.0f, 0.0f, 1.0f,	0.0f, 1.0f, 1.0f};//
-	Tri3f t6 = {0.0f, 1.0f, 0.0f,	0.0f, 0.0f, 0.0f,	0.0f, 0.0f, 1.0f};//
-	Tri3f t7 = {1.0f, 1.0f, 0.0f,	1.0f, 1.0f, 1.0f,	1.0f, 0.0f, 1.0f};//?
-	Tri3f t8 = {1.0f, 1.0f, 0.0f,	1.0f, 0.0f, 1.0f,	1.0f, 0.0f, 0.0f};//?
-	Tri3f t9 = {1.0f, 1.0f, 0.0f,	0.0f, 1.0f, 1.0f,	1.0f, 1.0f, 1.0f};//
-	Tri3f t10= {1.0f, 1.0f, 0.0f,	0.0f, 1.0f, 0.0f,	0.0f, 1.0f, 1.0f};//
-	Tri3f t11= {1.0f, 0.0f, 0.0f,	1.0f, 0.0f, 1.0f,	0.0f, 0.0f, 1.0f};//?
-	Tri3f t12= {1.0f, 0.0f, 0.0f,	0.0f, 0.0f, 1.0f,	0.0f, 0.0f, 0.0f};//?
+	Tri3f t1 = {1.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f,	1.0f, 1.0f, 0.0f};
+	Tri3f t2 = {1.0f, 0.0f, 0.0f,	0.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f};
+	Tri3f t3 = {1.0f, 0.0f, 1.0f,	1.0f, 1.0f, 1.0f,	0.0f, 1.0f, 1.0f};
+	Tri3f t4 = {1.0f, 0.0f, 1.0f,	0.0f, 1.0f, 1.0f,	0.0f, 0.0f, 1.0f};
+	Tri3f t5 = {0.0f, 1.0f, 0.0f,	0.0f, 0.0f, 1.0f,	0.0f, 1.0f, 1.0f};
+	Tri3f t6 = {0.0f, 1.0f, 0.0f,	0.0f, 0.0f, 0.0f,	0.0f, 0.0f, 1.0f};
+	Tri3f t7 = {1.0f, 1.0f, 0.0f,	1.0f, 1.0f, 1.0f,	1.0f, 0.0f, 1.0f};
+	Tri3f t8 = {1.0f, 1.0f, 0.0f,	1.0f, 0.0f, 1.0f,	1.0f, 0.0f, 0.0f};
+	Tri3f t9 = {1.0f, 1.0f, 0.0f,	0.0f, 1.0f, 1.0f,	1.0f, 1.0f, 1.0f};
+	Tri3f t10= {1.0f, 1.0f, 0.0f,	0.0f, 1.0f, 0.0f,	0.0f, 1.0f, 1.0f};
+	Tri3f t11= {1.0f, 0.0f, 0.0f,	1.0f, 0.0f, 1.0f,	0.0f, 0.0f, 1.0f};
+	Tri3f t12= {1.0f, 0.0f, 0.0f,	0.0f, 0.0f, 1.0f,	0.0f, 0.0f, 0.0f};
 	mesh.push_back(t1); mesh.push_back(t2);
 	mesh.push_back(t3); mesh.push_back(t4);
 	mesh.push_back(t5); mesh.push_back(t6);
@@ -292,7 +215,6 @@ int UpdateProject3DCube(SharedState* state)
 	mesh.push_back(t9); mesh.push_back(t10);
 	mesh.push_back(t11); mesh.push_back(t12);
 	
-	std::vector<Tri3f> translated_mesh;//?
 	int clr = MakeColor(255,255,255,255);
 	for (Tri3f t: mesh)
 	{
@@ -311,11 +233,12 @@ int UpdateProject3DCube(SharedState* state)
 		}
 		
 		Vec3f norm;
-		Vec3f v1 = {tra_t.p[1].x-tra_t.p[0].x, tra_t.p[1].y-tra_t.p[0].y, tra_t.p[1].z-tra_t.p[0].z};
-		Vec3f v2 = {tra_t.p[2].x-tra_t.p[0].x, tra_t.p[2].y-tra_t.p[0].y, tra_t.p[2].z-tra_t.p[0].z};
+		Vec3f v1;
+		Vec3f v2;
+		Vec3fSub(&tra_t.p[1], &tra_t.p[0], &v1);
+		Vec3fSub(&tra_t.p[2], &tra_t.p[0], &v2);
 		CrossProductVec3f(v1, v2, norm);
-		float norm_len = sqrtf(norm.x*norm.x+norm.y*norm.y+norm.z*norm.z);
-		norm.x /= norm_len; norm.y /= norm_len; norm.z /= norm_len;
+		Vec3fNormalize(norm);
 		float v_in3[4] = {norm.x+tra_t.p[0].x, norm.y+tra_t.p[0].y, norm.z+tra_t.p[0].z, 1};
 		float v_out3[4];
 		MultiplyVecMat4x4(v_in3, proj_mat4x4, v_out3);
@@ -323,8 +246,7 @@ int UpdateProject3DCube(SharedState* state)
 		float xd2{};
 		
 		Vec3f light_dir = {0.0f, 0.0f, -1.0f};
-		float v_len = sqrtf(light_dir.x*light_dir.x+light_dir.y*light_dir.y+light_dir.z*light_dir.z);
-		light_dir.x /= v_len; light_dir.y /= v_len; light_dir.z /= v_len;
+		Vec3fNormalize(light_dir);
 		float koef = abs(norm.x*light_dir.x+norm.y*light_dir.y+norm.z*light_dir.z);
 		int tri_color = MakeColor(255,255*koef,255*koef,255*koef);
 

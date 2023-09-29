@@ -4,6 +4,7 @@ platform_simple_renderer.h - (platform independent) core of all smaller projects
 */
 #pragma once
 
+#include "simple_3d_gfx.h"
 #include "ppm_image_loader.h"
 
 #include <vector>
