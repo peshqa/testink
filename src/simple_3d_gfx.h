@@ -16,6 +16,40 @@ typedef struct
 	Vec3f p[3];
 } Tri3f;
 
+void Vec3fSub(Vec3f &v1, Vec3f &v2, Vec3f &out)
+{
+	out.x = v1.x - v2.x;
+	out.y = v1.y - v2.y;
+	out.z = v1.z - v2.z;
+}
+void Vec3fAdd(Vec3f &v1, Vec3f &v2, Vec3f &out)
+{
+	out.x = v1.x + v2.x;
+	out.y = v1.y + v2.y;
+	out.z = v1.z + v2.z;
+}
+void Vec3fMul(Vec3f &v1, Vec3f &v2, Vec3f &out)
+{
+	out.x = v1.x * v2.x;
+	out.y = v1.y * v2.y;
+	out.z = v1.z * v2.z;
+}
+
+int Vec3fDiv(Vec3f &v1, Vec3f &v2, Vec3f &out)
+{
+	// TODO: add divide by zero check?
+	out.x = v1.x / v2.x;
+	out.y = v1.y / v2.y;
+	out.z = v1.z / v2.z;
+	return 0;
+}
+int Vec3fNormalize(Vec3f &v)
+{
+	float len = sqrtf(v.x*v.x+v.y*v.y+v.z*v.z);
+	v.x /= len; v.y /= len; v.z /= len;
+	return 0;
+}
+
 void MultiplyVecMat4x4(float *v_in, float *mat, float *v_out)
 {
 	for (int col = 0; col < 4; col++)
@@ -46,6 +80,10 @@ void CrossProductVec3f(Vec3f &v1, Vec3f &v2, Vec3f &out)
 	out.x = v1.y*v2.z - v1.z*v2.y;
 	out.y = v1.z*v2.x - v1.x*v2.z;
 	out.z = v1.x*v2.y - v1.y*v2.x;
+}
+float DotProductVec3f(Vec3f &v1, Vec3f &v2)
+{
+	return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z;
 }
 
 void InitXRotMat4x4(float *m, float angle_rad/*roll*/)
@@ -117,6 +155,68 @@ void InitScaleMat4x4(float *m, float x, float y, float z)
 	m[15] = 1;
 }
 
+void Vec3fMulByF(Vec3f &v1, float f, Vec3f &out)
+{
+	out.x = v1.x * f;
+	out.y = v1.y * f;
+	out.z = v1.z * f;
+}
+void InitPointAtMat4x4(float *m, Vec3f &pos, Vec3f &target, Vec3f &up)
+{
+	for (int i = 0; i < 16; i++)
+	{
+		m[i] = 0;
+	}
+	Vec3f new_forward;
+	Vec3f a;
+	Vec3f new_up;
+	Vec3f new_right;
+	
+	Vec3fSub(target, pos, new_forward);
+	Vec3fNormalize(new_forward);
+	
+	Vec3fMulByF(new_forward, DotProductVec3f(up, new_forward), a);
+	Vec3fSub(up, a, new_up);
+	Vec3fNormalize(new_up);
+	
+	CrossProductVec3f(new_up, new_forward, new_right);
+	
+	m[0] = new_right.x;
+	m[1] = new_right.y;
+	m[2] = new_right.z;
+	m[4] = new_up.x;
+	m[5] = new_up.y;
+	m[6] = new_up.z;
+	m[8] = new_forward.x;
+	m[9] = new_forward.y;
+	m[10] = new_forward.z;
+	m[12] = pos.x;
+	m[13] = pos.y;
+	m[14] = pos.z;
+	m[15] = 1;
+}
+
+// NOTE: only works for rotation or translation matrices
+void Mat4x4QuickInverse(float *m, float *out)
+{
+	out[0] = m[0];
+	out[1] = m[4];
+	out[2] = m[8];
+	out[3] = 0.0f;
+	out[4] = m[1];
+	out[5] = m[5];
+	out[6] = m[9];
+	out[7] = 0.0f;
+	out[8] = m[2];
+	out[9] = m[6];
+	out[10] = m[10];
+	out[11] = 0.0f;
+	out[12] = -(m[12]*out[0] + m[13]*out[4] + m[14]*out[8]);
+	out[13] = -(m[12]*out[1] + m[13]*out[5] + m[14]*out[9]);
+	out[14] = -(m[12]*out[2] + m[13]*out[6] + m[14]*out[10]);
+	out[15] = 1.0f;
+}
+
 void InitProjectionMat4x4(float *m, float fov, int is_fov_vertical, int screen_width, int screen_height, float z_near, float z_far)
 {
 	double pi = 3.1415926535;
@@ -143,37 +243,4 @@ void InitProjectionMat4x4(float *m, float fov, int is_fov_vertical, int screen_w
 	m[10] = q;
 	m[11] = 1;
 	m[14] = -q*z_near;
-}
-
-void Vec3fSub(Vec3f *v1, Vec3f *v2, Vec3f *out)
-{
-	out->x = v1->x - v2->x;
-	out->y = v1->y - v2->y;
-	out->z = v1->z - v2->z;
-}
-void Vec3fAdd(Vec3f *v1, Vec3f *v2, Vec3f *out)
-{
-	out->x = v1->x + v2->x;
-	out->y = v1->y + v2->y;
-	out->z = v1->z + v2->z;
-}
-void Vec3fMul(Vec3f *v1, Vec3f *v2, Vec3f *out)
-{
-	out->x = v1->x * v2->x;
-	out->y = v1->y * v2->y;
-	out->z = v1->z * v2->z;
-}
-int Vec3fDiv(Vec3f *v1, Vec3f *v2, Vec3f *out)
-{
-	// TODO: add divide by zero check?
-	out->x = v1->x / v2->x;
-	out->y = v1->y / v2->y;
-	out->z = v1->z / v2->z;
-	return 0;
-}
-int Vec3fNormalize(Vec3f &v)
-{
-	float len = sqrtf(v.x*v.x+v.y*v.y+v.z*v.z);
-	v.x /= len; v.y /= len; v.z /= len;
-	return 0;
 }

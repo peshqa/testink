@@ -147,9 +147,9 @@ typedef struct
 int InitProject3DCube(SharedState* state)
 {
 	ProjectState3DCube *p_state = new ProjectState3DCube{};
-	p_state->x_offset = 0.5f;
-	p_state->y_offset = 0.5f;
-	p_state->z_offset = 2.0f;
+	p_state->x_offset = 0;//0.5f;
+	p_state->y_offset = 0;//0.5f;
+	p_state->z_offset = 0.1f;//2.0f;
 	state->project_state = p_state;
 	CalculateDeltaTime(state);
 	return 0;
@@ -160,11 +160,43 @@ int UpdateProject3DCube(SharedState* state)
 	ProjectState3DCube *game_state = (ProjectState3DCube*)(state->project_state);
 	float delta_time = CalculateDeltaTime(state);
 	
+	switch (state->dir)
+	{
+		default:
+		{
+			break;
+		}
+		case 'l':
+		{
+			game_state->x_offset -= 0.05f;
+			state->dir = 'n';
+			break;
+		}
+		case 'r':
+		{
+			game_state->x_offset += 0.05f;
+			state->dir = 'n';
+			break;
+		}
+		case 'd':
+		{
+			game_state->y_offset -= 0.05f;
+			state->dir = 'n';
+			break;
+		}
+		case 'u':
+		{
+			game_state->y_offset += 0.05f;
+			state->dir = 'n';
+			break;
+		}
+	}
+	
 	float ox = game_state->x_offset;
 	float oy = game_state->y_offset;
 	float oz = game_state->z_offset;
 	
-	float rot_speed = 1.0f;
+	float rot_speed = 0.1f;
 
 	float proj_mat4x4[16];
 	InitProjectionMat4x4(proj_mat4x4, 90.0f, 1, state->bitBuff->width, state->bitBuff->height, 0.1f, 100.0f);
@@ -179,18 +211,27 @@ int UpdateProject3DCube(SharedState* state)
 	InitYRotMat4x4(y_rot_mat4x4, lol2);
 	
 	float translate_mat4x4[16];
-	InitTranslationMat4x4(translate_mat4x4, ox, oy, oz);
+	InitTranslationMat4x4(translate_mat4x4, 0.0f, 0.0f, 0.0f);
 	
 	float scale_mat4x4[16];
-	InitScaleMat4x4(scale_mat4x4, 0.3f, 0.3f, 0.3f);
+	//InitScaleMat4x4(scale_mat4x4, 0.3f, 0.3f, 0.3f);
+	InitScaleMat4x4(scale_mat4x4, 1, 1, 1);
 	
 	float combined_mat4x4[16]{};
 	float combined2_mat4x4[16]{};
 	
+	Vec3f pos = {ox-2.5f, oy-2.5f, -5.0f};
+	Vec3f target = {pos.x+0.0f, pos.y+0.0f, pos.z+1.0f};
+	Vec3f up = {0, 1, 0};
+	float look_at_mat4x4[16];
+	float point_at_mat4x4[16];
+	InitPointAtMat4x4(point_at_mat4x4, pos, target, up);
+	Mat4x4QuickInverse(point_at_mat4x4, look_at_mat4x4);
+	
 	MultiplyMats4x4(x_rot_mat4x4, y_rot_mat4x4, combined_mat4x4);
 	MultiplyMats4x4(combined_mat4x4, scale_mat4x4, combined2_mat4x4);
 	MultiplyMats4x4(combined2_mat4x4, translate_mat4x4, combined_mat4x4);
-	MultiplyMats4x4(combined_mat4x4, proj_mat4x4, combined2_mat4x4);
+	MultiplyMats4x4(combined_mat4x4, look_at_mat4x4, combined2_mat4x4);
 	
 	FillPlatformBitBuffer(state->bitBuff, MakeColor(255,25,12,6));
 	
@@ -235,8 +276,8 @@ int UpdateProject3DCube(SharedState* state)
 		Vec3f norm;
 		Vec3f v1;
 		Vec3f v2;
-		Vec3fSub(&tra_t.p[1], &tra_t.p[0], &v1);
-		Vec3fSub(&tra_t.p[2], &tra_t.p[0], &v2);
+		Vec3fSub(tra_t.p[1], tra_t.p[0], v1);
+		Vec3fSub(tra_t.p[2], tra_t.p[0], v2);
 		CrossProductVec3f(v1, v2, norm);
 		Vec3fNormalize(norm);
 		float v_in3[4] = {norm.x+tra_t.p[0].x, norm.y+tra_t.p[0].y, norm.z+tra_t.p[0].z, 1};
@@ -250,29 +291,22 @@ int UpdateProject3DCube(SharedState* state)
 		float koef = abs(norm.x*light_dir.x+norm.y*light_dir.y+norm.z*light_dir.z);
 		int tri_color = MakeColor(255,255*koef,255*koef,255*koef);
 
-		if (norm.x*(tra_t.p[0].x-0/*cam pos*/)+norm.y*(tra_t.p[0].y-0)+norm.z*(tra_t.p[0].z-0/*cam pos*/) <= 0)
+		if (norm.x*(tra_t.p[0].x-pos.x)+norm.y*(tra_t.p[0].y-pos.y)+norm.z*(tra_t.p[0].z-pos.z) <= 0)
 		{
 			for (int i = 0; i < 3; i++)
 			{
 				float v_in1[4] = {tra_t.p[i].x, tra_t.p[i].y, tra_t.p[i].z, 1};
 				float v_out1[4];
 				
-				MultiplyVecMat4x4(v_in1, proj_mat4x4, v_out1);
+				MultiplyVecMat4x4(v_in1, look_at_mat4x4, v_out1);
+				MultiplyVecMat4x4(v_out1, proj_mat4x4, v_in1);
 				
-				if (i==0)
-				{
-					xd1 = v_out1[0]/v_out1[3];
-					xd2 = v_out1[1]/v_out1[3];
-				}
-				projected_tri.p[i].x = v_out1[0]/v_out1[3];
+				/*projected_tri.p[i].x = v_out1[0]/v_out1[3];
 				projected_tri.p[i].y = v_out1[1]/v_out1[3];
-				projected_tri.p[i].z = v_out1[2];
-				/*PlatformDrawLinef(state->bitBuff,
-						v_out1[0]/v_out1[3],
-						v_out1[1]/v_out1[3],
-						v_out2[0]/v_out2[3],
-						v_out2[1]/v_out2[3],
-						clr);*/
+				projected_tri.p[i].z = v_out1[2];*/
+				projected_tri.p[i].x = v_in1[0]/v_in1[3];
+				projected_tri.p[i].y = v_in1[1]/v_in1[3];
+				projected_tri.p[i].z = v_in1[2];
 			}
 			FillTrianglef(state->bitBuff,
 						projected_tri.p[0].x, projected_tri.p[0].y,
@@ -294,7 +328,7 @@ int UpdateProject3DCube(SharedState* state)
 		
 	}
 	
-	PlatformDrawLinef(state->bitBuff,
+	/*PlatformDrawLinef(state->bitBuff,
 			((0.0f+ox)*state->client_height/state->client_width)/oz, 
 			(0.0f+oy)/oz,
 			((1.0f+ox)*state->client_height/state->client_width)/oz, 
@@ -311,7 +345,8 @@ int UpdateProject3DCube(SharedState* state)
 			(0.0f+oy)/(oz+1.0f),
 			((0.0f+ox)*state->client_height/state->client_width)/oz,
 			(0.0f+oy)/oz,
-			MakeColor(255,0,0,255));
+			MakeColor(255,0,0,255));*/
+	
 	
 	return 0;
 }
