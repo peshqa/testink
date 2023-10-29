@@ -14,6 +14,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 {
 	srand(time(NULL));
 	
+	SharedState shared_state{};
+	InitSharedState(&shared_state);
+	
 	/*int res = InitWASAPIRenderer();
 	if (res != 0)
 	{
@@ -28,21 +31,14 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	InitProjectFunction InitProjectFunc = (InitProjectFunction)(projects[current_project].InitFunc);
 	UpdateProjectFunction UpdateProjectFunc = (UpdateProjectFunction)(projects[current_project].UpdateFunc);
 	
-	SharedState shared_state{};
+	
 	shared_state.callback_update_func = projects[current_project].UpdateFunc;
-	shared_state.dir = 'l';
+	
 	
 	if (InitProjectFunc(&shared_state) != 0)
 	{
 		return 0;
 	}
-	
-	int screenWidth = 700;
-	int screenHeight = 700;
-	shared_state.scale = 1;
-	
-	shared_state.client_width = screenWidth*shared_state.scale;
-	shared_state.client_height = screenHeight*shared_state.scale;
 	
 	DWORD window_styles = WS_OVERLAPPEDWINDOW;
 	
@@ -83,15 +79,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         return 0;
     }
 
+	((W32Extra*)(shared_state.extra))->main_window = hwnd;
     ShowWindow(hwnd, nCmdShow);
-	Win32GoFullscreen(hwnd);
-
-	W32BitBuffer bitBuff{};
-	shared_state.bitBuff = (PlatformBitBuffer*)&bitBuff;
-	ResizeW32BitBuffer(&bitBuff, screenWidth, screenHeight);
+	PlatformGoBorderlessFullscreen(&shared_state);
 	
 	// init screen buffer
-	PaintW32BitBuffer(&bitBuff);
+	FillPlatformBitBuffer(shared_state.bitBuff, MakeColor(255, 255, 255, 255));
 	
 	SetWindowLongPtrW(
 		hwnd,
@@ -101,10 +94,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	
 	std::chrono::steady_clock::time_point currTime = std::chrono::steady_clock::now();
 	std::chrono::steady_clock::time_point prevTime{};
-	
 
     // Run the message loop.
-	
 	int running = true;
     MSG msg{};
 	while (running) {
@@ -136,10 +127,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		UpdateProjectFunc(&shared_state);
 		
 		HDC hdc = GetDC(hwnd);
-		W32UpdateDisplay(hdc, shared_state.client_width, shared_state.client_height, &bitBuff);
+		((W32Extra*)(shared_state.extra))->hdc = hdc;
+		PlatformUpdateDisplay(&shared_state, shared_state.client_width, shared_state.client_height);
 		ReleaseDC(hwnd, hdc);
 		
-		Sleep(50); // ms
+		Sleep(25); // ms
 	}
 
     return 0;

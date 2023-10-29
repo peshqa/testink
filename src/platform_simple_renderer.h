@@ -24,7 +24,7 @@ struct PlatformBitBuffer
 	int width;
 	int height;
 	void *bits;
-	void* info;
+	void *info;
 };
 struct SharedState
 {
@@ -39,8 +39,10 @@ struct SharedState
 	void *project_state;
 	std::chrono::steady_clock::time_point curr_time;
 	std::chrono::steady_clock::time_point prev_time;
+	void *extra;
 };
 
+int PlatformGoBorderlessFullscreen(SharedState *s);
 int MakeColor(int a, int r, int g, int b);
 
 int ConvertRelToPlain(float rel, int start, int end)

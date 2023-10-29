@@ -29,9 +29,15 @@ typedef struct
 	BITMAPINFO info;
 } W32BitBuffer;
 
+typedef struct
+{
+	HWND main_window;
+	HDC hdc;
+} W32Extra;
+
 typedef int (*CallbackUpdateFunction)(SharedState*);
 
-int ResizeW32BitBuffer(W32BitBuffer *p, int screenWidth, int screenHeight)
+int ResizePlatformBitBuffer(PlatformBitBuffer *p, int screenWidth, int screenHeight)
 {
 	p->width = screenWidth;
 	p->height = screenHeight;
@@ -42,25 +48,17 @@ int ResizeW32BitBuffer(W32BitBuffer *p, int screenWidth, int screenHeight)
 	}
 	p->bits = new int[screenWidth * screenHeight]{};
 	
-	p->info.bmiHeader.biSize = sizeof(p->info.bmiHeader);
-	p->info.bmiHeader.biWidth = screenWidth;
-	p->info.bmiHeader.biHeight = -screenHeight;
-	p->info.bmiHeader.biPlanes = 1;
-	p->info.bmiHeader.biBitCount = 8 * sizeof(int);
-	p->info.bmiHeader.biCompression = BI_RGB;
+	BITMAPINFO *info = (BITMAPINFO*)(&p->info);
+	info->bmiHeader.biSize = sizeof(info->bmiHeader);
+	info->bmiHeader.biWidth = screenWidth;
+	info->bmiHeader.biHeight = -screenHeight;
+	info->bmiHeader.biPlanes = 1;
+	info->bmiHeader.biBitCount = 8 * sizeof(int);
+	info->bmiHeader.biCompression = BI_RGB;
 	
 	return 0;
 }
 
-int Win32DrawPixel(W32BitBuffer *bitBuff, int x, int y, int xxrrggbb=COLOR_BLACK)
-{
-	if (x < 0 || x >= bitBuff->width || y < 0 || y >= bitBuff->height)
-	{
-		return -1;
-	}
-	((int*)(bitBuff->bits))[y*bitBuff->width+x] = xxrrggbb;
-	return 0;
-}
 int PlatformDrawPixel(PlatformBitBuffer *bB, int x, int y, int color)
 {
 	W32BitBuffer *bitBuff = (W32BitBuffer*)bB;
@@ -113,65 +111,6 @@ int RedW32BitBuffer(W32BitBuffer *bitBuff)
 	return 0;
 }
 
-int Win32DrawLine(W32BitBuffer *bitBuff, int x1, int y1, int x2, int y2)
-{
-	// naive algorithm
-	/*int tmp{};
-	if (x2 <= x1)
-	{
-		tmp = x1;
-		x1 = x2;
-		x2 = tmp;
-		
-		tmp = y1;
-		y1 = y2;
-		y2 = tmp;
-	}
-	
-	int dx = x2 - x1;
-	int dy = y2 - y1;
-	
-	if (dx == 0)
-	{
-		return 0;
-	}
-	
-	for (int x = x1; x <= x2; x++)
-	{
-		int y = y1 + dy * (x - x1) / dx;
-		Win32DrawPixel(bitBuff, x, y);
-	}*/
-	
-	// https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
-	// TODO: add edge cases for horizontal and vertical lines
-	int dx = abs(x2 - x1);
-    int sx = x1 < x2 ? 1 : -1;
-    int dy = -abs(y2 - y1);
-    int sy = y1 < y2 ? 1 : -1;
-    int error = dx + dy;
-    
-    while (true)
-	{
-        Win32DrawPixel(bitBuff, x1, y1);
-        if (x1 == x2 && y1 == y2) break;
-        int e2 = 2 * error;
-        if (e2 >= dy)
-		{
-            if (x1 == x2) break;
-            error = error + dy;
-            x1 = x1 + sx;
-        }
-        if (e2 <= dx)
-		{
-            if (y1 == y2) break;
-            error = error + dx;
-            y1 = y1 + sy;
-        }
-    }
-	
-	return 0;
-}
-
 int W32UpdateDisplay(HDC hdc, int screenWidth, int screenHeight, W32BitBuffer *bitBuff)
 {
 	int res = StretchDIBits(
@@ -192,16 +131,42 @@ int W32UpdateDisplay(HDC hdc, int screenWidth, int screenHeight, W32BitBuffer *b
 	
 	return res;
 }
-
-int PaintW32BitBuffer(W32BitBuffer *bitBuff)
+int PlatformUpdateDisplay(SharedState* state, int screenWidth, int screenHeight)
 {
-	FillW32BitBuffer(bitBuff, COLOR_WHITE);
+	PlatformBitBuffer *bitBuff = state->bitBuff;
+	W32Extra *extra = (W32Extra*)(state->extra);
+	HDC hdc = extra->hdc;
+	int res = StretchDIBits(
+	  hdc,
+	  0,
+	  0,
+	  screenWidth,
+	  screenHeight,
+	  0,
+	  0,
+	  bitBuff->width,
+	  bitBuff->height,
+	  bitBuff->bits,
+	  (BITMAPINFO*)(&bitBuff->info),
+	  DIB_RGB_COLORS,
+	  SRCCOPY
+	);
 	
-	return 0;
+	return res;
 }
+
 
 int Win32GoBorderlessFullscreen(HWND hwnd)
 {
+	int w = GetSystemMetrics(SM_CXSCREEN);
+	int h = GetSystemMetrics(SM_CYSCREEN);
+	SetWindowLongPtr(hwnd, GWL_STYLE, WS_VISIBLE | WS_POPUP);
+	SetWindowPos(hwnd, HWND_TOP, 0, 0, w, h, SWP_FRAMECHANGED);
+	return 0;
+}
+int PlatformGoBorderlessFullscreen(SharedState *s)
+{
+	HWND hwnd = ((W32Extra*)(s->extra))->main_window;
 	int w = GetSystemMetrics(SM_CXSCREEN);
 	int h = GetSystemMetrics(SM_CYSCREEN);
 	SetWindowLongPtr(hwnd, GWL_STYLE, WS_VISIBLE | WS_POPUP);
@@ -273,21 +238,22 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			
 			if (shared_state != 0)
 			{
-				W32BitBuffer *bitBuff = (W32BitBuffer*)shared_state->bitBuff;
+				PlatformBitBuffer *bitBuff = shared_state->bitBuff;
 				
 				shared_state->client_width = width;
 				shared_state->client_height = height;
 				
-				ResizeW32BitBuffer(bitBuff, width/shared_state->scale, height/shared_state->scale);
+				ResizePlatformBitBuffer(bitBuff, width/shared_state->scale, height/shared_state->scale);
 				CallbackUpdateFunction UpdateFunc = (CallbackUpdateFunction)(shared_state->callback_update_func);
 				if (UpdateFunc == 0)
 				{
-					PaintW32BitBuffer(bitBuff);
+					FillPlatformBitBuffer(shared_state->bitBuff, MakeColor(255, 255, 255, 255));
 				} else {
-					UpdateFunc((SharedState*)shared_state);
+					UpdateFunc(shared_state);
 				}
 				HDC hdc = GetDC(hwnd);
-				W32UpdateDisplay(hdc, width, height, bitBuff);
+				((W32Extra*)(shared_state->extra))->hdc = hdc;
+				PlatformUpdateDisplay(shared_state, width, height);
 				ReleaseDC(hwnd, hdc);
 			}
 		}
@@ -306,21 +272,21 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			
 			if (shared_state != 0)
 			{
-				W32BitBuffer *bitBuff = (W32BitBuffer*)shared_state->bitBuff;
+				PlatformBitBuffer *bitBuff = shared_state->bitBuff;
 				
 				shared_state->client_width = width;
 				shared_state->client_height = height;
 				
-				ResizeW32BitBuffer(bitBuff, width/shared_state->scale, height/shared_state->scale);
+				ResizePlatformBitBuffer(bitBuff, width/shared_state->scale, height/shared_state->scale);
 				CallbackUpdateFunction UpdateFunc = (CallbackUpdateFunction)(shared_state->callback_update_func);
 				if (UpdateFunc == 0)
 				{
-					PaintW32BitBuffer(bitBuff);
+					FillPlatformBitBuffer(shared_state->bitBuff, MakeColor(255, 255, 255, 255));
 				} else {
-					UpdateFunc((SharedState*)shared_state);
+					UpdateFunc(shared_state);
 				}
-				W32UpdateDisplay(hdc, width, height, bitBuff);
-				ReleaseDC(hwnd, hdc);
+				((W32Extra*)(shared_state->extra))->hdc = hdc;
+				PlatformUpdateDisplay(shared_state, width, height);
 			}
 			EndPaint(hwnd, &ps);
         }
@@ -337,4 +303,26 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
 	
 	return res;
+}
+
+
+
+int InitSharedState(SharedState *shared_state)
+{
+	int screenWidth = 700;
+	int screenHeight = 700;
+	
+	shared_state->scale = 1;
+	shared_state->client_width  = screenWidth  * shared_state->scale;
+	shared_state->client_height = screenHeight * shared_state->scale;
+	shared_state->dir = 'l';
+	
+	PlatformBitBuffer *bitBuff = new PlatformBitBuffer{};
+	shared_state->bitBuff = bitBuff;
+	ResizePlatformBitBuffer(bitBuff, screenWidth, screenHeight);
+	
+	W32Extra *extra = new W32Extra{};
+	shared_state->extra = extra;
+	return 0;
+	// TODO: implement uninitializer TerminateSharedState
 }

@@ -146,6 +146,7 @@ typedef struct
 
 int InitProject3DCube(SharedState* state)
 {
+	PlatformGoBorderlessFullscreen(state);
 	ProjectState3DCube *p_state = new ProjectState3DCube{};
 	p_state->x_offset = 0;//0.5f;
 	p_state->y_offset = 0;//0.5f;
@@ -159,7 +160,7 @@ int UpdateProject3DCube(SharedState* state)
 {
 	ProjectState3DCube *game_state = (ProjectState3DCube*)(state->project_state);
 	float delta_time = CalculateDeltaTime(state);
-	
+	static float cam_rot = 0.0f;
 	switch (state->dir)
 	{
 		default:
@@ -168,25 +169,27 @@ int UpdateProject3DCube(SharedState* state)
 		}
 		case 'l':
 		{
-			game_state->x_offset -= 0.05f;
+			//game_state->x_offset -= 2.5f*delta_time;
+			cam_rot += 1.5f*delta_time;
 			state->dir = 'n';
 			break;
 		}
 		case 'r':
 		{
-			game_state->x_offset += 0.05f;
+			//game_state->x_offset += 2.5f*delta_time;
+			cam_rot -= 1.5f*delta_time;
 			state->dir = 'n';
 			break;
 		}
 		case 'd':
 		{
-			game_state->y_offset -= 0.05f;
+			game_state->y_offset -= 2.5f*delta_time;
 			state->dir = 'n';
 			break;
 		}
 		case 'u':
 		{
-			game_state->y_offset += 0.05f;
+			game_state->y_offset += 2.5f*delta_time;
 			state->dir = 'n';
 			break;
 		}
@@ -221,7 +224,11 @@ int UpdateProject3DCube(SharedState* state)
 	float combined2_mat4x4[16]{};
 	
 	Vec3f pos = {ox-2.5f, oy-2.5f, -5.0f};
-	Vec3f target = {pos.x+0.0f, pos.y+0.0f, pos.z+1.0f};
+	//Vec3f target = {pos.x+0.0f, pos.y+0.0f, pos.z+1.0f};
+	
+	Vec3f target = {0.0f, 0.0f, 1.0f};
+	//float y_rot_mat4x4[16]{};
+	InitYRotMat4x4(y_rot_mat4x4, lol2);
 	Vec3f up = {0, 1, 0};
 	float look_at_mat4x4[16];
 	float point_at_mat4x4[16];
