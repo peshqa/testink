@@ -80,36 +80,35 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     }
 
 	((W32Extra*)(shared_state.extra))->main_window = hwnd;
+	SetWindowLongPtrW(
+		hwnd,
+		GWLP_USERDATA,
+		(LONG_PTR)&shared_state
+	);
     ShowWindow(hwnd, nCmdShow);
 	PlatformGoBorderlessFullscreen(&shared_state);
 	
 	// init screen buffer
 	FillPlatformBitBuffer(shared_state.bitBuff, MakeColor(255, 255, 255, 255));
 	
-	SetWindowLongPtrW(
-		hwnd,
-		GWLP_USERDATA,
-		(LONG_PTR)&shared_state
-	);
-	
 	std::chrono::steady_clock::time_point currTime = std::chrono::steady_clock::now();
 	std::chrono::steady_clock::time_point prevTime{};
 
     // Run the message loop.
-	int running = true;
     MSG msg{};
-	while (running) {
+	while (shared_state.is_running == 1) {
 		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 		{
 			if (msg.message == WM_QUIT)
 			{
-				running = false;
+				shared_state.is_running = 0;
 				break;
 			}
 			
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
+		
 		
 		// Timing
 		prevTime = currTime;

@@ -142,6 +142,10 @@ typedef struct
 	float x_offset;
 	float y_offset;
 	float z_offset;
+	
+	int last_mouse_x;
+	int last_mouse_y;
+	int was_lmb_down;
 } ProjectState3DCube;
 
 int InitProject3DCube(SharedState* state)
@@ -151,6 +155,11 @@ int InitProject3DCube(SharedState* state)
 	p_state->x_offset = 0;//0.5f;
 	p_state->y_offset = 0;//0.5f;
 	p_state->z_offset = 0.1f;//2.0f;
+	
+	p_state->last_mouse_x = 0;
+	p_state->last_mouse_y = 0;
+	p_state->was_lmb_down = 0;
+	
 	state->project_state = p_state;
 	CalculateDeltaTime(state);
 	return 0;
@@ -161,45 +170,30 @@ int UpdateProject3DCube(SharedState* state)
 	ProjectState3DCube *game_state = (ProjectState3DCube*)(state->project_state);
 	float delta_time = CalculateDeltaTime(state);
 	static float cam_rot = 0.0f;
-	switch (state->dir)
+	
+	if (state->is_lmb_down == 1)
 	{
-		default:
+		if (game_state->was_lmb_down == 0)
 		{
-			break;
+			game_state->was_lmb_down = 1;
+			game_state->last_mouse_x = state->mouse_x;
+			game_state->last_mouse_y = state->mouse_y;
+		} else {
+			game_state->x_offset += 0.2f*delta_time*(-state->mouse_x+game_state->last_mouse_x);
+			game_state->y_offset += 0.2f*delta_time*(-state->mouse_y+game_state->last_mouse_y);
+			game_state->last_mouse_x = state->mouse_x;
+			game_state->last_mouse_y = state->mouse_y;
 		}
-		case 'l':
-		{
-			//game_state->x_offset -= 2.5f*delta_time;
-			cam_rot += 1.5f*delta_time;
-			state->dir = 'n';
-			break;
-		}
-		case 'r':
-		{
-			//game_state->x_offset += 2.5f*delta_time;
-			cam_rot -= 1.5f*delta_time;
-			state->dir = 'n';
-			break;
-		}
-		case 'd':
-		{
-			game_state->y_offset -= 2.5f*delta_time;
-			state->dir = 'n';
-			break;
-		}
-		case 'u':
-		{
-			game_state->y_offset += 2.5f*delta_time;
-			state->dir = 'n';
-			break;
-		}
+		//game_state->x_offset += 1.0f*delta_time;
+	} else {
+		game_state->was_lmb_down = 0;
 	}
 	
 	float ox = game_state->x_offset;
 	float oy = game_state->y_offset;
 	float oz = game_state->z_offset;
 	
-	float rot_speed = 0.1f;
+	float rot_speed = 0.0001f;
 
 	float proj_mat4x4[16];
 	InitProjectionMat4x4(proj_mat4x4, 90.0f, 1, state->bitBuff->width, state->bitBuff->height, 0.1f, 100.0f);
@@ -223,10 +217,10 @@ int UpdateProject3DCube(SharedState* state)
 	float combined_mat4x4[16]{};
 	float combined2_mat4x4[16]{};
 	
-	Vec3f pos = {ox-2.5f, oy-2.5f, -5.0f};
+	Vec3f pos = {ox+2.5f, oy+2.5f, -5.0f};
 	//Vec3f target = {pos.x+0.0f, pos.y+0.0f, pos.z+1.0f};
 	
-	Vec3f target = {0.0f, 0.0f, 1.0f};
+	Vec3f target = {ox+0.0f, oy+0.0f, 1.0f};
 	//float y_rot_mat4x4[16]{};
 	InitYRotMat4x4(y_rot_mat4x4, lol2);
 	Vec3f up = {0, 1, 0};

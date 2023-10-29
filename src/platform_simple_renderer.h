@@ -39,6 +39,13 @@ struct SharedState
 	void *project_state;
 	std::chrono::steady_clock::time_point curr_time;
 	std::chrono::steady_clock::time_point prev_time;
+	
+	int is_lmb_down;
+	int mouse_x;
+	int mouse_y;
+	
+	int is_running;
+	
 	void *extra;
 };
 

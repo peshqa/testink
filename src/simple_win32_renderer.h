@@ -12,6 +12,7 @@ simple_win32_renderer.h - (Windows specific) core of all smaller projects that d
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <Windowsx.h>
 #include <stdlib.h>
 #include <string>
 #include <vector>
@@ -195,38 +196,58 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     switch (uMsg)
     {
     case WM_DESTROY:
-		{
-			PostQuitMessage(0);
-		}
-		break;
+	{
+		PostQuitMessage(0);
+	}
+	break;
 		
+	case WM_CLOSE:
+	{
+		shared_state->is_running = 0;
+    } break;
+	
 	case WM_LBUTTONDOWN:
-	//case WM_MOUSEMOVE:
-	//case WM_RBUTTONDOWN:
+	case WM_LBUTTONUP:
+	case WM_MOUSEMOVE:
+	case WM_RBUTTONDOWN:
+	case WM_RBUTTONUP:
 		{
-			int x = LOWORD(lParam);
-            int y = HIWORD(lParam);
+			int x = GET_X_LPARAM(lParam);
+            int y = GET_Y_LPARAM(lParam);
+			
+			
 			
 			if (shared_state != 0)
 			{
+				if (wParam == MK_LBUTTON)
+				{
+					shared_state->is_lmb_down = 1;
+				} else {
+					shared_state->is_lmb_down = 0;
+				}
+				shared_state->mouse_x = x;
+				shared_state->mouse_y = y;
 			}
 		}
 		break;
 		
 	case WM_KEYDOWN:
 		{
-			if (wParam == VK_LEFT)
+			if (shared_state != 0)
 			{
-				shared_state->dir = 'l';
-			} else if (wParam == VK_UP)
-			{
-				shared_state->dir = 'u';
-			} else if (wParam == VK_RIGHT)
-			{
-				shared_state->dir = 'r';
-			} else if (wParam == VK_DOWN)
-			{
-				shared_state->dir = 'd';
+				if (wParam == VK_LEFT)
+				{
+					shared_state->dir = 'l';
+				} else if (wParam == VK_UP)
+				{
+					shared_state->dir = 'u';
+				} else if (wParam == VK_RIGHT)
+				{
+					shared_state->dir = 'r';
+				} else if (wParam == VK_DOWN)
+				{
+					shared_state->dir = 'd';
+				}
 			}
 		}
 		break;
@@ -317,12 +338,11 @@ int InitSharedState(SharedState *shared_state)
 	shared_state->client_height = screenHeight * shared_state->scale;
 	shared_state->dir = 'l';
 	
-	PlatformBitBuffer *bitBuff = new PlatformBitBuffer{};
-	shared_state->bitBuff = bitBuff;
-	ResizePlatformBitBuffer(bitBuff, screenWidth, screenHeight);
+	shared_state->bitBuff = new PlatformBitBuffer{};
+	ResizePlatformBitBuffer(shared_state->bitBuff, screenWidth, screenHeight);
 	
-	W32Extra *extra = new W32Extra{};
-	shared_state->extra = extra;
+	shared_state->extra = new W32Extra{};
+	shared_state->is_running = 1;
 	return 0;
 	// TODO: implement uninitializer TerminateSharedState
 }
