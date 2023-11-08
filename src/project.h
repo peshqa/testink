@@ -179,8 +179,8 @@ int UpdateProject3DCube(SharedState* state)
 			game_state->last_mouse_x = state->mouse_x;
 			game_state->last_mouse_y = state->mouse_y;
 		} else {
-			game_state->x_offset += 0.2f*delta_time*(-state->mouse_x+game_state->last_mouse_x);
-			game_state->y_offset += 0.2f*delta_time*(-state->mouse_y+game_state->last_mouse_y);
+			game_state->x_offset += 0.02f*(-state->mouse_x+game_state->last_mouse_x);
+			game_state->y_offset += 0.02f*(-state->mouse_y+game_state->last_mouse_y);
 			game_state->last_mouse_x = state->mouse_x;
 			game_state->last_mouse_y = state->mouse_y;
 		}

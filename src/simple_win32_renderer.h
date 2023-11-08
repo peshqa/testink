@@ -49,7 +49,13 @@ int ResizePlatformBitBuffer(PlatformBitBuffer *p, int screenWidth, int screenHei
 	}
 	p->bits = new int[screenWidth * screenHeight]{};
 	
-	BITMAPINFO *info = (BITMAPINFO*)(&p->info);
+	if (p->info == 0)
+	{
+		delete p->info;
+	}
+	p->info = new BITMAPINFO{};
+	
+	BITMAPINFO *info = (BITMAPINFO*)(p->info);
 	info->bmiHeader.biSize = sizeof(info->bmiHeader);
 	info->bmiHeader.biWidth = screenWidth;
 	info->bmiHeader.biHeight = -screenHeight;
@@ -148,7 +154,7 @@ int PlatformUpdateDisplay(SharedState* state, int screenWidth, int screenHeight)
 	  bitBuff->width,
 	  bitBuff->height,
 	  bitBuff->bits,
-	  (BITMAPINFO*)(&bitBuff->info),
+	  (BITMAPINFO*)(bitBuff->info),
 	  DIB_RGB_COLORS,
 	  SRCCOPY
 	);
@@ -325,8 +331,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	
 	return res;
 }
-
-
 
 int InitSharedState(SharedState *shared_state)
 {
