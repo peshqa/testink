@@ -146,6 +146,10 @@ typedef struct
 	int last_mouse_x;
 	int last_mouse_y;
 	int was_lmb_down;
+	
+	float pitch;
+	float yaw;
+	float roll;
 } ProjectState3DCube;
 
 int InitProject3DCube(SharedState* state)
@@ -159,6 +163,10 @@ int InitProject3DCube(SharedState* state)
 	p_state->last_mouse_x = 0;
 	p_state->last_mouse_y = 0;
 	p_state->was_lmb_down = 0;
+	
+	p_state->pitch = 0.0f;
+	p_state->yaw   = 0.0f;
+	p_state->roll  = 0.0f;
 	
 	state->project_state = p_state;
 	CalculateDeltaTime(state);
@@ -179,8 +187,10 @@ int UpdateProject3DCube(SharedState* state)
 			game_state->last_mouse_x = state->mouse_x;
 			game_state->last_mouse_y = state->mouse_y;
 		} else {
-			game_state->x_offset += 0.02f*(-state->mouse_x+game_state->last_mouse_x);
-			game_state->y_offset += 0.02f*(-state->mouse_y+game_state->last_mouse_y);
+			//game_state->x_offset += 0.02f*(-state->mouse_x+game_state->last_mouse_x);
+			//game_state->y_offset += 0.02f*(-state->mouse_y+game_state->last_mouse_y);
+			game_state->pitch += 0.005f*(-state->mouse_x+game_state->last_mouse_x);
+			game_state->yaw   += 0.005f*(-state->mouse_y+game_state->last_mouse_y);
 			game_state->last_mouse_x = state->mouse_x;
 			game_state->last_mouse_y = state->mouse_y;
 		}
@@ -220,7 +230,7 @@ int UpdateProject3DCube(SharedState* state)
 	Vec3f pos = {ox+2.5f, oy+2.5f, -5.0f};
 	//Vec3f target = {pos.x+0.0f, pos.y+0.0f, pos.z+1.0f};
 	
-	Vec3f target = {ox+0.0f, oy+0.0f, 1.0f};
+	Vec3f target = {ox+tanf(game_state->pitch), 0.0f+oy, 1.0f};
 	//float y_rot_mat4x4[16]{};
 	InitYRotMat4x4(y_rot_mat4x4, lol2);
 	Vec3f up = {0, 1, 0};
