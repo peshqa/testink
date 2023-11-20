@@ -214,49 +214,98 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	
 	case WM_LBUTTONDOWN:
 	case WM_LBUTTONUP:
-	case WM_MOUSEMOVE:
 	case WM_RBUTTONDOWN:
 	case WM_RBUTTONUP:
-		{
-			int x = GET_X_LPARAM(lParam);
-            int y = GET_Y_LPARAM(lParam);
-			
-			
-			
-			if (shared_state != 0)
-			{
-				if (wParam == MK_LBUTTON)
-				{
-					shared_state->is_lmb_down = 1;
-				} else {
-					shared_state->is_lmb_down = 0;
-				}
-				shared_state->mouse_x = x;
-				shared_state->mouse_y = y;
-			}
-		}
-		break;
+	case WM_MOUSEMOVE:
+	{
+		int x = GET_X_LPARAM(lParam);
+		int y = GET_Y_LPARAM(lParam);
 		
-	case WM_KEYDOWN:
+		//bool was_down = (lParam & (1 << 30)) != 0;
+		//bool is_down  = (lParam & (1 << 31)) == 0;
+		
+		if (shared_state != 0)
 		{
-			if (shared_state != 0)
+			shared_state->mouse_x = x;
+			shared_state->mouse_y = y;
+			
+			if (wParam == MK_LBUTTON)
 			{
-				if (wParam == VK_LEFT)
-				{
-					shared_state->dir = 'l';
-				} else if (wParam == VK_UP)
-				{
-					shared_state->dir = 'u';
-				} else if (wParam == VK_RIGHT)
-				{
-					shared_state->dir = 'r';
-				} else if (wParam == VK_DOWN)
-				{
-					shared_state->dir = 'd';
-				}
+				shared_state->is_lmb_down = 1;
+			} else {
+				shared_state->is_lmb_down = 0;
 			}
 		}
-		break;
+	}
+	
+	case WM_KEYUP:
+	case WM_KEYDOWN:
+	case WM_SYSKEYUP:
+    case WM_SYSKEYDOWN:
+	{
+		WORD vkCode = LOWORD(wParam);
+		WORD keyFlags = HIWORD(lParam);
+		
+		WORD scanCode = LOBYTE(keyFlags);
+		BOOL isExtendedKey = (keyFlags & KF_EXTENDED) == KF_EXTENDED;
+		
+		if (isExtendedKey)
+			scanCode = MAKEWORD(scanCode, 0xE0);
+		
+		bool was_down = (lParam & (1 << 30)) != 0;
+		bool is_down  = (lParam & (1 << 31)) == 0;
+		
+		if (shared_state != 0)
+		{
+			if (is_down == true)
+			{
+				bool is_alt_down = lParam & (1 << 29);
+				if (wParam == VK_F4 & is_alt_down)
+				{
+					shared_state->is_running = 0;
+				}
+				if (wParam == VK_RETURN & is_alt_down)
+				{
+					// TODO: implement fullscreen toggle
+					// for now alt+enter ends the program
+					shared_state->is_running = 0;
+				}
+			}
+			switch (vkCode)
+			{
+			case VK_SHIFT:   // converts to VK_LSHIFT or VK_RSHIFT
+			case VK_CONTROL: // converts to VK_LCONTROL or VK_RCONTROL
+			case VK_MENU:    // converts to VK_LMENU or VK_RMENU
+				vkCode = LOWORD(MapVirtualKeyW(scanCode, MAPVK_VSC_TO_VK_EX));
+			default:
+				shared_state->input_state[vkCode] = is_down;
+			}
+			
+		}
+	}
+	break;
+		
+	
+	// TODO: delet this
+	/*{
+		if (shared_state != 0)
+		{
+			if (wParam == VK_LEFT)
+			{
+				shared_state->dir = 'l';
+			} else if (wParam == VK_UP)
+			{
+				shared_state->dir = 'u';
+			} else if (wParam == VK_RIGHT)
+			{
+				shared_state->dir = 'r';
+			} else if (wParam == VK_DOWN)
+			{
+				shared_state->dir = 'd';
+			}
+		}
+	}
+	break;*/
 		
 	case WM_SIZE:
 		{

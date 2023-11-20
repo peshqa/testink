@@ -4,6 +4,8 @@ simple_3d_gfx.h - self explanatory header name
 */
 #pragma once
 
+#include <math.h>
+
 typedef struct
 {
 	float x;
@@ -220,8 +222,8 @@ void Mat4x4QuickInverse(float *m, float *out)
 void InitProjectionMat4x4(float *m, float fov, int is_fov_vertical, int screen_width, int screen_height, float z_near, float z_far)
 {
 	double pi = 3.1415926535;
-	float f = 1/tanf(fov*pi/180/2);
-	float q = z_far*(z_far-z_near);
+	float f = 1/tanf(fov*pi/180*0.5f);
+	float q = z_far/(z_far-z_near);
 	float aspect_ratio;
 	
 	for (int i = 0; i < 16; i++)

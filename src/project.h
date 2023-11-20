@@ -6,9 +6,11 @@ Projects are provided with pointers to shared app state and can call functions t
 */
 #pragma once
 
-#include <math.h>
+
 #include "platform_simple_renderer.h"
 #include "snake_game.h"
+
+#include <assert.h>
 
 typedef int (*InitProjectFunction)(SharedState*);
 typedef int (*UpdateProjectFunction)(SharedState*);
@@ -158,7 +160,7 @@ int InitProject3DCube(SharedState* state)
 	ProjectState3DCube *p_state = new ProjectState3DCube{};
 	p_state->x_offset = 0;//0.5f;
 	p_state->y_offset = 0;//0.5f;
-	p_state->z_offset = 0.1f;//2.0f;
+	p_state->z_offset = 0;//2.0f;
 	
 	p_state->last_mouse_x = 0;
 	p_state->last_mouse_y = 0;
@@ -199,10 +201,6 @@ int UpdateProject3DCube(SharedState* state)
 		game_state->was_lmb_down = 0;
 	}
 	
-	float ox = game_state->x_offset;
-	float oy = game_state->y_offset;
-	float oz = game_state->z_offset;
-	
 	float rot_speed = 0.0001f;
 
 	float proj_mat4x4[16];
@@ -227,16 +225,65 @@ int UpdateProject3DCube(SharedState* state)
 	float combined_mat4x4[16]{};
 	float combined2_mat4x4[16]{};
 	
-	Vec3f pos = {ox+2.5f, oy+2.5f, -5.0f};
+	
 	//Vec3f target = {pos.x+0.0f, pos.y+0.0f, pos.z+1.0f};
 	
-	Vec3f target = {ox+tanf(game_state->pitch), 0.0f+oy, 1.0f};
-	//float y_rot_mat4x4[16]{};
-	InitYRotMat4x4(y_rot_mat4x4, lol2);
+	//Vec3f target = {pos.x+sinf(game_state->pitch), pos.y+sinf(game_state->yaw), pos.z+cosf(game_state->pitch)};
+	Vec3f target = {0.0f, 0.0f, 1.0f};
+	Vec3f target_rot_y;
+	Vec3f target_rot_yx;
+	Vec3f target_final;
+	float t_y_rot_mat4x4[16]{};
+	float t_x_rot_mat4x4[16]{};
+	InitXRotMat4x4(t_y_rot_mat4x4, -game_state->yaw);
+	MultiplyVecMat4x4((float*)&target, t_y_rot_mat4x4, (float*)&target_rot_y);
+	InitYRotMat4x4(t_x_rot_mat4x4, game_state->pitch);
+	MultiplyVecMat4x4((float*)&target_rot_y, t_x_rot_mat4x4, (float*)&target_rot_yx);
+	
+	if (state->input_state['W'] == 1)
+	{
+		game_state->x_offset += target_rot_yx.x*delta_time*10;
+		game_state->y_offset += target_rot_yx.y*delta_time*10;
+		game_state->z_offset += target_rot_yx.z*delta_time*10;
+	}
+	if (state->input_state['A'] == 1)
+	{
+		game_state->z_offset += target_rot_yx.x*delta_time*10;
+		//game_state->y_offset += target_rot_yx.y*delta_time*10;
+		game_state->x_offset -= target_rot_yx.z*delta_time*10;
+	}
+	if (state->input_state['S'] == 1)
+	{
+		game_state->x_offset -= target_rot_yx.x*delta_time*10;
+		game_state->y_offset -= target_rot_yx.y*delta_time*10;
+		game_state->z_offset -= target_rot_yx.z*delta_time*10;
+	}
+	if (state->input_state['D'] == 1)
+	{
+		game_state->z_offset -= target_rot_yx.x*delta_time*10;
+		//game_state->y_offset -= target_rot_yx.y*delta_time*10;
+		game_state->x_offset += target_rot_yx.z*delta_time*10;
+	}
+	if (state->input_state[' '] == 1)
+	{
+		game_state->y_offset -= delta_time*2;
+	}
+	if (state->input_state[INPUT_LSHIFT] == 1)
+	{
+		//assert(!"Wow");
+		game_state->y_offset += delta_time*2;
+	}
+	
+	float ox = game_state->x_offset;
+	float oy = game_state->y_offset;
+	float oz = game_state->z_offset;
+	Vec3f pos = {ox-.5f, oy-.5f, oz-5.0f};
+	Vec3fAdd(pos, target_rot_yx, target_final);
+	
 	Vec3f up = {0, 1, 0};
 	float look_at_mat4x4[16];
 	float point_at_mat4x4[16];
-	InitPointAtMat4x4(point_at_mat4x4, pos, target, up);
+	InitPointAtMat4x4(point_at_mat4x4, pos, target_final, up);
 	Mat4x4QuickInverse(point_at_mat4x4, look_at_mat4x4);
 	
 	MultiplyMats4x4(x_rot_mat4x4, y_rot_mat4x4, combined_mat4x4);

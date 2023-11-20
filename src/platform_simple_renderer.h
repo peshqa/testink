@@ -10,6 +10,11 @@ platform_simple_renderer.h - (platform independent) core of all smaller projects
 #include <vector>
 #include <chrono>
 
+enum InputCode : unsigned int
+{
+	INPUT_LSHIFT = 0xA0
+};
+
 enum ARGB8888Color : unsigned int
 {
 	COLOR_WHITE = 0xFFFFFFFF,
@@ -43,6 +48,8 @@ struct SharedState
 	int is_lmb_down;
 	int mouse_x;
 	int mouse_y;
+	
+	unsigned char input_state[300];
 	
 	int is_running;
 	
