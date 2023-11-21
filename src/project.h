@@ -156,7 +156,7 @@ typedef struct
 
 int InitProject3DCube(SharedState* state)
 {
-	PlatformGoBorderlessFullscreen(state);
+	//PlatformGoBorderlessFullscreen(state);
 	ProjectState3DCube *p_state = new ProjectState3DCube{};
 	p_state->x_offset = 0;//0.5f;
 	p_state->y_offset = 0;//0.5f;
@@ -270,7 +270,6 @@ int UpdateProject3DCube(SharedState* state)
 	}
 	if (state->input_state[INPUT_LSHIFT] == 1)
 	{
-		//assert(!"Wow");
 		game_state->y_offset += delta_time*2;
 	}
 	

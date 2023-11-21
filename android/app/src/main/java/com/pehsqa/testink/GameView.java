@@ -23,21 +23,28 @@ public class GameView extends SurfaceView
 	{
 		int x = (int) event.getX();
 		int y = (int) event.getY();
-
+		GameEngine ge = GameEngine.getInstance();
+		
 		switch (event.getAction()) {
-			case MotionEvent.ACTION_DOWN: {
-				GameEngine ge = GameEngine.getInstance();
+			case MotionEvent.ACTION_DOWN:
+			{
 				ContextWrapper wra = new ContextWrapper(context);
 				DisplayMetrics metrics = wra.getBaseContext().getResources().getDisplayMetrics();         
 				int w = metrics.widthPixels;
 				int h = metrics.heightPixels;
 				ge.itH(x, y, w, h);
+				ge.imitateMouse(x, y, 1);
 				return true;
-				//break;
 			}
-			case MotionEvent.ACTION_MOVE: {
-
-				break;
+			case MotionEvent.ACTION_MOVE:
+			{
+				ge.imitateMouse(x, y, 1);
+				return true;
+			}
+			case MotionEvent.ACTION_UP:
+			{
+				ge.imitateMouse(x, y, 0);
+				return true;
 			}
 		}
 

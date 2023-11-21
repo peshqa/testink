@@ -49,6 +49,21 @@ Java_com_peshqa_testink_GameEngine_itHappen(
 }
 
 extern "C" JNIEXPORT void JNICALL
+Java_com_peshqa_testink_GameEngine_updateMouse(
+		JNIEnv *env,
+		jobject thiz,
+		jlong data,
+		jint x,
+		jint y,
+		jint is_down)
+{
+	SharedState* state = (SharedState*)data;
+	state->mouse_x = (int)x;
+	state->mouse_y = (int)y;
+	state->is_lmb_down = (int)is_down;
+}
+
+extern "C" JNIEXPORT void JNICALL
 Java_com_peshqa_testink_GameEngine_updateAndRenderGame(
 		JNIEnv *env,
 		jobject thiz,

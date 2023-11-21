@@ -31,14 +31,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	InitProjectFunction InitProjectFunc = (InitProjectFunction)(projects[current_project].InitFunc);
 	UpdateProjectFunction UpdateProjectFunc = (UpdateProjectFunction)(projects[current_project].UpdateFunc);
 	
-	
-	shared_state.callback_update_func = projects[current_project].UpdateFunc;
-	
-	
 	if (InitProjectFunc(&shared_state) != 0)
 	{
 		return 0;
 	}
+	
+	shared_state.callback_update_func = projects[current_project].UpdateFunc;
 	
 	DWORD window_styles = WS_OVERLAPPEDWINDOW;
 	
@@ -93,6 +91,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	
 	std::chrono::steady_clock::time_point currTime = std::chrono::steady_clock::now();
 	std::chrono::steady_clock::time_point prevTime{};
+	
+	
 
     // Run the message loop.
     MSG msg{};

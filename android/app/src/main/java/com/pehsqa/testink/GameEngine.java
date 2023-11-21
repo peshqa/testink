@@ -18,6 +18,7 @@ public class GameEngine
 	public native long initData();
 	public native void updateAndRenderGame(long data, Bitmap bitmap);
 	public native void itHappen(long data, char c);
+	public native void updateMouse(long data, int x, int y, int is_down);
 	
 	public static GameEngine instance = null;
 	public long data;
@@ -33,6 +34,11 @@ public class GameEngine
 			dir = 'u';
 		}
 		itHappen(data, dir);
+	}
+	
+	public void imitateMouse(int x, int y, int is_down)
+	{
+		updateMouse(data, x, y, is_down);
 	}
 	
 	public native void onScreenResize(long data, int format, int width, int height);

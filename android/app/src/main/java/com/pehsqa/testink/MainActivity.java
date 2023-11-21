@@ -6,6 +6,9 @@ import android.widget.TextView;
 import android.view.SurfaceView;
 import android.view.SurfaceHolder;
 
+import android.view.Window;
+import android.view.WindowManager;
+
 //import android.widget.Toast;
 
 public class MainActivity extends Activity
@@ -19,6 +22,10 @@ public class MainActivity extends Activity
     @Override
     public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		// TODO: get fullscreen to work!
+		//requestWindowFeature(Window.FEATURE_NO_TITLE);
+        //getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+        //        WindowManager.LayoutParams.FLAG_FULLSCREEN);
 		
 		SurfaceView view = new GameView(this/*, AppConstants.GetEngine()*/);
 
