@@ -24,17 +24,35 @@ void Vec3fSub(Vec3f &v1, Vec3f &v2, Vec3f &out)
 	out.y = v1.y - v2.y;
 	out.z = v1.z - v2.z;
 }
+void VecRaw3fSub(float *v1, float *v2, float *out)
+{
+	out[0] = v1[0] - v2[0];
+	out[1] = v1[1] - v2[1];
+	out[2] = v1[2] - v2[2];
+}
 void Vec3fAdd(Vec3f &v1, Vec3f &v2, Vec3f &out)
 {
 	out.x = v1.x + v2.x;
 	out.y = v1.y + v2.y;
 	out.z = v1.z + v2.z;
 }
+void VecRaw3fAdd(float *v1, float *v2, float *out)
+{
+	out[0] = v1[0] + v2[0];
+	out[1] = v1[1] + v2[1];
+	out[2] = v1[2] + v2[2];
+}
 void Vec3fMul(Vec3f &v1, Vec3f &v2, Vec3f &out)
 {
 	out.x = v1.x * v2.x;
 	out.y = v1.y * v2.y;
 	out.z = v1.z * v2.z;
+}
+void VecRaw3fMul(float *v1, float *v2, float *out)
+{
+	out[0] = v1[0] * v2[0];
+	out[1] = v1[1] * v2[1];
+	out[2] = v1[2] * v2[2];
 }
 
 int Vec3fDiv(Vec3f &v1, Vec3f &v2, Vec3f &out)
@@ -49,6 +67,12 @@ int Vec3fNormalize(Vec3f &v)
 {
 	float len = sqrtf(v.x*v.x+v.y*v.y+v.z*v.z);
 	v.x /= len; v.y /= len; v.z /= len;
+	return 0;
+}
+int VecRaw3fNormalize(float *v, float *output)
+{
+	float len = sqrtf(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
+	output[0] = v[0] / len; output[1] = v[1] / len; output[2] = v[2] / len;
 	return 0;
 }
 
@@ -86,6 +110,10 @@ void CrossProductVec3f(Vec3f &v1, Vec3f &v2, Vec3f &out)
 float DotProductVec3f(Vec3f &v1, Vec3f &v2)
 {
 	return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z;
+}
+float DotProductVecRaw3f(float *v1, float *v2)
+{
+	return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
 }
 
 void InitXRotMat4x4(float *m, float angle_rad/*roll*/)
@@ -162,6 +190,12 @@ void Vec3fMulByF(Vec3f &v1, float f, Vec3f &out)
 	out.x = v1.x * f;
 	out.y = v1.y * f;
 	out.z = v1.z * f;
+}
+void VecRaw3fMulByFloat(float *v1, float f, float *out)
+{
+	out[0] = v1[0] * f;
+	out[1] = v1[1] * f;
+	out[2] = v1[2] * f;
 }
 void InitPointAtMat4x4(float *m, Vec3f &pos, Vec3f &target, Vec3f &up)
 {
@@ -245,4 +279,25 @@ void InitProjectionMat4x4(float *m, float fov, int is_fov_vertical, int screen_w
 	m[10] = q;
 	m[11] = 1;
 	m[14] = -q*z_near;
+}
+
+void PlaneVectorIntersection(float *plane_normal, float *plane_point, float *line_start, float *line_end, float* output)
+{
+	float normalized_plane_normal[3];
+	VecRaw3fNormalize(plane_normal, normalized_plane_normal);
+	float plane_d = -DotProductVecRaw3f(normalized_plane_normal, plane_point);
+	float ad = DotProductVecRaw3f(line_start, normalized_plane_normal);
+	float bd = DotProductVecRaw3f(line_end, normalized_plane_normal);
+	float t = (-plane_d - ad) / (bd - ad);
+	float start_to_end[3];
+	float line_to_intersect[3];
+	VecRaw3fSub(line_end, line_start, start_to_end);
+	VecRaw3fMulByFloat(start_to_end, t, line_to_intersect);
+	VecRaw3fAdd(line_start, line_to_intersect, output);
+}
+
+int ClipAgainstPlane(float *plane_normal, float *plane_point, float *points, int *in_tri, int *out_tri1, int *out_tri2)
+{
+	
+	return 0;
 }

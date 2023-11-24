@@ -12,7 +12,11 @@ platform_simple_renderer.h - (platform independent) core of all smaller projects
 
 enum InputCode : unsigned int
 {
-	INPUT_LSHIFT = 0xA0
+	INPUT_LEFT = 0x25,
+	INPUT_UP = 0x26,
+	INPUT_RIGHT = 0x27,
+	INPUT_DOWN = 0x28,
+	INPUT_LSHIFT = 0xA0,
 };
 
 enum ARGB8888Color : unsigned int

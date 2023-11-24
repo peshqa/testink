@@ -152,6 +152,9 @@ typedef struct
 	float pitch;
 	float yaw;
 	float roll;
+	
+	float cube_yaw;
+	float cube_pitch;
 } ProjectState3DCube;
 
 int InitProject3DCube(SharedState* state)
@@ -170,6 +173,9 @@ int InitProject3DCube(SharedState* state)
 	p_state->yaw   = 0.0f;
 	p_state->roll  = 0.0f;
 	
+	p_state->cube_yaw   = 0.0f;
+	p_state->cube_pitch = 0.0f;
+	
 	state->project_state = p_state;
 	CalculateDeltaTime(state);
 	return 0;
@@ -181,6 +187,8 @@ int UpdateProject3DCube(SharedState* state)
 	float delta_time = CalculateDeltaTime(state);
 	static float cam_rot = 0.0f;
 	
+	// Mouse input -> camera rotation control
+	
 	if (state->is_lmb_down == 1)
 	{
 		if (game_state->was_lmb_down == 0)
@@ -191,8 +199,8 @@ int UpdateProject3DCube(SharedState* state)
 		} else {
 			//game_state->x_offset += 0.02f*(-state->mouse_x+game_state->last_mouse_x);
 			//game_state->y_offset += 0.02f*(-state->mouse_y+game_state->last_mouse_y);
-			game_state->pitch += 0.005f*(-state->mouse_x+game_state->last_mouse_x);
-			game_state->yaw   += 0.005f*(-state->mouse_y+game_state->last_mouse_y);
+			game_state->yaw   += 0.005f*(-state->mouse_x+game_state->last_mouse_x);
+			game_state->pitch += 0.005f*(-state->mouse_y+game_state->last_mouse_y);
 			game_state->last_mouse_x = state->mouse_x;
 			game_state->last_mouse_y = state->mouse_y;
 		}
@@ -201,22 +209,25 @@ int UpdateProject3DCube(SharedState* state)
 		game_state->was_lmb_down = 0;
 	}
 	
-	float rot_speed = 0.0001f;
+	if (state->input_state[INPUT_LEFT] == 1)
+	{
+		game_state->cube_yaw -= delta_time*1;
+	}
+	if (state->input_state[INPUT_RIGHT] == 1)
+	{
+		game_state->cube_yaw += delta_time*1;
+	}
+	if (state->input_state[INPUT_DOWN] == 1)
+	{
+		game_state->cube_pitch -= delta_time*1;
+	}
+	if (state->input_state[INPUT_UP] == 1)
+	{
+		game_state->cube_pitch += delta_time*1;
+	}
 
 	float proj_mat4x4[16];
-	InitProjectionMat4x4(proj_mat4x4, 90.0f, 1, state->bitBuff->width, state->bitBuff->height, 0.1f, 100.0f);
-	static float lol = 0;
-	lol += delta_time*0.6f*2*rot_speed;
-	float x_rot_mat4x4[16];
-	InitXRotMat4x4(x_rot_mat4x4, lol);
-	
-	static float lol2{};
-	lol2 += delta_time*0.2f*2*rot_speed;
-	float y_rot_mat4x4[16]{};
-	InitYRotMat4x4(y_rot_mat4x4, lol2);
-	
-	float translate_mat4x4[16];
-	InitTranslationMat4x4(translate_mat4x4, 0.0f, 0.0f, 0.0f);
+	InitProjectionMat4x4(proj_mat4x4, 90.0f, 1, state->bitBuff->width, state->bitBuff->height, 0.01f, 100.0f);
 	
 	float scale_mat4x4[16];
 	//InitScaleMat4x4(scale_mat4x4, 0.3f, 0.3f, 0.3f);
@@ -225,19 +236,16 @@ int UpdateProject3DCube(SharedState* state)
 	float combined_mat4x4[16]{};
 	float combined2_mat4x4[16]{};
 	
-	
-	//Vec3f target = {pos.x+0.0f, pos.y+0.0f, pos.z+1.0f};
-	
-	//Vec3f target = {pos.x+sinf(game_state->pitch), pos.y+sinf(game_state->yaw), pos.z+cosf(game_state->pitch)};
 	Vec3f target = {0.0f, 0.0f, 1.0f};
 	Vec3f target_rot_y;
 	Vec3f target_rot_yx;
 	Vec3f target_final;
 	float t_y_rot_mat4x4[16]{};
 	float t_x_rot_mat4x4[16]{};
-	InitXRotMat4x4(t_y_rot_mat4x4, -game_state->yaw);
+	InitXRotMat4x4(t_y_rot_mat4x4, -game_state->pitch);
+	//InitXRotMat4x4(t_y_rot_mat4x4, 0);
 	MultiplyVecMat4x4((float*)&target, t_y_rot_mat4x4, (float*)&target_rot_y);
-	InitYRotMat4x4(t_x_rot_mat4x4, game_state->pitch);
+	InitYRotMat4x4(t_x_rot_mat4x4, game_state->yaw);
 	MultiplyVecMat4x4((float*)&target_rot_y, t_x_rot_mat4x4, (float*)&target_rot_yx);
 	
 	if (state->input_state['W'] == 1)
@@ -276,7 +284,7 @@ int UpdateProject3DCube(SharedState* state)
 	float ox = game_state->x_offset;
 	float oy = game_state->y_offset;
 	float oz = game_state->z_offset;
-	Vec3f pos = {ox-.5f, oy-.5f, oz-5.0f};
+	Vec3f pos = {ox, oy, oz};
 	Vec3fAdd(pos, target_rot_yx, target_final);
 	
 	Vec3f up = {0, 1, 0};
@@ -285,125 +293,139 @@ int UpdateProject3DCube(SharedState* state)
 	InitPointAtMat4x4(point_at_mat4x4, pos, target_final, up);
 	Mat4x4QuickInverse(point_at_mat4x4, look_at_mat4x4);
 	
-	MultiplyMats4x4(x_rot_mat4x4, y_rot_mat4x4, combined_mat4x4);
-	MultiplyMats4x4(combined_mat4x4, scale_mat4x4, combined2_mat4x4);
+	float x_rot_mat4x4[16];
+	float y_rot_mat4x4[16]{};
+	float translate_mat4x4[16];
+	InitXRotMat4x4(x_rot_mat4x4, game_state->cube_pitch);
+	InitYRotMat4x4(y_rot_mat4x4, game_state->cube_yaw);
+	InitTranslationMat4x4(translate_mat4x4, 0.0f, 0.0f, 3.0f);
+	
+	MultiplyMats4x4(scale_mat4x4, y_rot_mat4x4, combined_mat4x4);
+	MultiplyMats4x4(combined_mat4x4, x_rot_mat4x4, combined2_mat4x4);
 	MultiplyMats4x4(combined2_mat4x4, translate_mat4x4, combined_mat4x4);
-	MultiplyMats4x4(combined_mat4x4, look_at_mat4x4, combined2_mat4x4);
+	//MultiplyMats4x4(combined_mat4x4, look_at_mat4x4, combined2_mat4x4);
 	
 	FillPlatformBitBuffer(state->bitBuff, MakeColor(255,25,12,6));
 	
-	std::vector<Tri3f> mesh;
-	// clockwise order
-	Tri3f t1 = {1.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f,	1.0f, 1.0f, 0.0f};
-	Tri3f t2 = {1.0f, 0.0f, 0.0f,	0.0f, 0.0f, 0.0f,	0.0f, 1.0f, 0.0f};
-	Tri3f t3 = {1.0f, 0.0f, 1.0f,	1.0f, 1.0f, 1.0f,	0.0f, 1.0f, 1.0f};
-	Tri3f t4 = {1.0f, 0.0f, 1.0f,	0.0f, 1.0f, 1.0f,	0.0f, 0.0f, 1.0f};
-	Tri3f t5 = {0.0f, 1.0f, 0.0f,	0.0f, 0.0f, 1.0f,	0.0f, 1.0f, 1.0f};
-	Tri3f t6 = {0.0f, 1.0f, 0.0f,	0.0f, 0.0f, 0.0f,	0.0f, 0.0f, 1.0f};
-	Tri3f t7 = {1.0f, 1.0f, 0.0f,	1.0f, 1.0f, 1.0f,	1.0f, 0.0f, 1.0f};
-	Tri3f t8 = {1.0f, 1.0f, 0.0f,	1.0f, 0.0f, 1.0f,	1.0f, 0.0f, 0.0f};
-	Tri3f t9 = {1.0f, 1.0f, 0.0f,	0.0f, 1.0f, 1.0f,	1.0f, 1.0f, 1.0f};
-	Tri3f t10= {1.0f, 1.0f, 0.0f,	0.0f, 1.0f, 0.0f,	0.0f, 1.0f, 1.0f};
-	Tri3f t11= {1.0f, 0.0f, 0.0f,	1.0f, 0.0f, 1.0f,	0.0f, 0.0f, 1.0f};
-	Tri3f t12= {1.0f, 0.0f, 0.0f,	0.0f, 0.0f, 1.0f,	0.0f, 0.0f, 0.0f};
-	mesh.push_back(t1); mesh.push_back(t2);
-	mesh.push_back(t3); mesh.push_back(t4);
-	mesh.push_back(t5); mesh.push_back(t6);
-	mesh.push_back(t7); mesh.push_back(t8);
-	mesh.push_back(t9); mesh.push_back(t10);
-	mesh.push_back(t11); mesh.push_back(t12);
-	
 	int clr = MakeColor(255,255,255,255);
-	for (Tri3f t: mesh)
+	
+	// Vertices of a cube
+	float p0[] = {0.0f, 0.0f, 0.0f};
+	float p1[] = {0.0f, 0.0f, 1.0f};
+	float p2[] = {0.0f, 1.0f, 0.0f};
+	float p3[] = {0.0f, 1.0f, 1.0f};
+	float p4[] = {1.0f, 0.0f, 0.0f};
+	float p5[] = {1.0f, 0.0f, 1.0f};
+	float p6[] = {1.0f, 1.0f, 0.0f};
+	float p7[] = {1.0f, 1.0f, 1.0f};
+	
+	std::vector<float*> vertices;
+	vertices.push_back(p0);
+	vertices.push_back(p1);
+	vertices.push_back(p2);
+	vertices.push_back(p3);
+	vertices.push_back(p4);
+	vertices.push_back(p5);
+	vertices.push_back(p6);
+	vertices.push_back(p7);
+	
+	// Triangles represented as point indices
+	int tri1[] = {0, 1, 2};
+	int tri2[] = {3, 1, 2};
+	int tri3[] = {4, 5, 6};
+	int tri4[] = {7, 5, 6};
+	int tri5[] = {0, 6, 2};
+	int tri6[] = {0, 6, 4};
+	int tri7[] = {1, 7, 3};
+	int tri8[] = {1, 7, 5};
+	int tri9[] = {3, 2, 7};
+	int tri10[] = {6, 2, 7};
+	int tri11[] = {1, 0, 5};
+	int tri12[] = {4, 0, 5};
+	
+	std::vector<int*> triangles;
+	triangles.push_back(tri1); // left face
+	triangles.push_back(tri2);
+	triangles.push_back(tri3); // right face
+	triangles.push_back(tri4);
+	triangles.push_back(tri5); // front face
+	triangles.push_back(tri6);
+	triangles.push_back(tri7); // back face
+	triangles.push_back(tri8);
+	triangles.push_back(tri9); // top face
+	triangles.push_back(tri10);
+	triangles.push_back(tri11); // bottom face
+	triangles.push_back(tri12);
+	
+	
+	// Apply world transformations to vertices
+	std::vector<float*> vertices_transformed;
+	for (float *vx: vertices)
 	{
-		Tri3f tra_t;
-		Tri3f projected_tri;
-		for (int i = 0; i < 3; i++)
-		{
-			float v_in1[4] = {t.p[i].x, t.p[i].y, t.p[i].z, 1};
-			float v_out1[4];
-
-			MultiplyVecMat4x4(v_in1, combined_mat4x4, v_out1);
-			
-			tra_t.p[i].x = v_out1[0];
-			tra_t.p[i].y = v_out1[1];
-			tra_t.p[i].z = v_out1[2];
-		}
+		float v_in1[4] = {vx[0], vx[1], vx[2], 1};
+		float v_out1[4];
 		
-		Vec3f norm;
-		Vec3f v1;
-		Vec3f v2;
-		Vec3fSub(tra_t.p[1], tra_t.p[0], v1);
-		Vec3fSub(tra_t.p[2], tra_t.p[0], v2);
-		CrossProductVec3f(v1, v2, norm);
-		Vec3fNormalize(norm);
-		float v_in3[4] = {norm.x+tra_t.p[0].x, norm.y+tra_t.p[0].y, norm.z+tra_t.p[0].z, 1};
-		float v_out3[4];
-		MultiplyVecMat4x4(v_in3, proj_mat4x4, v_out3);
-		float xd1{};
-		float xd2{};
+		MultiplyVecMat4x4(v_in1, combined_mat4x4, v_out1);
 		
-		Vec3f light_dir = {0.0f, 0.0f, -1.0f};
-		Vec3fNormalize(light_dir);
-		float koef = abs(norm.x*light_dir.x+norm.y*light_dir.y+norm.z*light_dir.z);
-		int tri_color = MakeColor(255,255*koef,255*koef,255*koef);
-
-		if (norm.x*(tra_t.p[0].x-pos.x)+norm.y*(tra_t.p[0].y-pos.y)+norm.z*(tra_t.p[0].z-pos.z) <= 0)
-		{
-			for (int i = 0; i < 3; i++)
-			{
-				float v_in1[4] = {tra_t.p[i].x, tra_t.p[i].y, tra_t.p[i].z, 1};
-				float v_out1[4];
-				
-				MultiplyVecMat4x4(v_in1, look_at_mat4x4, v_out1);
-				MultiplyVecMat4x4(v_out1, proj_mat4x4, v_in1);
-				
-				/*projected_tri.p[i].x = v_out1[0]/v_out1[3];
-				projected_tri.p[i].y = v_out1[1]/v_out1[3];
-				projected_tri.p[i].z = v_out1[2];*/
-				projected_tri.p[i].x = v_in1[0]/v_in1[3];
-				projected_tri.p[i].y = v_in1[1]/v_in1[3];
-				projected_tri.p[i].z = v_in1[2];
-			}
-			FillTrianglef(state->bitBuff,
-						projected_tri.p[0].x, projected_tri.p[0].y,
-						projected_tri.p[1].x, projected_tri.p[1].y,
-						projected_tri.p[2].x, projected_tri.p[2].y,
-						tri_color);
-			/*DrawTrianglef(state->bitBuff,
-						projected_tri.p[0].x, projected_tri.p[0].y,
-						projected_tri.p[1].x, projected_tri.p[1].y,
-						projected_tri.p[2].x, projected_tri.p[2].y,
-						MakeColor(255,0,0,0));*/
-			/*PlatformDrawLinef(state->bitBuff,
-						xd1, 
-						xd2,
-						v_out3[0]/v_out3[3],
-						v_out3[1]/v_out3[3],
-						MakeColor(255,255,255,0));*/
-		}
-		
+		float *new_vx = new float[3]{v_out1[0], v_out1[1], v_out1[2]};
+		vertices_transformed.push_back(new_vx);
 	}
 	
-	/*PlatformDrawLinef(state->bitBuff,
-			((0.0f+ox)*state->client_height/state->client_width)/oz, 
-			(0.0f+oy)/oz,
-			((1.0f+ox)*state->client_height/state->client_width)/oz, 
-			(0.0f+oy)/oz,
-			MakeColor(255,255,0,0));
-	PlatformDrawLinef(state->bitBuff,
-			((0.0f+ox)*state->client_height/state->client_width)/oz,
-			(0.0f+oy)/oz,
-			((0.0f+ox)*state->client_height/state->client_width)/oz,
-			(1.0f+oy)/oz,
-			MakeColor(255,0,255,0));
-	PlatformDrawLinef(state->bitBuff,
-			((0.0f+ox)*state->client_height/state->client_width)/(oz+1.0f),
-			(0.0f+oy)/(oz+1.0f),
-			((0.0f+ox)*state->client_height/state->client_width)/oz,
-			(0.0f+oy)/oz,
-			MakeColor(255,0,0,255));*/
+	// Apply view matrix
+	std::vector<float*> vertices_viewed;
+	for (float *vx: vertices_transformed)
+	{
+		float v_in1[4] = {vx[0], vx[1], vx[2], 1};
+		float v_out1[4];
+		
+		MultiplyVecMat4x4(v_in1, look_at_mat4x4, v_out1);
+		
+		float *new_vx = new float[3]{v_out1[0], v_out1[1], v_out1[2]};
+		vertices_viewed.push_back(new_vx);
+	}
 	
+	// Project 3D vertices onto 2D screen
+	std::vector<float*> vertices_projected;
+	for (float *vx: vertices_viewed)
+	{
+		float v_in1[4] = {vx[0], vx[1], vx[2], 1};
+		float v_out1[4];
+		
+		MultiplyVecMat4x4(v_in1, proj_mat4x4, v_out1);
+		
+		float *new_vx = new float[3]{v_out1[0]/v_out1[3], v_out1[1]/v_out1[3], v_out1[2]};
+		//float *new_vx = new float[3]{(v_out1[0]+0.f)*0.001f*state->client_width, (v_out1[1]+0.f)*0.001f*state->client_height, v_out1[2]};
+		vertices_projected.push_back(new_vx);
+	}
+	
+	for (int *tri: triangles)
+	{
+		DrawTrianglef(state->bitBuff,
+						vertices_projected[tri[0]][0]+0.5f, vertices_projected[tri[0]][1]+0.5f,
+						vertices_projected[tri[1]][0]+0.5f, vertices_projected[tri[1]][1]+0.5f,
+						vertices_projected[tri[2]][0]+0.5f, vertices_projected[tri[2]][1]+0.5f,
+						clr);
+		/*FillTrianglef(state->bitBuff,
+						vertices_projected[tri[0]][0], vertices_projected[tri[0]][1],
+						vertices_projected[tri[1]][0], vertices_projected[tri[1]][1],
+						vertices_projected[tri[2]][0], vertices_projected[tri[2]][1],
+						clr);*/
+	}
+	
+	for (float *vx: vertices_transformed)
+	{
+		delete [] vx;
+	}
+	
+	for (float *vx: vertices_viewed)
+	{
+		delete [] vx;
+	}
+	
+	for (float *vx: vertices_projected)
+	{
+		delete [] vx;
+	}
 	
 	return 0;
 }
