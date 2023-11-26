@@ -38,7 +38,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	
 	shared_state.callback_update_func = projects[current_project].UpdateFunc;
 	
-	DWORD window_styles = WS_OVERLAPPEDWINDOW;
+	DWORD window_styles = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
 	
 	RECT window_rect = {0, 0, shared_state.client_width, shared_state.client_height};
 	AdjustWindowRectEx(&window_rect, window_styles, 0, 0);
@@ -83,7 +83,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		GWLP_USERDATA,
 		(LONG_PTR)&shared_state
 	);
-    ShowWindow(hwnd, nCmdShow);
+    //ShowWindow(hwnd, nCmdShow);
 	PlatformGoBorderlessFullscreen(&shared_state);
 	
 	// init screen buffer

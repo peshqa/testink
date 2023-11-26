@@ -28,6 +28,13 @@ enum ARGB8888Color : unsigned int
 	COLOR_BLUE 	= 0xFF0000FF
 };
 
+enum ScreenMode : int
+{
+	SCREEN_MODE_WINDOWED = 0,
+	SCREEN_MODE_FULLSCREEN = 1,
+	SCREEN_MODE_BORDERLESS_FULLSCREEN = 2,
+};
+
 struct PlatformBitBuffer
 {
 	int width;
@@ -56,6 +63,8 @@ struct SharedState
 	unsigned char input_state[300];
 	
 	int is_running;
+	
+	int screen_mode;
 	
 	void *extra;
 };

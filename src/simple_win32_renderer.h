@@ -180,6 +180,13 @@ int PlatformGoBorderlessFullscreen(SharedState *s)
 	SetWindowPos(hwnd, HWND_TOP, 0, 0, w, h, SWP_FRAMECHANGED);
 	return 0;
 }
+int PlatformGoWindowed(SharedState *s)
+{
+	HWND hwnd = ((W32Extra*)(s->extra))->main_window;
+	SetWindowLongPtr(hwnd, GWL_STYLE, WS_VISIBLE | WS_OVERLAPPEDWINDOW);
+	SetWindowPos(hwnd, HWND_TOP, 100, 100, 500, 500, SWP_FRAMECHANGED);
+	return 0;
+}
 int Win32GoFullscreen(HWND hwnd)
 {
 	// TODO: figure out how to implement fullscreen mode
@@ -191,6 +198,20 @@ int Win32GoFullscreen(HWND hwnd)
 	dmDisplayFlags = DM_BITSPERPEL;
 	ChangeDisplaySettings(0, CDS_FULLSCREEN);*/
 	return 1;
+}
+
+int ToggleFullscreen(SharedState *shared_state)
+{
+	if (shared_state->screen_mode == SCREEN_MODE_WINDOWED)
+	{
+		PlatformGoBorderlessFullscreen(shared_state);
+		shared_state->screen_mode = SCREEN_MODE_BORDERLESS_FULLSCREEN;
+	} else {
+		PlatformGoWindowed(shared_state);
+		shared_state->screen_mode = SCREEN_MODE_WINDOWED;
+	}
+	
+	return 0;
 }
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -266,9 +287,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				}
 				if (wParam == VK_RETURN & is_alt_down)
 				{
-					// TODO: implement fullscreen toggle
-					// for now alt+enter ends the program
-					shared_state->is_running = 0;
+					ToggleFullscreen(shared_state);
 				}
 			}
 			switch (vkCode)
@@ -284,28 +303,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		}
 	}
 	break;
-		
-	
-	// TODO: delet this
-	/*{
-		if (shared_state != 0)
-		{
-			if (wParam == VK_LEFT)
-			{
-				shared_state->dir = 'l';
-			} else if (wParam == VK_UP)
-			{
-				shared_state->dir = 'u';
-			} else if (wParam == VK_RIGHT)
-			{
-				shared_state->dir = 'r';
-			} else if (wParam == VK_DOWN)
-			{
-				shared_state->dir = 'd';
-			}
-		}
-	}
-	break;*/
 		
 	case WM_SIZE:
 		{
@@ -396,6 +393,9 @@ int InitSharedState(SharedState *shared_state)
 	
 	shared_state->extra = new W32Extra{};
 	shared_state->is_running = 1;
+	
+	shared_state->screen_mode = SCREEN_MODE_BORDERLESS_FULLSCREEN;
+	
 	return 0;
 	// TODO: implement uninitializer TerminateSharedState
 }

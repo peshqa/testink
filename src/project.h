@@ -11,6 +11,7 @@ Projects are provided with pointers to shared app state and can call functions t
 #include "snake_game.h"
 
 #include <assert.h>
+#include <list>
 
 typedef int (*InitProjectFunction)(SharedState*);
 typedef int (*UpdateProjectFunction)(SharedState*);
@@ -226,8 +227,10 @@ int UpdateProject3DCube(SharedState* state)
 		game_state->cube_pitch += delta_time*1;
 	}
 
+	float z_near = 0.01f;
+	float z_far = 1000.0f;
 	float proj_mat4x4[16];
-	InitProjectionMat4x4(proj_mat4x4, 90.0f, 1, state->bitBuff->width, state->bitBuff->height, 0.01f, 100.0f);
+	InitProjectionMat4x4(proj_mat4x4, 90.0f, 1, state->bitBuff->width, state->bitBuff->height, z_near, z_far);
 	
 	float scale_mat4x4[16];
 	//InitScaleMat4x4(scale_mat4x4, 0.3f, 0.3f, 0.3f);
@@ -236,7 +239,7 @@ int UpdateProject3DCube(SharedState* state)
 	float combined_mat4x4[16]{};
 	float combined2_mat4x4[16]{};
 	
-	Vec3f target = {0.0f, 0.0f, 1.0f};
+	float target[3] = {0.0f, 0.0f, 1.0f};
 	Vec3f target_rot_y;
 	Vec3f target_rot_yx;
 	Vec3f target_final;
@@ -244,7 +247,7 @@ int UpdateProject3DCube(SharedState* state)
 	float t_x_rot_mat4x4[16]{};
 	InitXRotMat4x4(t_y_rot_mat4x4, -game_state->pitch);
 	//InitXRotMat4x4(t_y_rot_mat4x4, 0);
-	MultiplyVecMat4x4((float*)&target, t_y_rot_mat4x4, (float*)&target_rot_y);
+	MultiplyVecMat4x4(target, t_y_rot_mat4x4, (float*)&target_rot_y);
 	InitYRotMat4x4(t_x_rot_mat4x4, game_state->yaw);
 	MultiplyVecMat4x4((float*)&target_rot_y, t_x_rot_mat4x4, (float*)&target_rot_yx);
 	
@@ -310,14 +313,14 @@ int UpdateProject3DCube(SharedState* state)
 	int clr = MakeColor(255,255,255,255);
 	
 	// Vertices of a cube
-	float p0[] = {0.0f, 0.0f, 0.0f};
-	float p1[] = {0.0f, 0.0f, 1.0f};
-	float p2[] = {0.0f, 1.0f, 0.0f};
-	float p3[] = {0.0f, 1.0f, 1.0f};
-	float p4[] = {1.0f, 0.0f, 0.0f};
-	float p5[] = {1.0f, 0.0f, 1.0f};
-	float p6[] = {1.0f, 1.0f, 0.0f};
-	float p7[] = {1.0f, 1.0f, 1.0f};
+	float *p0 = new float[3]{0.0f, 0.0f, 0.0f};
+	float *p1 = new float[3]{0.0f, 0.0f, 1.0f};
+	float *p2 = new float[3]{0.0f, 1.0f, 0.0f};
+	float *p3 = new float[3]{0.0f, 1.0f, 1.0f};
+	float *p4 = new float[3]{1.0f, 0.0f, 0.0f};
+	float *p5 = new float[3]{1.0f, 0.0f, 1.0f};
+	float *p6 = new float[3]{1.0f, 1.0f, 0.0f};
+	float *p7 = new float[3]{1.0f, 1.0f, 1.0f};
 	
 	std::vector<float*> vertices;
 	vertices.push_back(p0);
@@ -330,20 +333,21 @@ int UpdateProject3DCube(SharedState* state)
 	vertices.push_back(p7);
 	
 	// Triangles represented as point indices
-	int tri1[] = {0, 1, 2};
-	int tri2[] = {3, 1, 2};
-	int tri3[] = {4, 5, 6};
-	int tri4[] = {7, 5, 6};
-	int tri5[] = {0, 6, 2};
-	int tri6[] = {0, 6, 4};
-	int tri7[] = {1, 7, 3};
-	int tri8[] = {1, 7, 5};
-	int tri9[] = {3, 2, 7};
-	int tri10[] = {6, 2, 7};
-	int tri11[] = {1, 0, 5};
-	int tri12[] = {4, 0, 5};
+	int *tri1 =  new int[3]{0, 1, 2};
+	int *tri2 =  new int[3]{3, 2, 1};
+	int *tri3 =  new int[3]{4, 6, 5};
+	int *tri4 =  new int[3]{7, 5, 6};
+	int *tri5 =  new int[3]{6, 0, 2};
+	int *tri6 =  new int[3]{0, 6, 4};
+	int *tri7 =  new int[3]{1, 7, 3};
+	int *tri8 =  new int[3]{7, 1, 5};
+	int *tri9 =  new int[3]{3, 7, 2};
+	int *tri10 = new int[3]{6, 2, 7};
+	int *tri11 = new int[3]{1, 0, 5};
+	int *tri12 = new int[3]{4, 5, 0};
 	
 	std::vector<int*> triangles;
+	std::vector<int*> triangles_clipped;
 	triangles.push_back(tri1); // left face
 	triangles.push_back(tri2);
 	triangles.push_back(tri3); // right face
@@ -357,9 +361,14 @@ int UpdateProject3DCube(SharedState* state)
 	triangles.push_back(tri11); // bottom face
 	triangles.push_back(tri12);
 	
+	std::vector<int*> lines;
+	
+	std::vector<float*> vertices_transformed;
+	std::vector<float*> vertices_viewed;
+	std::vector<float*> vertices_projected;
 	
 	// Apply world transformations to vertices
-	std::vector<float*> vertices_transformed;
+	
 	for (float *vx: vertices)
 	{
 		float v_in1[4] = {vx[0], vx[1], vx[2], 1};
@@ -372,7 +381,7 @@ int UpdateProject3DCube(SharedState* state)
 	}
 	
 	// Apply view matrix
-	std::vector<float*> vertices_viewed;
+	
 	for (float *vx: vertices_transformed)
 	{
 		float v_in1[4] = {vx[0], vx[1], vx[2], 1};
@@ -384,8 +393,71 @@ int UpdateProject3DCube(SharedState* state)
 		vertices_viewed.push_back(new_vx);
 	}
 	
+	
+	
+	for (int *tri: triangles)
+	{
+		int line_color = MakeColor(255, 120, 255, 120);
+		float norm[3];
+		float v1[3];
+		float v2[3];
+		VecRaw3fSub(vertices_transformed[tri[1]], vertices_transformed[tri[0]], v1);
+		VecRaw3fSub(vertices_transformed[tri[2]], vertices_transformed[tri[0]], v2);
+		CrossProductVecRaw3f(v1, v2, norm);
+		VecRaw3fNormalize(norm, norm);
+		
+		/*float v_in3[4] = {norm[0]+vertices_viewed[tri[0]][0], norm[1]+vertices_viewed[tri[0]][1], norm[2]+vertices_viewed[tri[0]][2], 1};
+		float v_out3[4];
+		MultiplyVecMat4x4(v_in3, proj_mat4x4, v_out3);*/
+
+		if (
+			norm[0]*(vertices_transformed[tri[0]][0]-pos.x)+
+			norm[1]*(vertices_transformed[tri[0]][1]-pos.y)+
+			norm[2]*(vertices_transformed[tri[0]][2]-pos.z) <= 0)
+		{
+			// Simple directional lighting
+			float light_dir[3] = {0.0f, 0.0f, -1.0f};
+			VecRaw3fNormalize(light_dir, light_dir);
+			float koef = abs(norm[0]*light_dir[0]+norm[1]*light_dir[1]+norm[2]*light_dir[2]);
+			if (koef < 0.01f)
+				koef = 0.01f;
+			int tri_color = MakeColor(255,255*koef,255*koef,255*koef);
+			
+			// Clipping
+			int count_clipped_triangles = 0;
+			int tri_clipped[2][3];
+			float plane_normal[] = {0.0f, 0.0f, 1.0f};
+			float plane_point[] = {0.0f, 0.0f, z_near};
+			count_clipped_triangles = ClipAgainstPlane(plane_normal, plane_point, vertices_viewed, tri, tri_clipped[0], tri_clipped[1]);
+			//assert(count_clipped_triangles == 1);
+			for (int i = 0; i < count_clipped_triangles; i++)
+			{
+				int* clipped_tri = new int[3]{tri_clipped[i][0], tri_clipped[i][1], tri_clipped[i][2]};
+				triangles_clipped.push_back(clipped_tri);
+			}
+			// Wireframe
+			/*DrawTrianglef(state->bitBuff,
+							vertices_projected[tri[0]][0], vertices_projected[tri[0]][1],
+							vertices_projected[tri[1]][0], vertices_projected[tri[1]][1],
+							vertices_projected[tri[2]][0], vertices_projected[tri[2]][1],
+							clr);*/
+			// Draw normals
+			/*PlatformDrawLinef(state->bitBuff,
+							vertices_projected[tri[0]][0], vertices_projected[tri[0]][1],
+							0.5f+v_out3[0]/v_out3[3], 0.5f+v_out3[1]/v_out3[3],
+							line_color);*/
+			// Triangles themselves
+			/*FillTrianglef(state->bitBuff,
+							vertices_projected[tri[0]][0], vertices_projected[tri[0]][1],
+							vertices_projected[tri[1]][0], vertices_projected[tri[1]][1],
+							vertices_projected[tri[2]][0], vertices_projected[tri[2]][1],
+							tri_color);*/
+		}
+		
+	}
+	
 	// Project 3D vertices onto 2D screen
-	std::vector<float*> vertices_projected;
+	
 	for (float *vx: vertices_viewed)
 	{
 		float v_in1[4] = {vx[0], vx[1], vx[2], 1};
@@ -393,23 +465,67 @@ int UpdateProject3DCube(SharedState* state)
 		
 		MultiplyVecMat4x4(v_in1, proj_mat4x4, v_out1);
 		
-		float *new_vx = new float[3]{v_out1[0]/v_out1[3], v_out1[1]/v_out1[3], v_out1[2]};
-		//float *new_vx = new float[3]{(v_out1[0]+0.f)*0.001f*state->client_width, (v_out1[1]+0.f)*0.001f*state->client_height, v_out1[2]};
+		float *new_vx = new float[3]{v_out1[0]/v_out1[3]+0.5f, v_out1[1]/v_out1[3]+0.5f, v_out1[2]};
 		vertices_projected.push_back(new_vx);
 	}
 	
-	for (int *tri: triangles)
+	for (int *tri: triangles_clipped)
 	{
-		DrawTrianglef(state->bitBuff,
-						vertices_projected[tri[0]][0]+0.5f, vertices_projected[tri[0]][1]+0.5f,
-						vertices_projected[tri[1]][0]+0.5f, vertices_projected[tri[1]][1]+0.5f,
-						vertices_projected[tri[2]][0]+0.5f, vertices_projected[tri[2]][1]+0.5f,
-						clr);
-		/*FillTrianglef(state->bitBuff,
-						vertices_projected[tri[0]][0], vertices_projected[tri[0]][1],
-						vertices_projected[tri[1]][0], vertices_projected[tri[1]][1],
-						vertices_projected[tri[2]][0], vertices_projected[tri[2]][1],
-						clr);*/
+		int tri_clipped[2][3];
+		float plane_normal0[] = {0.0f, 1.0f, 0.0f};
+		float  plane_point0[] = {0.0f, 0.0f, 0.0f};
+		float plane_normal1[] = {0.0f, -1.0f, 0.0f};
+		float  plane_point1[] = {0.0f, 1.0f, 0.0f};
+		float plane_normal2[] = {1.0f, 0.0f, 0.0f};
+		float  plane_point2[] = {0.0f, 0.0f, 0.0f};
+		float plane_normal3[] = {-1.0f, 0.0f, 0.0f};
+		float  plane_point3[] = {1.0f, 0.0f, 0.0f};
+		
+		std::list<int*> tri_batch;
+		int* init_tri = new int[3]{tri[0], tri[1], tri[2]};
+		tri_batch.push_back(init_tri);
+		
+		int new_triangles = 1;
+		
+		for (int plane = 0; plane < 4; plane++)
+		{
+			int count_clipped_triangles = 0;
+			while (new_triangles > 0)
+			{
+				int *test = tri_batch.front();
+				tri_batch.pop_front();
+				new_triangles--;
+				switch (plane)
+				{
+					case 0: count_clipped_triangles = 
+					ClipAgainstPlane(plane_normal0, plane_point0, vertices_projected, test, tri_clipped[0], tri_clipped[1]); break;
+					case 1: count_clipped_triangles = 
+					ClipAgainstPlane(plane_normal1, plane_point1, vertices_projected, test, tri_clipped[0], tri_clipped[1]); break;
+					case 2: count_clipped_triangles = 
+					ClipAgainstPlane(plane_normal2, plane_point2, vertices_projected, test, tri_clipped[0], tri_clipped[1]); break;
+					case 3: count_clipped_triangles = 
+					ClipAgainstPlane(plane_normal3, plane_point3, vertices_projected, test, tri_clipped[0], tri_clipped[1]); break;
+				}
+				for (int i = 0; i < count_clipped_triangles; i++)
+				{
+					int* clipped_tri = new int[3]{tri_clipped[i][0], tri_clipped[i][1], tri_clipped[i][2]};
+					tri_batch.push_back(clipped_tri);
+				}
+			}
+			new_triangles = tri_batch.size();
+		}
+		
+		for (int *t: tri_batch)
+		{
+			DrawTrianglef(state->bitBuff,
+							vertices_projected[t[0]][0], vertices_projected[t[0]][1],
+							vertices_projected[t[1]][0], vertices_projected[t[1]][1],
+							vertices_projected[t[2]][0], vertices_projected[t[2]][1],
+							clr);
+			delete [] t;
+		}
+		
+		
 	}
 	
 	for (float *vx: vertices_transformed)
@@ -423,6 +539,26 @@ int UpdateProject3DCube(SharedState* state)
 	}
 	
 	for (float *vx: vertices_projected)
+	{
+		delete [] vx;
+	}
+	
+	/*for (int *vx: lines)
+	{
+		delete [] vx;
+	}*/
+	
+	for (int *vx: triangles)
+	{
+		delete [] vx;
+	}
+	
+	for (int *vx: triangles_clipped)
+	{
+		delete [] vx;
+	}
+	
+	for (float *vx: vertices)
 	{
 		delete [] vx;
 	}
