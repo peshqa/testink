@@ -3,6 +3,7 @@ package com.peshqa.testink;
 import android.view.SurfaceView;
 import android.content.Context;
 import android.view.SurfaceHolder;
+import android.os.Bundle;
 
 import android.view.View;
 import android.view.MotionEvent;
@@ -10,6 +11,8 @@ import android.view.MotionEvent;
 import android.util.DisplayMetrics;
 import android.content.ContextWrapper;
 import android.graphics.Rect;
+
+
 
 //import android.widget.Toast;
 
@@ -51,6 +54,7 @@ public class GameView extends SurfaceView
 		return false;
 	}
 	
+	
 	GameView(Context context)
 	{
 		super(context);
@@ -67,7 +71,7 @@ public class GameView extends SurfaceView
 			//@Override
 			public void surfaceCreated(SurfaceHolder holder)
 			{
-				//Toast.makeText(context,"Hello Javatpoint",Toast.LENGTH_SHORT).show();
+				//Toast.makeText(context,"Hello !",Toast.LENGTH_SHORT).show();
 				//Starts the display thread
 				if(displayThread == null || !displayThread.isRunning)
 				{

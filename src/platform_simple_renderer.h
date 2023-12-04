@@ -66,6 +66,10 @@ struct SharedState
 	
 	int screen_mode;
 	
+	unsigned char is_accelerometer_active;
+	unsigned char is_gyroscope_active;
+	float rot_vec_values[4];
+	
 	void *extra;
 };
 

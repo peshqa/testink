@@ -25,8 +25,10 @@ Java_com_peshqa_testink_GameEngine_initData(
 	shared_state->callback_update_func = projects[current_project].UpdateFunc;
 	shared_state->dir = 'l';
 	
-	shared_state->callback_update_func = projects[current_project].UpdateFunc;
-	shared_state->dir = 'l';
+	shared_state->is_running = 1;
+	
+	shared_state->is_accelerometer_active = 0; // for now these are inactive
+	shared_state->is_gyroscope_active = 0; // in case the device doesn't support them
 	
 	if (InitProjectFunc(shared_state) != 0)
 	{
@@ -46,6 +48,23 @@ Java_com_peshqa_testink_GameEngine_itHappen(
 {
 	SharedState* state = (SharedState*)data;
 	state->dir = (char)dir;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_peshqa_testink_GameEngine_updateRotationVector(
+		JNIEnv *env,
+		jobject thiz,
+		jlong data,
+		jfloat x,
+		jfloat y,
+		jfloat z,
+		jfloat w)
+{
+	SharedState* state = (SharedState*)data;
+	state->rot_vec_values[0] = (float)x;
+	state->rot_vec_values[1] = (float)y;
+	state->rot_vec_values[2] = (float)z;
+	state->rot_vec_values[3] = (float)w;
 }
 
 extern "C" JNIEXPORT void JNICALL

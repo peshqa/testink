@@ -298,15 +298,29 @@ int UpdateProject3DCube(SharedState* state)
 	
 	float x_rot_mat4x4[16];
 	float y_rot_mat4x4[16]{};
+	float z_rot_mat4x4[16]{};
 	float translate_mat4x4[16];
-	InitXRotMat4x4(x_rot_mat4x4, game_state->cube_pitch);
-	InitYRotMat4x4(y_rot_mat4x4, game_state->cube_yaw);
+	float eul_;
+	InitYRotMat4x4(x_rot_mat4x4, game_state->cube_pitch+
+		//state->rot_vec_values[1]
+		(2*atan2(sqrt(1+2*(state->rot_vec_values[3]*state->rot_vec_values[1]-state->rot_vec_values[0]*state->rot_vec_values[2])),
+		sqrt(1-2*(state->rot_vec_values[3]*state->rot_vec_values[1]-state->rot_vec_values[0]*state->rot_vec_values[2]))) - 3.14159/2)*1
+	);
+	InitZRotMat4x4(y_rot_mat4x4, game_state->cube_yaw+
+		//state->rot_vec_values[0]
+		atan2(2*(state->rot_vec_values[3]*state->rot_vec_values[2]+state->rot_vec_values[0]*state->rot_vec_values[1]),
+		1-2*(state->rot_vec_values[1]*state->rot_vec_values[1]+state->rot_vec_values[2]*state->rot_vec_values[2]))
+	);
+	InitXRotMat4x4(z_rot_mat4x4, 
+		atan2(2*(state->rot_vec_values[3]*state->rot_vec_values[0]+state->rot_vec_values[1]*state->rot_vec_values[2]),
+		1-2*(state->rot_vec_values[0]*state->rot_vec_values[0]+state->rot_vec_values[1]*state->rot_vec_values[1]))
+	);
 	InitTranslationMat4x4(translate_mat4x4, 0.0f, 0.0f, 3.0f);
 	
 	MultiplyMats4x4(scale_mat4x4, y_rot_mat4x4, combined_mat4x4);
 	MultiplyMats4x4(combined_mat4x4, x_rot_mat4x4, combined2_mat4x4);
-	MultiplyMats4x4(combined2_mat4x4, translate_mat4x4, combined_mat4x4);
-	//MultiplyMats4x4(combined_mat4x4, look_at_mat4x4, combined2_mat4x4);
+	MultiplyMats4x4(combined2_mat4x4, z_rot_mat4x4, combined_mat4x4);
+	MultiplyMats4x4(combined_mat4x4, translate_mat4x4, combined2_mat4x4);
 	
 	FillPlatformBitBuffer(state->bitBuff, MakeColor(255,25,12,6));
 	
@@ -374,7 +388,7 @@ int UpdateProject3DCube(SharedState* state)
 		float v_in1[4] = {vx[0], vx[1], vx[2], 1};
 		float v_out1[4];
 		
-		MultiplyVecMat4x4(v_in1, combined_mat4x4, v_out1);
+		MultiplyVecMat4x4(v_in1, combined2_mat4x4, v_out1);
 		
 		float *new_vx = new float[3]{v_out1[0], v_out1[1], v_out1[2]};
 		vertices_transformed.push_back(new_vx);

@@ -396,6 +396,9 @@ int InitSharedState(SharedState *shared_state)
 	
 	shared_state->screen_mode = SCREEN_MODE_BORDERLESS_FULLSCREEN;
 	
+	shared_state->is_accelerometer_active = 0;
+	shared_state->is_gyroscope_active = 0;
+	
 	return 0;
 	// TODO: implement uninitializer TerminateSharedState
 }

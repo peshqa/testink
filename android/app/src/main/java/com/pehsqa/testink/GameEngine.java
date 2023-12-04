@@ -10,6 +10,11 @@ import android.util.DisplayMetrics;
 import android.content.ContextWrapper;
 import android.graphics.Rect;
 
+/*import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;*/
+
 import android.view.View;
 
 public class GameEngine
@@ -19,6 +24,7 @@ public class GameEngine
 	public native void updateAndRenderGame(long data, Bitmap bitmap);
 	public native void itHappen(long data, char c);
 	public native void updateMouse(long data, int x, int y, int is_down);
+	public native void updateRotationVector(long data, float x, float y, float z, float w);
 	
 	public static GameEngine instance = null;
 	public long data;
@@ -58,7 +64,36 @@ public class GameEngine
 	GameEngine()
 	{
 		data = initData();
+		
+		/*SensorManager manager = (SensorManager)
+                getSystemService(Context.SENSOR_SERVICE);
+        //if (manager.getSensorList(Sensor.TYPE_ACCELEROMETER).size() == 0) {
+		if (manager.getSensorList(Sensor.TYPE_ROTATION_VECTOR).size() == 0) {
+            // No accelerometer installed
+        } else {
+            Sensor accelerometer = manager.getSensorList(
+                    Sensor.TYPE_ACCELEROMETER).get(0);
+            if (!manager.registerListener(this, accelerometer,
+                    SensorManager.SENSOR_DELAY_GAME)) {
+                // Couldn't register sensor listener
+            }
+        }*/
+		
 	}
+	
+	/*@Override
+    public void onSensorChanged(SensorEvent event) {
+		if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR)
+		{
+			
+		} else if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
+			updateRotationVector(data, event.values[0], event.values[1], event.values[2], event.values[3]);
+		}
+    }
+	@Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // do nothing
+    }*/
 	
 	public boolean UpdateAndRender(SurfaceHolder surfaceHolder, Context context)
 	{
