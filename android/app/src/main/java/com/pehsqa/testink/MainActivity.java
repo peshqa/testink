@@ -80,7 +80,7 @@ public class MainActivity extends Activity implements SensorEventListener
 	
 	@Override
     public void onSensorChanged(SensorEvent event) {
-		GameEngine ge = GameEngine.getInstance();
+		GameEngine ge = GameEngine.getInstance(this);
 		
 		if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR)
 		{

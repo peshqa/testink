@@ -1,6 +1,7 @@
 #pragma once
 #include "project.h"
 #include "android_simple_renderer.h"
+
 #include <stdlib.h>
 #include <chrono>
 #include <string>
@@ -9,7 +10,8 @@
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_peshqa_testink_GameEngine_initData(
 		JNIEnv *env,
-		jobject thiz)
+		jobject thiz,
+		jobject asset_mgr)
 {
 	srand(time(NULL));
 	
@@ -27,8 +29,15 @@ Java_com_peshqa_testink_GameEngine_initData(
 	
 	shared_state->is_running = 1;
 	
+	shared_state->asset_path = "";
+	
 	shared_state->is_accelerometer_active = 0; // for now these are inactive
 	shared_state->is_gyroscope_active = 0; // in case the device doesn't support them
+	
+	shared_state->extra = new AndroidExtra;
+	AndroidExtra *extra = (AndroidExtra*)(shared_state->extra);
+	extra->env = env;
+	extra->asset_manager = extra->env->NewGlobalRef(asset_mgr);
 	
 	if (InitProjectFunc(shared_state) != 0)
 	{
@@ -110,6 +119,8 @@ Java_com_peshqa_testink_GameEngine_updateAndRenderGame(
 	}
 	
 	SharedState* shared_state = (SharedState*)data;
+	AndroidExtra *extra = (AndroidExtra*)(shared_state->extra);//
+	extra->env = env;//
 	shared_state->bitBuff->bits = pixels;
 	PlatformBitBuffer* p = shared_state->bitBuff;
 	p->width = info.width;

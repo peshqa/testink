@@ -26,7 +26,7 @@ public class GameView extends SurfaceView
 	{
 		int x = (int) event.getX();
 		int y = (int) event.getY();
-		GameEngine ge = GameEngine.getInstance();
+		GameEngine ge = GameEngine.getInstance(context);
 		
 		switch (event.getAction()) {
 			case MotionEvent.ACTION_DOWN:
@@ -64,7 +64,7 @@ public class GameView extends SurfaceView
 			//@Override
 			public void surfaceChanged(SurfaceHolder holder, int format, int width, int height)
 			{
-				GameEngine ge = GameEngine.getInstance();
+				GameEngine ge = GameEngine.getInstance(context);
 				ge.screenResize(format, width, height);
 			}
 		

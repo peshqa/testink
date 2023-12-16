@@ -405,3 +405,9 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, std::vector<float*
 	}
 	return -1;
 }
+
+//#include <fstream>
+//#include <assert.h>
+//#include <string>
+
+

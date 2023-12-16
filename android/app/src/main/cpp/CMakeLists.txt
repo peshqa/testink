@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.22.1)
 
 project("testink")
 
+set(CMAKE_CXX_STANDARD 17)
+
 add_library( # Sets the name of the library.
         testink
 
@@ -19,9 +21,10 @@ add_library( # Sets the name of the library.
 
 find_library( # Sets the name of the path variable.
         log-lib
-
+	android-lib
         # Specifies the name of the NDK library that
         # you want CMake to locate.
+	android
         log)
 
 # Specifies libraries CMake should link to your target library. You
@@ -31,7 +34,9 @@ find_library( # Sets the name of the path variable.
 target_link_libraries( # Specifies the target library.
         testink
 	-ljnigraphics
+	-landroid
 
         # Links the target library to the log library
         # included in the NDK.
-        ${log-lib})
+        ${log-lib}
+	${android-lib})

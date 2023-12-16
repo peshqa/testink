@@ -34,6 +34,8 @@ typedef struct
 {
 	HWND main_window;
 	HDC hdc;
+	
+	std::ifstream file;
 } W32Extra;
 
 typedef int (*CallbackUpdateFunction)(SharedState*);
@@ -399,6 +401,34 @@ int InitSharedState(SharedState *shared_state)
 	shared_state->is_accelerometer_active = 0;
 	shared_state->is_gyroscope_active = 0;
 	
+	shared_state->asset_path = "../assets/";
+	
 	return 0;
 	// TODO: implement uninitializer TerminateSharedState
+}
+
+int InitAssetManager(SharedState *s)
+{
+	return 0;
+}
+int OpenAssetFileA(SharedState *s, std::string &filename)
+{
+	W32Extra *extra = (W32Extra*)(s->extra);
+	extra->file.open(filename);
+	return extra->file.fail();
+}
+int ReadAssetLineA(SharedState *s, std::string &line)
+{
+	W32Extra *extra = (W32Extra*)(s->extra);
+	return !getline(extra->file, line).eof();
+}
+int CloseAssetFile(SharedState *s)
+{
+	W32Extra *extra = (W32Extra*)(s->extra);
+	extra->file.close();
+	return 0;
+}
+int TerminateAssetManager(SharedState *s)
+{
+	return 0;
 }

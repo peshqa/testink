@@ -10,7 +10,6 @@ Projects are provided with pointers to shared app state and can call functions t
 #include "platform_simple_renderer.h"
 #include "snake_game.h"
 
-#include <assert.h>
 #include <list>
 
 typedef int (*InitProjectFunction)(SharedState*);
@@ -156,10 +155,15 @@ typedef struct
 	
 	float cube_yaw;
 	float cube_pitch;
+	
+	std::vector<float*> vertices;
+	std::vector<int*> triangles;
 } ProjectState3DCube;
 
 int InitProject3DCube(SharedState* state)
 {
+	InitAssetManager(state);
+	
 	//PlatformGoBorderlessFullscreen(state);
 	ProjectState3DCube *p_state = new ProjectState3DCube{};
 	p_state->x_offset = 0;//0.5f;
@@ -176,6 +180,57 @@ int InitProject3DCube(SharedState* state)
 	
 	p_state->cube_yaw   = 0.0f;
 	p_state->cube_pitch = 0.0f;
+	
+	
+	// Vertices of a cube
+	float *p0 = new float[3]{0.0f, 0.0f, 0.0f};
+	float *p1 = new float[3]{0.0f, 0.0f, 1.0f};
+	float *p2 = new float[3]{0.0f, 1.0f, 0.0f};
+	float *p3 = new float[3]{0.0f, 1.0f, 1.0f};
+	float *p4 = new float[3]{1.0f, 0.0f, 0.0f};
+	float *p5 = new float[3]{1.0f, 0.0f, 1.0f};
+	float *p6 = new float[3]{1.0f, 1.0f, 0.0f};
+	float *p7 = new float[3]{1.0f, 1.0f, 1.0f};
+	
+	//std::vector<float*> vertices;
+	/*p_state->vertices.push_back(p0);
+	p_state->vertices.push_back(p1);
+	p_state->vertices.push_back(p2);
+	p_state->vertices.push_back(p3);
+	p_state->vertices.push_back(p4);
+	p_state->vertices.push_back(p5);
+	p_state->vertices.push_back(p6);
+	p_state->vertices.push_back(p7);*/
+	
+	std::string model_path = state->asset_path + "model.obj";
+	LoadFileOBJ(state, model_path, p_state->vertices, p_state->triangles);
+	// Triangles represented as point indices
+	int *tri1 =  new int[3]{0, 1, 2};
+	int *tri2 =  new int[3]{3, 2, 1};
+	int *tri3 =  new int[3]{4, 6, 5};
+	int *tri4 =  new int[3]{7, 5, 6};
+	int *tri5 =  new int[3]{6, 0, 2};
+	int *tri6 =  new int[3]{0, 6, 4};
+	int *tri7 =  new int[3]{1, 7, 3};
+	int *tri8 =  new int[3]{7, 1, 5};
+	int *tri9 =  new int[3]{3, 7, 2};
+	int *tri10 = new int[3]{6, 2, 7};
+	int *tri11 = new int[3]{1, 0, 5};
+	int *tri12 = new int[3]{4, 5, 0};
+	/*p_state->triangles.push_back(tri1); // left face
+	p_state->triangles.push_back(tri2);
+	p_state->triangles.push_back(tri3); // right face
+	p_state->triangles.push_back(tri4);
+	p_state->triangles.push_back(tri5); // front face
+	p_state->triangles.push_back(tri6);
+	p_state->triangles.push_back(tri7); // back face
+	p_state->triangles.push_back(tri8);
+	p_state->triangles.push_back(tri9); // top face
+	p_state->triangles.push_back(tri10);
+	p_state->triangles.push_back(tri11); // bottom face
+	p_state->triangles.push_back(tri12);*/
+	
+	TerminateAssetManager(state);
 	
 	state->project_state = p_state;
 	CalculateDeltaTime(state);
@@ -200,8 +255,15 @@ int UpdateProject3DCube(SharedState* state)
 		} else {
 			//game_state->x_offset += 0.02f*(-state->mouse_x+game_state->last_mouse_x);
 			//game_state->y_offset += 0.02f*(-state->mouse_y+game_state->last_mouse_y);
-			game_state->yaw   += 0.005f*(-state->mouse_x+game_state->last_mouse_x);
-			game_state->pitch -= 0.005f*(-state->mouse_y+game_state->last_mouse_y);
+			
+			// Camera rotation by mouse
+			//game_state->yaw   += 0.005f*(-state->mouse_x+game_state->last_mouse_x);
+			//game_state->pitch -= 0.005f*(-state->mouse_y+game_state->last_mouse_y);
+			
+			// Model rotation by mouse
+			game_state->cube_pitch -= 0.005f*(-state->mouse_x+game_state->last_mouse_x);
+			game_state->cube_yaw += 0.005f*(-state->mouse_y+game_state->last_mouse_y);
+			
 			game_state->last_mouse_x = state->mouse_x;
 			game_state->last_mouse_y = state->mouse_y;
 		}
@@ -251,37 +313,38 @@ int UpdateProject3DCube(SharedState* state)
 	InitYRotMat4x4(t_x_rot_mat4x4, game_state->yaw);
 	MultiplyVecMat4x4((float*)&target_rot_y, t_x_rot_mat4x4, (float*)&target_rot_yx);
 	
+	float move_scale = 1.0f;
 	if (state->input_state['W'] == 1)
 	{
-		game_state->x_offset += target_rot_yx.x*delta_time*10;
-		game_state->y_offset += target_rot_yx.y*delta_time*10;
-		game_state->z_offset += target_rot_yx.z*delta_time*10;
+		game_state->x_offset += target_rot_yx.x*delta_time*move_scale;
+		game_state->y_offset += target_rot_yx.y*delta_time*move_scale;
+		game_state->z_offset += target_rot_yx.z*delta_time*move_scale;
 	}
 	if (state->input_state['A'] == 1)
 	{
-		game_state->z_offset += target_rot_yx.x*delta_time*10;
-		//game_state->y_offset += target_rot_yx.y*delta_time*10;
-		game_state->x_offset -= target_rot_yx.z*delta_time*10;
+		game_state->z_offset += target_rot_yx.x*delta_time*move_scale;
+		//game_state->y_offset += target_rot_yx.y*delta_time*move_scale;
+		game_state->x_offset -= target_rot_yx.z*delta_time*move_scale;
 	}
 	if (state->input_state['S'] == 1)
 	{
-		game_state->x_offset -= target_rot_yx.x*delta_time*10;
-		game_state->y_offset -= target_rot_yx.y*delta_time*10;
-		game_state->z_offset -= target_rot_yx.z*delta_time*10;
+		game_state->x_offset -= target_rot_yx.x*delta_time*move_scale;
+		game_state->y_offset -= target_rot_yx.y*delta_time*move_scale;
+		game_state->z_offset -= target_rot_yx.z*delta_time*move_scale;
 	}
 	if (state->input_state['D'] == 1)
 	{
-		game_state->z_offset -= target_rot_yx.x*delta_time*10;
-		//game_state->y_offset -= target_rot_yx.y*delta_time*10;
-		game_state->x_offset += target_rot_yx.z*delta_time*10;
+		game_state->z_offset -= target_rot_yx.x*delta_time*move_scale;
+		//game_state->y_offset -= target_rot_yx.y*delta_time*move_scale;
+		game_state->x_offset += target_rot_yx.z*delta_time*move_scale;
 	}
 	if (state->input_state[' '] == 1)
 	{
-		game_state->y_offset += delta_time*2;
+		game_state->y_offset += delta_time*2*move_scale;
 	}
 	if (state->input_state[INPUT_LSHIFT] == 1)
 	{
-		game_state->y_offset -= delta_time*2;
+		game_state->y_offset -= delta_time*2*move_scale;
 	}
 	
 	float ox = game_state->x_offset;
@@ -300,7 +363,8 @@ int UpdateProject3DCube(SharedState* state)
 	float y_rot_mat4x4[16]{};
 	float z_rot_mat4x4[16]{};
 	float translate_mat4x4[16];
-	float eul_;
+	
+	// https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
 	InitYRotMat4x4(x_rot_mat4x4, game_state->cube_pitch+
 		//state->rot_vec_values[1]
 		(2*atan2(sqrt(1+2*(state->rot_vec_values[3]*state->rot_vec_values[1]-state->rot_vec_values[0]*state->rot_vec_values[2])),
@@ -315,7 +379,7 @@ int UpdateProject3DCube(SharedState* state)
 		atan2(2*(state->rot_vec_values[3]*state->rot_vec_values[0]+state->rot_vec_values[1]*state->rot_vec_values[2]),
 		1-2*(state->rot_vec_values[0]*state->rot_vec_values[0]+state->rot_vec_values[1]*state->rot_vec_values[1]))
 	);
-	InitTranslationMat4x4(translate_mat4x4, 0.0f, 0.0f, 3.0f);
+	InitTranslationMat4x4(translate_mat4x4, 0.0f, 0.0f, 1.0f);
 	
 	MultiplyMats4x4(scale_mat4x4, y_rot_mat4x4, combined_mat4x4);
 	MultiplyMats4x4(combined_mat4x4, x_rot_mat4x4, combined2_mat4x4);
@@ -326,54 +390,9 @@ int UpdateProject3DCube(SharedState* state)
 	
 	int clr = MakeColor(255,255,255,255);
 	
-	// Vertices of a cube
-	float *p0 = new float[3]{0.0f, 0.0f, 0.0f};
-	float *p1 = new float[3]{0.0f, 0.0f, 1.0f};
-	float *p2 = new float[3]{0.0f, 1.0f, 0.0f};
-	float *p3 = new float[3]{0.0f, 1.0f, 1.0f};
-	float *p4 = new float[3]{1.0f, 0.0f, 0.0f};
-	float *p5 = new float[3]{1.0f, 0.0f, 1.0f};
-	float *p6 = new float[3]{1.0f, 1.0f, 0.0f};
-	float *p7 = new float[3]{1.0f, 1.0f, 1.0f};
 	
-	std::vector<float*> vertices;
-	vertices.push_back(p0);
-	vertices.push_back(p1);
-	vertices.push_back(p2);
-	vertices.push_back(p3);
-	vertices.push_back(p4);
-	vertices.push_back(p5);
-	vertices.push_back(p6);
-	vertices.push_back(p7);
 	
-	// Triangles represented as point indices
-	int *tri1 =  new int[3]{0, 1, 2};
-	int *tri2 =  new int[3]{3, 2, 1};
-	int *tri3 =  new int[3]{4, 6, 5};
-	int *tri4 =  new int[3]{7, 5, 6};
-	int *tri5 =  new int[3]{6, 0, 2};
-	int *tri6 =  new int[3]{0, 6, 4};
-	int *tri7 =  new int[3]{1, 7, 3};
-	int *tri8 =  new int[3]{7, 1, 5};
-	int *tri9 =  new int[3]{3, 7, 2};
-	int *tri10 = new int[3]{6, 2, 7};
-	int *tri11 = new int[3]{1, 0, 5};
-	int *tri12 = new int[3]{4, 5, 0};
-	
-	std::vector<int*> triangles;
 	std::vector<int*> triangles_clipped;
-	triangles.push_back(tri1); // left face
-	triangles.push_back(tri2);
-	triangles.push_back(tri3); // right face
-	triangles.push_back(tri4);
-	triangles.push_back(tri5); // front face
-	triangles.push_back(tri6);
-	triangles.push_back(tri7); // back face
-	triangles.push_back(tri8);
-	triangles.push_back(tri9); // top face
-	triangles.push_back(tri10);
-	triangles.push_back(tri11); // bottom face
-	triangles.push_back(tri12);
 	
 	std::vector<int*> lines;
 	
@@ -383,7 +402,7 @@ int UpdateProject3DCube(SharedState* state)
 	
 	// Apply world transformations to vertices
 	
-	for (float *vx: vertices)
+	for (float *vx: game_state->vertices)
 	{
 		float v_in1[4] = {vx[0], vx[1], vx[2], 1};
 		float v_out1[4];
@@ -409,7 +428,7 @@ int UpdateProject3DCube(SharedState* state)
 	
 	std::vector<int> tri_colors;
 	
-	for (int *tri: triangles)
+	for (int *tri: game_state->triangles)
 	{
 		int line_color = MakeColor(255, 120, 255, 120);
 		float norm[3];
@@ -529,11 +548,12 @@ int UpdateProject3DCube(SharedState* state)
 							vertices_projected[t[1]][0], vertices_projected[t[1]][1],
 							vertices_projected[t[2]][0], vertices_projected[t[2]][1],
 							tri_color);
-			DrawTrianglef(state->bitBuff,
+			/*DrawTrianglef(state->bitBuff,
 							vertices_projected[t[0]][0], vertices_projected[t[0]][1],
 							vertices_projected[t[1]][0], vertices_projected[t[1]][1],
 							vertices_projected[t[2]][0], vertices_projected[t[2]][1],
-							clr);
+							clr);*/
+			
 			delete [] t;
 		}
 		
@@ -552,6 +572,7 @@ int UpdateProject3DCube(SharedState* state)
 	
 	for (float *vx: vertices_projected)
 	{
+		//DrawPixelf(state->bitBuff, vx[0], vx[1], clr);
 		delete [] vx;
 	}
 	
@@ -560,20 +581,20 @@ int UpdateProject3DCube(SharedState* state)
 		delete [] vx;
 	}*/
 	
-	for (int *vx: triangles)
+	/*for (int *vx: triangles)
 	{
 		delete [] vx;
-	}
+	}*/
 	
 	for (int *vx: triangles_clipped)
 	{
 		delete [] vx;
 	}
 	
-	for (float *vx: vertices)
+	/*for (float *vx: vertices)
 	{
 		delete [] vx;
-	}
+	}*/
 	
 	return 0;
 }

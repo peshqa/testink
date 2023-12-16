@@ -35,7 +35,7 @@ public class DisplayThread extends Thread
 		//Looping until the boolean is false
 		while (isRunning)
 		{
-			GameEngine gameEngine = GameEngine.getInstance();
+			GameEngine gameEngine = GameEngine.getInstance(context);
 			gameEngine.UpdateAndRender(surfaceHolder, context);
 			
 			//delay time

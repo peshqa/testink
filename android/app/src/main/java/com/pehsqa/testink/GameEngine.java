@@ -10,6 +10,8 @@ import android.util.DisplayMetrics;
 import android.content.ContextWrapper;
 import android.graphics.Rect;
 
+import android.content.res.AssetManager;
+
 /*import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -20,7 +22,7 @@ import android.view.View;
 public class GameEngine
 {
 	public native void updateBitmap(Bitmap bitmap);
-	public native long initData();
+	public native long initData(AssetManager mgr);
 	public native void updateAndRenderGame(long data, Bitmap bitmap);
 	public native void itHappen(long data, char c);
 	public native void updateMouse(long data, int x, int y, int is_down);
@@ -53,17 +55,18 @@ public class GameEngine
 		onScreenResize(data, format, width, height);
 	}
 	
-	public static GameEngine getInstance()
+	public static GameEngine getInstance(Context context)
 	{
         if (instance == null) {
-            instance = new GameEngine();
+            instance = new GameEngine(context);
         }
         return instance;
     }
 	
-	GameEngine()
+	GameEngine(Context context)
 	{
-		data = initData();
+		AssetManager assetManager = context.getAssets();
+		data = initData(assetManager);
 		
 		/*SensorManager manager = (SensorManager)
                 getSystemService(Context.SENSOR_SERVICE);

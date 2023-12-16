@@ -9,6 +9,8 @@ platform_simple_renderer.h - (platform independent) core of all smaller projects
 
 #include <vector>
 #include <chrono>
+#include <assert.h>
+#include <string>
 
 enum InputCode : unsigned int
 {
@@ -56,6 +58,8 @@ struct SharedState
 	std::chrono::steady_clock::time_point curr_time;
 	std::chrono::steady_clock::time_point prev_time;
 	
+	std::string asset_path;
+	
 	int is_lmb_down;
 	int mouse_x;
 	int mouse_y;
@@ -73,8 +77,16 @@ struct SharedState
 	void *extra;
 };
 
+// Functions to be implemented by the OS abstraction layer
+
 int PlatformGoBorderlessFullscreen(SharedState *s);
 int MakeColor(int a, int r, int g, int b);
+
+int InitAssetManager(SharedState *s);
+int OpenAssetFileA(SharedState *s, std::string &filename);
+int ReadAssetLineA(SharedState *s, std::string &line);
+int CloseAssetFile(SharedState *s);
+int TerminateAssetManager(SharedState *s);
 
 int ConvertRelToPlain(float rel, int start, int end)
 {
@@ -161,6 +173,15 @@ int PlatformDrawLine(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2,
     }
 	
 	return 0;
+}
+int DrawPixelf(PlatformBitBuffer *bitBuff, float x1, float y1, int color)
+{
+	int end_x = bitBuff->width;
+	int end_y = bitBuff->height;
+	return PlatformDrawPixel(bitBuff,
+			ConvertRelToPlain(x1, 0, end_x),
+			ConvertRelToPlain(y1, 0, end_y),
+			color);
 }
 int PlatformDrawLinef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, float y2, int color)
 {
@@ -342,4 +363,155 @@ int ConvertRelYToYse(float rel_y, int start, int end)
 {
 	int length = end - start;
 	return (int)(length)*rel_y + start;
+}
+/*
+int WideLoadFileOBJ(const wchar_t *filename, std::vector<float*> &points, std::vector<int*> &triangles)
+{
+	std::wifstream file_obj(filename);
+	
+	if (file_obj.fail())
+	{
+		assert(!"failed to open obj file");
+		return 1;
+	}
+	
+	std::wstring line;
+	
+	while(getline(file_obj, line))
+	{
+		if (line[0] == L'v' && line[1] == L' ')
+		{
+			// Vertex
+			
+			std::wstring vals_str = line.substr(2);
+			float *vals = new float[3]{};
+
+			std::wstring val0 = vals_str.substr(0, vals_str.find(L' '));
+			vals[0] = (float)_wtof(val0.c_str());
+
+			std::wstring val1 = vals_str.substr(val0.length() + 1, vals_str.find(L' ', val0.length() + 1));
+			vals[1] = (float)_wtof(val1.c_str());
+			
+			std::wstring val2 = vals_str.substr(vals_str.find_last_of(L' ') + 1);
+			vals[2] = (float)_wtof(val2.c_str());
+			
+			points.push_back(vals);
+		} else if (line[0] == L'v' && line[1] == L't' && line[2] == L' ') {
+			// do nothing for now
+		} else if (line[0] == L'v' && line[1] == L'n' && line[2] == L' ') {
+			// do nothing
+		} else if (line[0] == L'f' && line[1] == L' ') {
+			// Face
+			
+			std::wstring lineVals = line.substr(2);
+
+			std::wstring val0 = lineVals.substr(0, lineVals.find_first_of(L' '));
+
+			// If the value for this face includes texture and/or 
+			// normal, parse them out
+			if (lineVals.find(L'/') >= 0)
+			{
+				// Get first group of values
+				std::wstring g1 = lineVals.substr(0, lineVals.find(' '));
+				
+				// Get second group of values
+				std::wstring g2 = line.substr(line.find(L' ') + 2);
+				g2 = g2.substr(g2.find(L' ') + 1);
+				g2 = g2.substr(0, g2.find(L' '));
+	
+				std::wstring g3 = line.substr(line.find_last_of(L' ') + 1);
+	
+	
+				g1 = g1.substr(0, g1.find(L'/'));
+				g2 = g2.substr(0, g2.find(L'/'));
+				g3 = g3.substr(0, g3.find(L'/'));
+				int *vals = new int[3]{};
+				vals[0] = (int)_wtoi(g1.c_str()) - 1;
+				vals[1] = (int)_wtoi(g2.c_str()) - 1;
+				vals[2] = (int)_wtoi(g3.c_str()) - 1;
+				triangles.push_back(vals);
+			} else {
+				assert(!"unhandled case in LoadFileOBJ - face no textures");
+			}
+		}
+	}
+	
+	return 0;
+}*/
+
+int LoadFileOBJ(SharedState *s, std::string &filename, std::vector<float*> &points, std::vector<int*> &triangles)
+{
+	
+	//std::ifstream file_obj(filename);
+	
+	if (/*file_obj.fail()*/OpenAssetFileA(s, filename) != 0)
+	{
+		assert(!"failed to open obj file");
+		return 1;
+	}
+	
+	std::string line;
+	
+	while(/*getline(file_obj, line)*/ReadAssetLineA(s, line))
+	{
+		if (line[0] == 'v' && line[1] == ' ')
+		{
+			// Vertex
+			
+			std::string vals_str = line.substr(2);
+			float *vals = new float[3]{};
+
+			std::string val0 = vals_str.substr(0, vals_str.find(' '));
+			vals[0] = (float)atof(val0.c_str());
+
+			std::string val1 = vals_str.substr(val0.length() + 1, vals_str.find(' ', val0.length() + 1));
+			vals[1] = (float)atof(val1.c_str());
+			
+			std::string val2 = vals_str.substr(vals_str.find_last_of(' ') + 1);
+			vals[2] = (float)atof(val2.c_str());
+			
+			points.push_back(vals);
+		} else if (line[0] == 'v' && line[1] == 't' && line[2] == ' ') {
+			// do nothing for now
+		} else if (line[0] == 'v' && line[1] == 'n' && line[2] == ' ') {
+			// do nothing
+		} else if (line[0] == 'f' && line[1] == ' ') {
+			// Face
+			
+			std::string lineVals = line.substr(2);
+
+			std::string val0 = lineVals.substr(0, lineVals.find_first_of(' '));
+
+			// If the value for this face includes texture and/or 
+			// normal, parse them out
+			if (lineVals.find('/') >= 0)
+			{
+				// Get first group of values
+				std::string g1 = lineVals.substr(0, lineVals.find(' '));
+				
+				// Get second group of values
+				std::string g2 = line.substr(line.find(' ') + 2);
+				g2 = g2.substr(g2.find(' ') + 1);
+				g2 = g2.substr(0, g2.find(' '));
+	
+				std::string g3 = line.substr(line.find_last_of(' ') + 1);
+	
+	
+				g1 = g1.substr(0, g1.find('/'));
+				g2 = g2.substr(0, g2.find('/'));
+				g3 = g3.substr(0, g3.find('/'));
+				int *vals = new int[3]{};
+				vals[0] = (int)atoi(g1.c_str()) - 1;
+				vals[1] = (int)atoi(g2.c_str()) - 1;
+				vals[2] = (int)atoi(g3.c_str()) - 1;
+				triangles.push_back(vals);
+			} else {
+				assert(!"unhandled case in LoadFileOBJ - face no textures");
+			}
+		}
+	}
+	
+	CloseAssetFile(s);
+	
+	return 0;
 }

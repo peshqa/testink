@@ -1,1 +1,3 @@
-.\build\main.exe
+pushd .\build
+.\main.exe
+popd
