@@ -48,34 +48,47 @@ int TerminatePPMImage(SimpleImage *image)
 	return 0;
 }
 
-int LoadPPMImage(const char file_path[], SimpleImage *image)
+int LoadPPMImage(SharedState *s, std::string file_path, SimpleImage *image)
 {
-	std::ifstream file(file_path, std::ifstream::binary);
 	
-	if (!file.is_open())
+	//std::ifstream file(file_path, std::ifstream::binary);
+	
+	if (OpenAssetFileA(s, file_path) != 0)
 	{
+		assert(!"LoadPPMImage - Couldn't open the file");
 		return 1;
 	}
 	
-	std::string magic_number;
-	file >> magic_number;
+	std::string line;
+	ReadAssetLineA(s, line);
+	//file >> magic_number;
 	
-	if (magic_number != "P6")
+	//if (line != "P6")
+	if (line[0] != 'P' && line[1] != '6')
 	{
+		assert(!"LoadPPMImage - Magic number not matching");
 		return 2;
 	}
 	
 	unsigned int width;
 	unsigned int height;
 	int max_value;
-	file >> width >> height >> max_value;
+	ReadAssetUntilSpaceA(s, line);
+	width = stoi(line);
+	ReadAssetUntilSpaceA(s, line);
+	height = stoi(line);
+	ReadAssetUntilSpaceA(s, line);
+	max_value = stoi(line);
+	//file >> width >> height >> max_value;
 	
 	if (max_value > 255)
 	{
 		return 3;
 	}
 	
-	file.ignore();
+	//file.ignore();
+	char ignored;
+	ReadAssetBytesA(s, &ignored, 1);
 	image->width = width;
 	image->height = height;
 	
@@ -86,22 +99,29 @@ int LoadPPMImage(const char file_path[], SimpleImage *image)
 	image->pixels = new int[width*height]{};
 	
 	char *buffer = new char[width*height*3]{};
-	file.read(buffer, width*height*3);
+	//file.read(buffer, width*height*3);
+	ReadAssetBytesA(s, buffer, width*height*3);
 	for (int y = 0; y < height; y++)
 	{
 		for (int x = 0; x < width; x++)
 		{
-			int pixel = 0;
+			/*int pixel = 0;
 			pixel += buffer[y*width*3+x*3] << 16;
 			pixel += buffer[y*width*3+x*3+1] << 8;
 			pixel += buffer[y*width*3+x*3+2];
 			
-			image->pixels[y*width+x] = pixel;
+			image->pixels[y*width+x] = pixel;*/
+			image->pixels[y*width+x] = MakeColor(255,
+				buffer[y*width*3+x*3]/* << 16*/,
+				buffer[y*width*3+x*3+1]/* << 8*/,
+				buffer[y*width*3+x*3+2]
+				);
 		}
 	}
 	
 	delete [] buffer;
-	file.close();
+	//file.close();
+	CloseAssetFile(s);
 	return 0;
 }
 

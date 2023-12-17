@@ -12,6 +12,7 @@ android_simple_renderer.h - (Android specific) core of all smaller projects that
 
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
+#include <android/log.h>
 #include <jni.h>
 #include <sstream>
 
@@ -86,6 +87,7 @@ int OpenAssetFileA(SharedState *s, std::string &filename)
     }
 	//return extra->file.fail();
 }
+
 int ReadAssetLineA(SharedState *s, std::string &line)
 {
 	AndroidExtra *extra = (AndroidExtra*)(s->extra);
@@ -94,12 +96,27 @@ int ReadAssetLineA(SharedState *s, std::string &line)
     } else {
         return 1; // End of file or error
     }*/
+	//__android_log_print(ANDROID_LOG_ERROR, "LOOOOOOOOOOOOL", "String is %s", line.c_str());
 	return !getline(extra->buffer, line).eof();
+}
+int ReadAssetBytesA(SharedState *s, char *buffer, unsigned int bytes)
+{
+	AndroidExtra *extra = (AndroidExtra*)(s->extra);
+	extra->buffer.read(buffer, bytes);
+	return 0;
+}
+int ReadAssetUntilSpaceA(SharedState *s, std::string &line)
+{
+	AndroidExtra *extra = (AndroidExtra*)(s->extra);
+	extra->buffer >> line;
+	//__android_log_print(ANDROID_LOG_ERROR, "LOOOOOOOOOOOOL", "String is %s", line.c_str());
+	return 0;
 }
 int CloseAssetFile(SharedState *s)
 {
 	AndroidExtra *extra = (AndroidExtra*)(s->extra);
 	//extra->file.close();
+	extra->buffer.clear();
 	if (extra->asset != nullptr) {
         AAsset_close(extra->asset);
         extra->asset = nullptr;
@@ -109,6 +126,6 @@ int CloseAssetFile(SharedState *s)
 int TerminateAssetManager(SharedState *s)
 {
 	AndroidExtra *extra = (AndroidExtra*)(s->extra);
-	extra->env->DeleteGlobalRef(extra->asset_manager);
+	//extra->env->DeleteGlobalRef(extra->asset_manager);
 	return 0;
 }

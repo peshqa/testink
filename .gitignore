@@ -5,3 +5,4 @@ build/.vs
 *.obj
 *.mtl
 *.png
+*.ppm

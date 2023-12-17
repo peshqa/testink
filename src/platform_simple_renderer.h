@@ -5,7 +5,6 @@ platform_simple_renderer.h - (platform independent) core of all smaller projects
 #pragma once
 
 #include "simple_3d_gfx.h"
-#include "ppm_image_loader.h"
 
 #include <vector>
 #include <chrono>
@@ -51,7 +50,7 @@ struct SharedState
 	int client_width;
 	int client_height;
 	int scale;
-	std::vector<SimpleImage*> images;
+	//std::vector<SimpleImage*> images;
 	char dir;
 	//Project *project;
 	void *project_state;
@@ -85,8 +84,13 @@ int MakeColor(int a, int r, int g, int b);
 int InitAssetManager(SharedState *s);
 int OpenAssetFileA(SharedState *s, std::string &filename);
 int ReadAssetLineA(SharedState *s, std::string &line);
+int ReadAssetBytesA(SharedState *s, char *buf, unsigned int bytes);
+int ReadAssetUntilSpaceA(SharedState *s, std::string &line);
+//int ReadAssetSkipA(SharedState *s);
 int CloseAssetFile(SharedState *s);
 int TerminateAssetManager(SharedState *s);
+
+#include "ppm_image_loader.h"
 
 int ConvertRelToPlain(float rel, int start, int end)
 {

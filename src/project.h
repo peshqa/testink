@@ -156,6 +156,8 @@ typedef struct
 	float cube_yaw;
 	float cube_pitch;
 	
+	SimpleImage image;
+	
 	std::vector<float*> vertices;
 	std::vector<int*> triangles;
 } ProjectState3DCube;
@@ -203,7 +205,9 @@ int InitProject3DCube(SharedState* state)
 	p_state->vertices.push_back(p7);*/
 	
 	std::string model_path = state->asset_path + "model.obj";
+	std::string texture_path = state->asset_path + "model.ppm";
 	LoadFileOBJ(state, model_path, p_state->vertices, p_state->triangles);
+	LoadPPMImage(state, texture_path, &p_state->image);
 	// Triangles represented as point indices
 	int *tri1 =  new int[3]{0, 1, 2};
 	int *tri2 =  new int[3]{3, 2, 1};
@@ -557,8 +561,16 @@ int UpdateProject3DCube(SharedState* state)
 			delete [] t;
 		}
 		
-		
 	}
+	
+	// Image drawing
+	/*for (int i = 0; i < game_state->image.width; i++)
+	{
+		for (int j = 0; j < game_state->image.height; j++)
+		{
+			PlatformDrawPixel(state->bitBuff, i, j, game_state->image.pixels[j*game_state->image.width+i]);
+		}
+	}*/
 	
 	for (float *vx: vertices_transformed)
 	{

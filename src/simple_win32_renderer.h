@@ -414,13 +414,25 @@ int InitAssetManager(SharedState *s)
 int OpenAssetFileA(SharedState *s, std::string &filename)
 {
 	W32Extra *extra = (W32Extra*)(s->extra);
-	extra->file.open(filename);
+	extra->file.open(filename, std::ifstream::binary);
 	return extra->file.fail();
 }
 int ReadAssetLineA(SharedState *s, std::string &line)
 {
 	W32Extra *extra = (W32Extra*)(s->extra);
 	return !getline(extra->file, line).eof();
+}
+int ReadAssetBytesA(SharedState *s, char *buffer, unsigned int bytes)
+{
+	W32Extra *extra = (W32Extra*)(s->extra);
+	extra->file.read(buffer, bytes);
+	return 0;
+}
+int ReadAssetUntilSpaceA(SharedState *s, std::string &line)
+{
+	W32Extra *extra = (W32Extra*)(s->extra);
+	extra->file >> line;
+	return 0;
 }
 int CloseAssetFile(SharedState *s)
 {
