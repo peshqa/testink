@@ -123,33 +123,6 @@ int RedPlatformBitBuffer(PlatformBitBuffer *bitBuff);
 
 int PlatformDrawLine(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2, int color)
 {
-	// naive algorithm
-	/*int tmp{};
-	if (x2 <= x1)
-	{
-		tmp = x1;
-		x1 = x2;
-		x2 = tmp;
-		
-		tmp = y1;
-		y1 = y2;
-		y2 = tmp;
-	}
-	
-	int dx = x2 - x1;
-	int dy = y2 - y1;
-	
-	if (dx == 0)
-	{
-		return 0;
-	}
-	
-	for (int x = x1; x <= x2; x++)
-	{
-		int y = y1 + dy * (x - x1) / dx;
-		Win32DrawPixel(bitBuff, x, y);
-	}*/
-	
 	// https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
 	// TODO: add edge cases for horizontal and vertical lines
 	int dx = abs(x2 - x1);
@@ -326,171 +299,6 @@ int FillTriangle(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2, int
 	
 	return 0;
 }
-int GetLineXUValues(int x1, int y1, float u1, float v1, int x2, int y2, float u2, float v2, std::vector<int> &vec_x, std::vector<float> &vec_u)
-{
-	int dx = abs(x2 - x1);
-    int sx = x1 < x2 ? 1 : -1;
-    int dy = -abs(y2 - y1);
-    int sy = y1 < y2 ? 1 : -1;
-    int error = dx + dy;
-	
-	float du = abs(u2 - u1);
-    float su = u1 < u2 ? du/dx : -du/dx;
-    float dv = -abs(v2 - v1);
-    float sv = v1 < v2 ? dv/dy : -dv/dy;
-    //float error_uv = du + dv;
-	
-	int last_x = x1-1;
-	int last_y = y1;
-	
-	float last_u = u1;
-	float last_v = v1;
-    
-    while (true)
-	{
-        //PlatformDrawPixel(bitBuff, x1, y1, color);
-		if (last_y != y1)
-		{
-			vec_x.push_back(x1);
-			vec_u.push_back(u1);
-		}
-		last_y = y1;
-		last_x = x1;
-		last_v = v1;
-		last_u = u1;
-        if (x1 == x2 && y1 == y2) break;
-        int e2 = 2 * error;
-        if (e2 >= dy)
-		{
-            if (x1 == x2) break;
-            error = error + dy;
-            x1 = x1 + sx;
-			u1 = u1 + su;
-        }
-        if (e2 <= dx)
-		{
-            if (y1 == y2) break;
-            error = error + dx;
-            y1 = y1 + sy;
-			v1 = v1 + sv;
-        }
-    }
-	vec_x.push_back(last_x);
-	vec_u.push_back(last_u);
-	return 0;
-}
-int TextureHorizontalLine(PlatformBitBuffer *bitBuff, int x1, float u1, int x2, float u2, int y, float v, SimpleImage *img)
-{
-	int tmp;
-	if (x2 < x1)
-	{
-		tmp = x1;
-		x1 = x2;
-		x2 = tmp;
-		
-		tmp = u1;
-		u1 = u2;
-		u2 = tmp;
-	}
-	//assert(u1 <= 1.0f && u1 >= 0.0f); // smol test
-	//assert(u2 <= 1.0f && u2 >= 0.0f);
-	//assert(v <= 1.0f && v >= 0.0f);
-	//if ((v <= 1.0f && v >= 0.0f))
-	//{
-	//	v = abs(v) - abs((int)v);
-	//}
-	float step = x2 != x1 ? (u2-u1) / (x2-x1) : 0;
-	float u = u1;
-	for (int i = x1; i <= x2; i++)
-	{
-		int color = SampleTexture(img, u, v);
-		u += step;
-		PlatformDrawPixel(bitBuff, i, y, color);
-	}
-	return 0;
-}
-int TextureTriangleV1(PlatformBitBuffer *bitBuff,
-					int x1, int y1, float u1, float v1, float w1,
-					int x2, int y2, float u2, float v2, float w2,
-					int x3, int y3, float u3, float v3, float w3,
-					SimpleImage* img, float *d)
-{
-	// Sort the points so that y1 <= y2 <= y3
-	int tmp;
-	float tmpf;
-	if (y2 < y1)
-	{
-		tmp = y1;
-		y1 = y2;
-		y2 = tmp;
-		tmp = x1;
-		x1 = x2;
-		x2 = tmp;
-		
-		tmpf = v1;
-		v1 = v2;
-		v2 = tmpf;
-		tmpf = u1;
-		u1 = u2;
-		u2 = tmpf;
-	}
-	if (y3 < y1)
-	{
-		tmpf = y1;
-		y1 = y3;
-		y3 = tmpf;
-		tmpf = x1;
-		x1 = x3;
-		x3 = tmpf;
-		
-		tmpf = v1;
-		v1 = v3;
-		v3 = tmpf;
-		tmpf = u1;
-		u1 = u3;
-		u3 = tmpf;
-	}
-	if (y3 < y2)
-	{
-		tmpf = y2;
-		y2 = y3;
-		y3 = tmpf;
-		tmpf = x2;
-		x2 = x3;
-		x3 = tmpf;
-		
-		tmpf = v2;
-		v2 = v3;
-		v3 = tmpf;
-		tmpf = u2;
-		u2 = u3;
-		u3 = tmpf;
-	}
-	
-	// Compute the x coordinates of the triangle edges
-	std::vector<int> vec1;
-	std::vector<int> vec2;
-	std::vector<float> u_vec1;
-	std::vector<float> u_vec2;
-	GetLineXUValues(x1, y1, u1, v1, x2, y2, u2, v2, vec1, u_vec1);
-	vec1.pop_back();
-	u_vec1.pop_back();
-	GetLineXUValues(x2, y2, u2, v2, x3, y3, u3, v3, vec1, u_vec1);
-	GetLineXUValues(x1, y1, u1, v1, x3, y3, u3, v3, vec2, u_vec2);
-
-	int idx = 0;
-	float step = y1 != y3 ? (v3-v1) / (y3-y1) : 0;
-	float v = v1;
-	for (int i = y1; i <= y3; i++)
-	{
-		TextureHorizontalLine(bitBuff, vec1[idx], u_vec1[idx], vec2[idx], u_vec2[idx], i, v, img);
-		v += step;
-		idx++;
-	}
-	
-	return 0;
-}
-
 int TextureTriangle(PlatformBitBuffer *bitBuff,
 					int x1, int y1, float u1, float v1, float w1,
 					int x2, int y2, float u2, float v2, float w2,
@@ -693,7 +501,7 @@ int TextureTrianglef(PlatformBitBuffer *bitBuff,
 					SimpleImage* img, float* depth_buffer)
 {
 	int end_x = bitBuff->width;
-	int end_y = bitBuff->height;
+	int end_y = bitBuff->height-1;
 	return TextureTriangle(bitBuff,
 			ConvertRelToPlain(x1, 0, end_x), ConvertRelToPlain(y1, 0, end_y), u1, v1, w1,
 			ConvertRelToPlain(x2, 0, end_x), ConvertRelToPlain(y2, 0, end_y), u2, v2, w2,
