@@ -125,6 +125,15 @@ int LoadPPMImage(SharedState *s, std::string file_path, SimpleImage *image)
 	return 0;
 }
 
+int SampleTexture(SimpleImage *img, float u, float v)
+{
+	if (u >= 0.0f && u <= 1.0f && v >= 0.0f && v <= 1.0f)
+	{
+		return img->pixels[img->width*(int)((img->height-1)*(1.0f-v)) + (int)(img->width*u)];
+	}
+	return MakeColor(255, 241, 87, 236);
+}
+
 /*int LoadPPMImage(const char file_path[], SimpleImage *image)
 {
 	unsigned char sample{};

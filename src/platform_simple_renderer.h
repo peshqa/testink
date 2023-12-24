@@ -10,6 +10,7 @@ platform_simple_renderer.h - (platform independent) core of all smaller projects
 #include <chrono>
 #include <assert.h>
 #include <string>
+#include <algorithm>
 
 enum InputCode : unsigned int
 {
@@ -259,6 +260,23 @@ int DrawTrianglef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, floa
 	PlatformDrawLinef(bitBuff, x2, y2, x3, y3, color);
 	return 0;
 }
+// Vertical gradient
+int DrawGradientScreen(PlatformBitBuffer *bitBuff, int s_red, int s_green, int s_blue, int e_red, int e_blue, int e_green)
+{
+	for (int i = 0; i < bitBuff->width; i++)
+	{
+		for (int j = 0; j < bitBuff->height; j++)
+		{
+			
+			int color = MakeColor(255,
+				s_red+  (float)(e_red-s_red)/bitBuff->height*j,
+				s_green+(float)(e_green-s_green)/bitBuff->height*j,
+				s_blue+ (float)(e_blue-s_blue)/bitBuff->height*j);
+			PlatformDrawPixel(bitBuff, i, j, color);
+		}
+	}
+	return 0;
+}
 int FillTriangle(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2, int x3, int y3, int color)
 {
 	// Sort the points so that y1 <= y2 <= y3
@@ -308,6 +326,353 @@ int FillTriangle(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2, int
 	
 	return 0;
 }
+int GetLineXUValues(int x1, int y1, float u1, float v1, int x2, int y2, float u2, float v2, std::vector<int> &vec_x, std::vector<float> &vec_u)
+{
+	int dx = abs(x2 - x1);
+    int sx = x1 < x2 ? 1 : -1;
+    int dy = -abs(y2 - y1);
+    int sy = y1 < y2 ? 1 : -1;
+    int error = dx + dy;
+	
+	float du = abs(u2 - u1);
+    float su = u1 < u2 ? du/dx : -du/dx;
+    float dv = -abs(v2 - v1);
+    float sv = v1 < v2 ? dv/dy : -dv/dy;
+    //float error_uv = du + dv;
+	
+	int last_x = x1-1;
+	int last_y = y1;
+	
+	float last_u = u1;
+	float last_v = v1;
+    
+    while (true)
+	{
+        //PlatformDrawPixel(bitBuff, x1, y1, color);
+		if (last_y != y1)
+		{
+			vec_x.push_back(x1);
+			vec_u.push_back(u1);
+		}
+		last_y = y1;
+		last_x = x1;
+		last_v = v1;
+		last_u = u1;
+        if (x1 == x2 && y1 == y2) break;
+        int e2 = 2 * error;
+        if (e2 >= dy)
+		{
+            if (x1 == x2) break;
+            error = error + dy;
+            x1 = x1 + sx;
+			u1 = u1 + su;
+        }
+        if (e2 <= dx)
+		{
+            if (y1 == y2) break;
+            error = error + dx;
+            y1 = y1 + sy;
+			v1 = v1 + sv;
+        }
+    }
+	vec_x.push_back(last_x);
+	vec_u.push_back(last_u);
+	return 0;
+}
+int TextureHorizontalLine(PlatformBitBuffer *bitBuff, int x1, float u1, int x2, float u2, int y, float v, SimpleImage *img)
+{
+	int tmp;
+	if (x2 < x1)
+	{
+		tmp = x1;
+		x1 = x2;
+		x2 = tmp;
+		
+		tmp = u1;
+		u1 = u2;
+		u2 = tmp;
+	}
+	//assert(u1 <= 1.0f && u1 >= 0.0f); // smol test
+	//assert(u2 <= 1.0f && u2 >= 0.0f);
+	//assert(v <= 1.0f && v >= 0.0f);
+	//if ((v <= 1.0f && v >= 0.0f))
+	//{
+	//	v = abs(v) - abs((int)v);
+	//}
+	float step = x2 != x1 ? (u2-u1) / (x2-x1) : 0;
+	float u = u1;
+	for (int i = x1; i <= x2; i++)
+	{
+		int color = SampleTexture(img, u, v);
+		u += step;
+		PlatformDrawPixel(bitBuff, i, y, color);
+	}
+	return 0;
+}
+int TextureTriangleV1(PlatformBitBuffer *bitBuff,
+					int x1, int y1, float u1, float v1, float w1,
+					int x2, int y2, float u2, float v2, float w2,
+					int x3, int y3, float u3, float v3, float w3,
+					SimpleImage* img, float *d)
+{
+	// Sort the points so that y1 <= y2 <= y3
+	int tmp;
+	float tmpf;
+	if (y2 < y1)
+	{
+		tmp = y1;
+		y1 = y2;
+		y2 = tmp;
+		tmp = x1;
+		x1 = x2;
+		x2 = tmp;
+		
+		tmpf = v1;
+		v1 = v2;
+		v2 = tmpf;
+		tmpf = u1;
+		u1 = u2;
+		u2 = tmpf;
+	}
+	if (y3 < y1)
+	{
+		tmpf = y1;
+		y1 = y3;
+		y3 = tmpf;
+		tmpf = x1;
+		x1 = x3;
+		x3 = tmpf;
+		
+		tmpf = v1;
+		v1 = v3;
+		v3 = tmpf;
+		tmpf = u1;
+		u1 = u3;
+		u3 = tmpf;
+	}
+	if (y3 < y2)
+	{
+		tmpf = y2;
+		y2 = y3;
+		y3 = tmpf;
+		tmpf = x2;
+		x2 = x3;
+		x3 = tmpf;
+		
+		tmpf = v2;
+		v2 = v3;
+		v3 = tmpf;
+		tmpf = u2;
+		u2 = u3;
+		u3 = tmpf;
+	}
+	
+	// Compute the x coordinates of the triangle edges
+	std::vector<int> vec1;
+	std::vector<int> vec2;
+	std::vector<float> u_vec1;
+	std::vector<float> u_vec2;
+	GetLineXUValues(x1, y1, u1, v1, x2, y2, u2, v2, vec1, u_vec1);
+	vec1.pop_back();
+	u_vec1.pop_back();
+	GetLineXUValues(x2, y2, u2, v2, x3, y3, u3, v3, vec1, u_vec1);
+	GetLineXUValues(x1, y1, u1, v1, x3, y3, u3, v3, vec2, u_vec2);
+
+	int idx = 0;
+	float step = y1 != y3 ? (v3-v1) / (y3-y1) : 0;
+	float v = v1;
+	for (int i = y1; i <= y3; i++)
+	{
+		TextureHorizontalLine(bitBuff, vec1[idx], u_vec1[idx], vec2[idx], u_vec2[idx], i, v, img);
+		v += step;
+		idx++;
+	}
+	
+	return 0;
+}
+
+int TextureTriangle(PlatformBitBuffer *bitBuff,
+					int x1, int y1, float u1, float v1, float w1,
+					int x2, int y2, float u2, float v2, float w2,
+					int x3, int y3, float u3, float v3, float w3,
+					SimpleImage* img, float* depth_buffer)
+{
+	if (y2 < y1)
+	{
+		std::swap(x1, x2);
+		std::swap(y1, y2);
+		
+		std::swap(u1, u2);
+		std::swap(v1, v2);
+		std::swap(w1, w2);
+	}
+	if (y3 < y1)
+	{
+		std::swap(x1, x3);
+		std::swap(y1, y3);
+		
+		std::swap(u1, u3);
+		std::swap(v1, v3);
+		std::swap(w1, w3);
+	}
+	if (y3 < y2)
+	{
+		std::swap(x2, x3);
+		std::swap(y2, y3);
+		
+		std::swap(u2, u3);
+		std::swap(v2, v3);
+		std::swap(w2, w3);
+	}
+
+	int dy1 = y2 - y1;
+	int dx1 = x2 - x1;
+	float dv1 = v2 - v1;
+	float du1 = u2 - u1;
+	float dw1 = w2 - w1;
+
+	int dy2 = y3 - y1;
+	int dx2 = x3 - x1;
+	float dv2 = v3 - v1;
+	float du2 = u3 - u1;
+	float dw2 = w3 - w1;
+
+	float tex_u, tex_v, tex_w;
+
+	float dax_step = 0, dbx_step = 0,
+		du1_step = 0, dv1_step = 0,
+		du2_step = 0, dv2_step = 0,
+		dw1_step=0, dw2_step=0;
+
+	if (dy1)
+	{		
+		dax_step = dx1 / (float)abs(dy1);
+		du1_step = du1 / (float)abs(dy1);
+		dv1_step = dv1 / (float)abs(dy1);
+		dw1_step = dw1 / (float)abs(dy1);
+	}
+	if (dy2) 
+	{
+		dbx_step = dx2 / (float)abs(dy2);
+		du2_step = du2 / (float)abs(dy2);
+		dv2_step = dv2 / (float)abs(dy2);
+		dw2_step = dw2 / (float)abs(dy2);
+	}
+
+	
+	if (dy1)
+	{
+		for (int i = y1; i <= y2; i++)
+		{
+			int ax = x1 + (float)(i - y1) * dax_step;
+			int bx = x1 + (float)(i - y1) * dbx_step;
+
+			float tex_su = u1 + (float)(i - y1) * du1_step;
+			float tex_sv = v1 + (float)(i - y1) * dv1_step;
+			float tex_sw = w1 + (float)(i - y1) * dw1_step;
+
+			float tex_eu = u1 + (float)(i - y1) * du2_step;
+			float tex_ev = v1 + (float)(i - y1) * dv2_step;
+			float tex_ew = w1 + (float)(i - y1) * dw2_step;
+
+			if (ax > bx)
+			{
+				std::swap(ax, bx);
+				std::swap(tex_su, tex_eu);
+				std::swap(tex_sv, tex_ev);
+				std::swap(tex_sw, tex_ew);
+			}
+
+			tex_u = tex_su;
+			tex_v = tex_sv;
+			tex_w = tex_sw;
+
+			float tstep = 1.0f / ((float)(bx - ax));
+			float t = 0.0f;
+
+			for (int j = ax; j < bx; j++)
+			{
+				tex_u = (1.0f - t) * tex_su + t * tex_eu;
+				tex_v = (1.0f - t) * tex_sv + t * tex_ev;
+				tex_w = (1.0f - t) * tex_sw + t * tex_ew;
+				
+				if (tex_w > depth_buffer[i*bitBuff->width + j])
+				{
+					int color = SampleTexture(img, tex_u / tex_w, tex_v / tex_w);
+					//color = 0xFFFFFFFF;
+					PlatformDrawPixel(bitBuff, j, i, color);
+					depth_buffer[i*bitBuff->width + j] = tex_w;
+				}
+				
+				t += tstep;
+			}
+
+		}
+	}
+
+	dy1 = y3 - y2;
+	dx1 = x3 - x2;
+	dv1 = v3 - v2;
+	du1 = u3 - u2;
+	dw1 = w3 - w2;
+
+	if (dy1) dax_step = dx1 / (float)abs(dy1);
+	if (dy2) dbx_step = dx2 / (float)abs(dy2);
+
+	du1_step = 0, dv1_step = 0;
+	if (dy1) du1_step = du1 / (float)abs(dy1);
+	if (dy1) dv1_step = dv1 / (float)abs(dy1);
+	if (dy1) dw1_step = dw1 / (float)abs(dy1);
+
+	if (dy1)
+	{
+		for (int i = y2; i <= y3; i++)
+		{
+			int ax = x2 + (float)(i - y2) * dax_step;
+			int bx = x1 + (float)(i - y1) * dbx_step;
+
+			float tex_su = u2 + (float)(i - y2) * du1_step;
+			float tex_sv = v2 + (float)(i - y2) * dv1_step;
+			float tex_sw = w2 + (float)(i - y2) * dw1_step;
+
+			float tex_eu = u1 + (float)(i - y1) * du2_step;
+			float tex_ev = v1 + (float)(i - y1) * dv2_step;
+			float tex_ew = w1 + (float)(i - y1) * dw2_step;
+
+			if (ax > bx)
+			{
+				std::swap(ax, bx);
+				std::swap(tex_su, tex_eu);
+				std::swap(tex_sv, tex_ev);
+				std::swap(tex_sw, tex_ew);
+			}
+
+			tex_u = tex_su;
+			tex_v = tex_sv;
+			tex_w = tex_sw;
+
+			float tstep = 1.0f / ((float)(bx - ax));
+			float t = 0.0f;
+
+			for (int j = ax; j < bx; j++)
+			{
+				tex_u = (1.0f - t) * tex_su + t * tex_eu;
+				tex_v = (1.0f - t) * tex_sv + t * tex_ev;
+				tex_w = (1.0f - t) * tex_sw + t * tex_ew;
+				
+				if (tex_w > depth_buffer[i*bitBuff->width + j])
+				{
+					int color = SampleTexture(img, tex_u / tex_w, tex_v / tex_w);
+					//color = 0;
+					PlatformDrawPixel(bitBuff, j, i, color);
+					depth_buffer[i*bitBuff->width + j] = tex_w;
+				}
+				t += tstep;
+			}
+		}	
+	}	
+	return 0;
+}
 int FillTrianglef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, float y2, float x3, float y3, int color)
 {
 	int end_x = bitBuff->width;
@@ -320,6 +685,20 @@ int FillTrianglef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, floa
 			ConvertRelToPlain(x3, 0, end_x),
 			ConvertRelToPlain(y3, 0, end_y),
 			color);
+}
+int TextureTrianglef(PlatformBitBuffer *bitBuff,
+					float x1, float y1, float u1, float v1, float w1,
+					float x2, float y2, float u2, float v2, float w2,
+					float x3, float y3, float u3, float v3, float w3,
+					SimpleImage* img, float* depth_buffer)
+{
+	int end_x = bitBuff->width;
+	int end_y = bitBuff->height;
+	return TextureTriangle(bitBuff,
+			ConvertRelToPlain(x1, 0, end_x), ConvertRelToPlain(y1, 0, end_y), u1, v1, w1,
+			ConvertRelToPlain(x2, 0, end_x), ConvertRelToPlain(y2, 0, end_y), u2, v2, w2,
+			ConvertRelToPlain(x3, 0, end_x), ConvertRelToPlain(y3, 0, end_y), u3, v3, w3,
+			img, depth_buffer);
 }
 int PlatformFillRect(PlatformBitBuffer *bitBuff, int left, int top, int right, int bottom, int color)
 {
@@ -368,82 +747,9 @@ int ConvertRelYToYse(float rel_y, int start, int end)
 	int length = end - start;
 	return (int)(length)*rel_y + start;
 }
-/*
-int WideLoadFileOBJ(const wchar_t *filename, std::vector<float*> &points, std::vector<int*> &triangles)
-{
-	std::wifstream file_obj(filename);
-	
-	if (file_obj.fail())
-	{
-		assert(!"failed to open obj file");
-		return 1;
-	}
-	
-	std::wstring line;
-	
-	while(getline(file_obj, line))
-	{
-		if (line[0] == L'v' && line[1] == L' ')
-		{
-			// Vertex
-			
-			std::wstring vals_str = line.substr(2);
-			float *vals = new float[3]{};
 
-			std::wstring val0 = vals_str.substr(0, vals_str.find(L' '));
-			vals[0] = (float)_wtof(val0.c_str());
-
-			std::wstring val1 = vals_str.substr(val0.length() + 1, vals_str.find(L' ', val0.length() + 1));
-			vals[1] = (float)_wtof(val1.c_str());
-			
-			std::wstring val2 = vals_str.substr(vals_str.find_last_of(L' ') + 1);
-			vals[2] = (float)_wtof(val2.c_str());
-			
-			points.push_back(vals);
-		} else if (line[0] == L'v' && line[1] == L't' && line[2] == L' ') {
-			// do nothing for now
-		} else if (line[0] == L'v' && line[1] == L'n' && line[2] == L' ') {
-			// do nothing
-		} else if (line[0] == L'f' && line[1] == L' ') {
-			// Face
-			
-			std::wstring lineVals = line.substr(2);
-
-			std::wstring val0 = lineVals.substr(0, lineVals.find_first_of(L' '));
-
-			// If the value for this face includes texture and/or 
-			// normal, parse them out
-			if (lineVals.find(L'/') >= 0)
-			{
-				// Get first group of values
-				std::wstring g1 = lineVals.substr(0, lineVals.find(' '));
-				
-				// Get second group of values
-				std::wstring g2 = line.substr(line.find(L' ') + 2);
-				g2 = g2.substr(g2.find(L' ') + 1);
-				g2 = g2.substr(0, g2.find(L' '));
-	
-				std::wstring g3 = line.substr(line.find_last_of(L' ') + 1);
-	
-	
-				g1 = g1.substr(0, g1.find(L'/'));
-				g2 = g2.substr(0, g2.find(L'/'));
-				g3 = g3.substr(0, g3.find(L'/'));
-				int *vals = new int[3]{};
-				vals[0] = (int)_wtoi(g1.c_str()) - 1;
-				vals[1] = (int)_wtoi(g2.c_str()) - 1;
-				vals[2] = (int)_wtoi(g3.c_str()) - 1;
-				triangles.push_back(vals);
-			} else {
-				assert(!"unhandled case in LoadFileOBJ - face no textures");
-			}
-		}
-	}
-	
-	return 0;
-}*/
-
-int LoadFileOBJ(SharedState *s, std::string &filename, std::vector<float*> &points, std::vector<int*> &triangles)
+int LoadFileOBJ(SharedState *s, std::string &filename, std::vector<float*> &points, std::vector<int*> &triangles,
+				std::vector<float*> &texture_points, std::vector<int*> &texture_map)
 {
 	
 	//std::ifstream file_obj(filename);
@@ -476,7 +782,18 @@ int LoadFileOBJ(SharedState *s, std::string &filename, std::vector<float*> &poin
 			
 			points.push_back(vals);
 		} else if (line[0] == 'v' && line[1] == 't' && line[2] == ' ') {
-			// do nothing for now
+			// Texture vertex
+			
+			std::string vals_str = line.substr(3);
+			float *vals = new float[2]{};
+			
+			std::string val0 = vals_str.substr(0, vals_str.find(' '));
+			vals[0] = (float)atof(val0.c_str());
+			
+			std::string val1 = vals_str.substr(vals_str.find_last_of(' ') + 1);
+			vals[1] = (float)atof(val1.c_str());
+			
+			texture_points.push_back(vals);
 		} else if (line[0] == 'v' && line[1] == 'n' && line[2] == ' ') {
 			// do nothing
 		} else if (line[0] == 'f' && line[1] == ' ') {
@@ -484,8 +801,8 @@ int LoadFileOBJ(SharedState *s, std::string &filename, std::vector<float*> &poin
 			
 			std::string lineVals = line.substr(2);
 
-			std::string val0 = lineVals.substr(0, lineVals.find_first_of(' '));
-
+			//std::string val0 = lineVals.substr(0, lineVals.find_first_of(' '));
+			
 			// If the value for this face includes texture and/or 
 			// normal, parse them out
 			if (lineVals.find('/') >= 0)
@@ -494,12 +811,20 @@ int LoadFileOBJ(SharedState *s, std::string &filename, std::vector<float*> &poin
 				std::string g1 = lineVals.substr(0, lineVals.find(' '));
 				
 				// Get second group of values
-				std::string g2 = line.substr(line.find(' ') + 2);
+				std::string g2 = line.substr(line.find(' ') + 1);
 				g2 = g2.substr(g2.find(' ') + 1);
-				g2 = g2.substr(0, g2.find(' '));
+				//g2 = g2.substr(0, g2.find(' '));
 	
 				std::string g3 = line.substr(line.find_last_of(' ') + 1);
-	
+				
+				int *t_vals = new int[3]{};
+				std::string m1 = g1.substr(g1.find('/')+1, g1.find(' ') - g1.find('/') - 1);
+				std::string m2 = g2.substr(g2.find('/')+1, g2.find(' ') - g2.find('/') - 1);
+				std::string m3 = g3.substr(g3.find('/')+1, g3.find(' ') - g3.find('/') - 1);
+				t_vals[0] = (int)atoi(m1.c_str()) - 1;
+				t_vals[1] = (int)atoi(m2.c_str()) - 1;
+				t_vals[2] = (int)atoi(m3.c_str()) - 1;
+				texture_map.push_back(t_vals);
 	
 				g1 = g1.substr(0, g1.find('/'));
 				g2 = g2.substr(0, g2.find('/'));
@@ -510,7 +835,7 @@ int LoadFileOBJ(SharedState *s, std::string &filename, std::vector<float*> &poin
 				vals[2] = (int)atoi(g3.c_str()) - 1;
 				triangles.push_back(vals);
 			} else {
-				assert(!"unhandled case in LoadFileOBJ - face no textures");
+				assert(!"unhandled case in LoadFileOBJ - face has no textures");
 			}
 		}
 	}

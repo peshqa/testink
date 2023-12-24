@@ -288,14 +288,14 @@ void InitProjectionMat4x4(float *m, float fov, int is_fov_vertical, int screen_w
 	m[14] = -q*z_near;
 }
 
-void PlaneVectorIntersection(float *plane_normal, float *plane_point, float *line_start, float *line_end, float* output)
+void PlaneVectorIntersection(float *plane_normal, float *plane_point, float *line_start, float *line_end, float* output, float &t)
 {
 	float normalized_plane_normal[3];
 	VecRaw3fNormalize(plane_normal, normalized_plane_normal);
 	float plane_d = -DotProductVecRaw3f(normalized_plane_normal, plane_point);
 	float ad = DotProductVecRaw3f(line_start, normalized_plane_normal);
 	float bd = DotProductVecRaw3f(line_end, normalized_plane_normal);
-	float t = (-plane_d - ad) / (bd - ad);
+	t = (-plane_d - ad) / (bd - ad);
 	float start_to_end[3];
 	float line_to_intersect[3];
 	VecRaw3fSub(line_end, line_start, start_to_end);
@@ -303,7 +303,11 @@ void PlaneVectorIntersection(float *plane_normal, float *plane_point, float *lin
 	VecRaw3fAdd(line_start, line_to_intersect, output);
 }
 
-int ClipAgainstPlane(float *plane_normal, float *plane_point, std::vector<float*> &points, int *in_tri, int *out_tri1, int *out_tri2)
+// Returns the number of newly formed triangles
+int ClipAgainstPlane(float *plane_normal, float *plane_point, std::vector<float*> &points, std::vector<float*> &tex_points,
+						int *in_tri, int *in_tex,
+						int *out_tri1, int *out_tex1,
+						int *out_tri2, int *out_tex2)
 {
 	VecRaw3fNormalize(plane_normal, plane_normal);
 
@@ -320,21 +324,38 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, std::vector<float*
 	// If distance sign is positive, point lies on "inside" of plane
 	int inside_points[3];  int nInsidePointCount = 0;
 	int outside_points[3]; int nOutsidePointCount = 0;
+	int inside_tex_points[3];  int nInsideTexPointCount = 0;
+	int outside_tex_points[3]; int nOutsideTexPointCount = 0;
 
 	// Get signed distance of each point in triangle to plane
 	float d0 = dist(points[in_tri[0]]);
 	float d1 = dist(points[in_tri[1]]);
 	float d2 = dist(points[in_tri[2]]);
 
-	if (d0 >= 0) { inside_points[nInsidePointCount++] = in_tri[0]; }
-	else { outside_points[nOutsidePointCount++] = in_tri[0]; }
-	if (d1 >= 0) { inside_points[nInsidePointCount++] = in_tri[1]; }
-	else { outside_points[nOutsidePointCount++] = in_tri[1]; }
-	if (d2 >= 0) { inside_points[nInsidePointCount++] = in_tri[2]; }
-	else { outside_points[nOutsidePointCount++] = in_tri[2]; }
+	if (d0 >= 0)
+	{
+		inside_points[nInsidePointCount++] = in_tri[0]; inside_tex_points[nInsideTexPointCount++] = in_tex[0];
+	} else {
+		outside_points[nOutsidePointCount++] = in_tri[0]; outside_tex_points[nOutsideTexPointCount++] = in_tex[0];
+	}
+	if (d1 >= 0)
+	{
+		inside_points[nInsidePointCount++] = in_tri[1]; inside_tex_points[nInsideTexPointCount++] = in_tex[1];
+	} else {
+		outside_points[nOutsidePointCount++] = in_tri[1]; outside_tex_points[nOutsideTexPointCount++] = in_tex[1];
+	}
+	if (d2 >= 0)
+	{
+		inside_points[nInsidePointCount++] = in_tri[2]; inside_tex_points[nInsideTexPointCount++] = in_tex[2];
+	} else {
+		outside_points[nOutsidePointCount++] = in_tri[2]; outside_tex_points[nOutsideTexPointCount++] = in_tex[2];
+	}
 	
 	float *np1;
 	float *np2;
+	float *ntp1;
+	float *ntp2;
+	float t;
 
 	if (nInsidePointCount == 0)
 	{
@@ -350,8 +371,12 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, std::vector<float*
 		out_tri1[0] = in_tri[0];
 		out_tri1[1] = in_tri[1];
 		out_tri1[2] = in_tri[2];
+		
+		out_tex1[0] = in_tex[0];
+		out_tex1[1] = in_tex[1];
+		out_tex1[2] = in_tex[2];
 
-		return 1; // Just the one returned original triangle is valid
+		return 1;
 	}
 
 	if (nInsidePointCount == 1 && nOutsidePointCount == 2)
@@ -359,24 +384,41 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, std::vector<float*
 		// Triangle should be clipped. As two points lie outside
 		// the plane, the triangle simply becomes a smaller triangle
 
-		// TODO: Copy appearance info to new triangle
-
 		// The inside point is valid, so keep that...
 		out_tri1[0] = inside_points[0];
+		out_tex1[0] = inside_tex_points[0];
 
 		// but the two new points are at the locations where the 
 		// original sides of the triangle (lines) intersect with the plane
 		
+		// Newly generated Points
 		np1 = new float[3];
 		np2 = new float[3];
-		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]], points[outside_points[0]], np1);
-		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]], points[outside_points[1]], np2);
+		
+		ntp1 = new float[3];
+		ntp2 = new float[3];
+		
+		
+		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]], points[outside_points[0]], np1, t);
+		ntp1[0] = t * (tex_points[outside_tex_points[0]][0] - tex_points[inside_tex_points[0]][0]) + tex_points[inside_tex_points[0]][0];
+		ntp1[1] = t * (tex_points[outside_tex_points[0]][1] - tex_points[inside_tex_points[0]][1]) + tex_points[inside_tex_points[0]][1];
+		ntp1[2] = t * (tex_points[outside_tex_points[0]][2] - tex_points[inside_tex_points[0]][2]) + tex_points[inside_tex_points[0]][2];
+		out_tex1[1] = tex_points.size();
+		tex_points.push_back(ntp1);
+		
+		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]], points[outside_points[1]], np2, t);
+		ntp2[0] = t * (tex_points[outside_tex_points[1]][0] - tex_points[inside_tex_points[0]][0]) + tex_points[inside_tex_points[0]][0];
+		ntp2[1] = t * (tex_points[outside_tex_points[1]][1] - tex_points[inside_tex_points[0]][1]) + tex_points[inside_tex_points[0]][1];
+		ntp2[2] = t * (tex_points[outside_tex_points[1]][2] - tex_points[inside_tex_points[0]][2]) + tex_points[inside_tex_points[0]][2];
+		out_tex1[2] = tex_points.size();
+		tex_points.push_back(ntp2);
+		
 		points.push_back(np1);
 		out_tri1[1] = points.size() - 1;
 		points.push_back(np2);
 		out_tri1[2] = points.size() - 1;
 
-		return 1; // Return the newly formed single triangle
+		return 1;
 	}
 
 	if (nInsidePointCount == 2 && nOutsidePointCount == 1)
@@ -384,30 +426,43 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, std::vector<float*
 		// Triangle should be clipped. As two points lie inside the plane,
 		// the clipped triangle becomes a "quad".
 
-		// TODO: Copy appearance info to new triangles
-
 		np1 = new float[3];
 		np2 = new float[3];
+		
+		ntp1 = new float[3];
+		ntp2 = new float[3];
 	
 		out_tri1[0] = inside_points[0];
 		out_tri1[1] = inside_points[1];
-		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]], points[outside_points[0]], np1);
+		out_tex1[0] = inside_tex_points[0];
+		out_tex1[1] = inside_tex_points[1];
+		
+		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]], points[outside_points[0]], np1, t);
+		ntp1[0] = t * (tex_points[outside_tex_points[0]][0] - tex_points[inside_tex_points[0]][0]) + tex_points[inside_tex_points[0]][0];
+		ntp1[1] = t * (tex_points[outside_tex_points[0]][1] - tex_points[inside_tex_points[0]][1]) + tex_points[inside_tex_points[0]][1];
+		ntp1[2] = t * (tex_points[outside_tex_points[0]][2] - tex_points[inside_tex_points[0]][2]) + tex_points[inside_tex_points[0]][2];
+		out_tex1[2] = tex_points.size();
+		tex_points.push_back(ntp1);
+		
 		points.push_back(np1);
 		out_tri1[2] = points.size() - 1;
 
 		out_tri2[0] = inside_points[1];
+		out_tex2[0] = inside_tex_points[1];
 		out_tri2[1] = out_tri1[2];
-		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[1]], points[outside_points[0]], np2);
+		out_tex2[1] = out_tex1[2];
+		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[1]], points[outside_points[0]], np2, t);
+		ntp2[0] = t * (tex_points[outside_tex_points[0]][0] - tex_points[inside_tex_points[1]][0]) + tex_points[inside_tex_points[1]][0];
+		ntp2[1] = t * (tex_points[outside_tex_points[0]][1] - tex_points[inside_tex_points[1]][1]) + tex_points[inside_tex_points[1]][1];
+		ntp2[2] = t * (tex_points[outside_tex_points[0]][2] - tex_points[inside_tex_points[1]][2]) + tex_points[inside_tex_points[1]][2];
+		out_tex2[2] = tex_points.size();
+		tex_points.push_back(ntp2);
+		
 		points.push_back(np2);
 		out_tri2[2] = points.size() - 1;
 
-		return 2; // Return two newly formed triangles which form a quad
+		return 2;
 	}
 	return -1;
 }
-
-//#include <fstream>
-//#include <assert.h>
-//#include <string>
-
 
