@@ -34,15 +34,7 @@ Each PPM image consists of the following:
 #include <fstream>
 #include <string>
 
-typedef struct
-{
-	int width;
-	int height;
-	// assuming its 4 bytes per pixel
-	int *pixels;
-} SimpleImage;
-
-int TerminatePPMImage(SimpleImage *image)
+int TerminateImage(SimpleImage *image)
 {
 	delete [] image->pixels;
 	return 0;
@@ -124,66 +116,3 @@ int LoadPPMImage(SharedState *s, std::string file_path, SimpleImage *image)
 	CloseAssetFile(s);
 	return 0;
 }
-
-int SampleTexture(SimpleImage *img, float u, float v)
-{
-	if (u >= 0.0f && u <= 1.0f && v >= 0.0f && v <= 1.0f)
-	{
-		return img->pixels[img->width*(int)((img->height-1)*(1.0f-v)) + (int)(img->width*u)];
-	}
-	return MakeColor(255, 241, 87, 236);
-}
-
-/*int LoadPPMImage(const char file_path[], SimpleImage *image)
-{
-	unsigned char sample{};
-	
-	FILE *file;
-	file = fopen(file_path, "rb");
-	
-	if (file == 0)
-	{
-		return 1;
-	}
-	
-	// TODO: completely redo this terrible code below
-	// perhaps implementing a parser is required
-	
-	char buffer[255]{};
-	
-	fread(buffer, 1, 3, file);
-	fread(buffer, 1, 4, file);
-	fread(buffer, 1, 4, file);
-	fread(buffer, 1, 4, file);
-	
-	int width = 201;
-	int height = 200;
-	int max_value = 255;
-	
-	image->width = width;
-	image->height = height;
-	
-	if (image->pixels != 0)
-	{
-		delete [] image->pixels;
-	}
-	image->pixels = new int[width*height]{};
-	
-	for (int y = 0; y < height; y++)
-	{
-		for (int x = 0; x < width; x++)
-		{
-			int pixel = 0;
-			fread(&sample, 1, 1, file);
-			pixel += sample << 16;
-			fread(&sample, 1, 1, file);
-			pixel += sample << 8;
-			fread(&sample, 1, 1, file);
-			pixel += sample;
-			image->pixels[y*width+x] = pixel;
-		}
-	}
-	
-	fclose(file);
-	return 0;
-}*/

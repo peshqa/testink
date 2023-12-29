@@ -82,16 +82,16 @@ struct SharedState
 int PlatformGoBorderlessFullscreen(SharedState *s);
 int MakeColor(int a, int r, int g, int b);
 
-int InitAssetManager(SharedState *s);
+//int InitAssetManager(SharedState *s);
 int OpenAssetFileA(SharedState *s, std::string &filename);
 int ReadAssetLineA(SharedState *s, std::string &line);
 int ReadAssetBytesA(SharedState *s, char *buf, unsigned int bytes);
 int ReadAssetUntilSpaceA(SharedState *s, std::string &line);
 //int ReadAssetSkipA(SharedState *s);
 int CloseAssetFile(SharedState *s);
-int TerminateAssetManager(SharedState *s);
+//int TerminateAssetManager(SharedState *s);
 
-#include "ppm_image_loader.h"
+#include "simple_image.h"
 
 int ConvertRelToPlain(float rel, int start, int end)
 {
