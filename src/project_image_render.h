@@ -23,9 +23,9 @@ typedef struct
 int InitProjectImageRender(SharedState* state)
 {
 	ProjectStateImageRender *p_state = new ProjectStateImageRender{};
-	p_state->x_offset = 0;
-	p_state->y_offset = 1;
-	p_state->z_offset = 0;
+	p_state->x_offset = 0.0f;
+	p_state->y_offset = 0.0f;
+	p_state->z_offset = 0.0f;
 	
 	p_state->last_mouse_x = 0;
 	p_state->last_mouse_y = 0;
@@ -108,16 +108,39 @@ int UpdateProjectImageRender(SharedState* state)
 	float oy = game_state->y_offset;
 	float oz = game_state->z_offset;
 	
+	static float step_x = 0.25f;
+	static float step_y = 0.35f;
+	
 	//FillPlatformBitBuffer(state->bitBuff, MakeColor(255,25,12,6)); // solid color
 	DrawGradientScreen(state->bitBuff, 106, 104, 203, 255, 255, 255); // fancy vertical gradient
 	
-	for (int i = 0; i < game_state->image.width; i++)
+	int min_x = ConvertRelToPlain(ox, 0, state->bitBuff->width);
+	int min_y = ConvertRelToPlain(oy, 0, state->bitBuff->height);
+	if (step_x > 0 && min_x >= state->bitBuff->width-game_state->image.width)
 	{
-		for (int j = 0; j < game_state->image.height; j++)
-		{
-			PlatformDrawPixel(state->bitBuff, i, j, game_state->image.pixels[game_state->image.width*j+i]);
-		}
+		step_x = -step_x;
+		min_x += step_x * delta_time;
 	}
+	if (step_x < 0 && min_x < 0)
+	{
+		step_x = -step_x;
+		min_x += step_x * delta_time;
+	}
+	if (step_y > 0 && min_y >= state->bitBuff->height-game_state->image.height)
+	{
+		step_y = -step_y;
+		min_y += step_y * delta_time;
+	}
+	if (step_y < 0 && min_y < 0)
+	{
+		step_y = -step_y;
+		min_y += step_y * delta_time;
+	}
+	DrawImageExceptColor(state->bitBuff, &game_state->image, min_x, min_y, MakeColor(0, 254, 254, 255));
+	
+	
+	game_state->x_offset += step_x * delta_time;
+	game_state->y_offset += step_y * delta_time;
 	
 	return 0;
 }
