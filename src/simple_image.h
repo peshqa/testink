@@ -47,3 +47,74 @@ void DrawImageExceptColor(PlatformBitBuffer *bitBuff, SimpleImage *image, int mi
 		}
 	}
 }
+
+void DrawImageOnlyColor(PlatformBitBuffer *bitBuff, SimpleImage *image, int min_x, int min_y, int single_color)
+{
+	for (int j = 0; j < image->height; j++)
+	{
+		for (int i = 0; i < image->width; i++)
+		{
+			if (image->pixels[image->width*j+i] == single_color)
+				PlatformDrawPixel(bitBuff, min_x+i, min_y+j, single_color);
+		}
+	}
+}
+
+int CharToBMPFontCharIndex(char c)
+{
+	if (c >= 'A' && c <= 'Z')
+	{
+		return c - 'A';
+	}
+	if (c >= 'a' && c <= 'z')
+	{
+		return c - 'a';
+	}
+	if (c >= '0' && c <= '9')
+	{
+		return c - '0' + 26;
+	}
+	if (c == ',' || c == '.')
+	{
+		return 37;
+	}
+	if (c == ':')
+	{
+		return 38;
+	}
+	if (c == '-')
+	{
+		return 39;
+	}
+	if (c == ' ')
+	{
+		return 36;
+	}
+	return -1;
+}
+
+void DrawBMPFontChar(PlatformBitBuffer *bitBuff, SimpleImage *font, int min_x, int min_y, char c)
+{
+	int font_color = MakeColor(255, 0, 0, 0);
+	int index = CharToBMPFontCharIndex(c);
+	if (index < 0)
+	{
+		return;
+	}
+	for (int j = 0; j < font->height; j++)
+	{
+		for (int i = 0; i < 16; i++)
+		{
+			if (font->pixels[font->width*j+i+index*16] == font_color)
+				PlatformDrawPixel(bitBuff, min_x+i, min_y+j, font_color);
+		}
+	}
+}
+
+void DrawBMPFontString(PlatformBitBuffer *bitBuff, SimpleImage *font, int min_x, int min_y, std::string &str)
+{
+	for (int i = 0; i < str.length(); i++)
+	{
+		DrawBMPFontChar(bitBuff, font, min_x + i*16, min_y, str[i]);
+	}
+}
