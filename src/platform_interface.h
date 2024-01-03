@@ -17,6 +17,7 @@ enum InputCode : unsigned int
 	INPUT_LSHIFT = 0xA0,
 };
 
+// TODO: delete this?
 enum ARGB8888Color : unsigned int
 {
 	COLOR_WHITE = 0xFFFFFFFF,
@@ -49,7 +50,6 @@ struct SharedState
 	int scale;
 	//std::vector<SimpleImage*> images;
 	char dir;
-	//Project *project;
 	void *project_state;
 	std::chrono::steady_clock::time_point curr_time;
 	std::chrono::steady_clock::time_point prev_time;
@@ -63,6 +63,7 @@ struct SharedState
 	unsigned char input_state[300];
 	
 	int is_running;
+	int max_fps;
 	
 	int screen_mode;
 	

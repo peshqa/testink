@@ -91,8 +91,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	
 	std::chrono::steady_clock::time_point currTime = std::chrono::steady_clock::now();
 	std::chrono::steady_clock::time_point prevTime{};
-	
-	
 
     // Run the message loop.
     MSG msg{};
@@ -130,7 +128,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		PlatformUpdateDisplay(&shared_state, shared_state.client_width, shared_state.client_height);
 		ReleaseDC(hwnd, hdc);
 		
-		Sleep(25); // ms
+		if (shared_state.max_fps > 0)
+		{
+			float sec_per_frame = 1.0f / shared_state.max_fps;
+			if (elapsedTime < sec_per_frame)
+				Sleep((int)((sec_per_frame-elapsedTime) * 1000.0f));
+		}
 	}
 
     return 0;

@@ -403,14 +403,16 @@ int InitSharedState(SharedState *shared_state)
 	
 	shared_state->asset_path = "../assets/";
 	
+	shared_state->max_fps = 300;
+	
 	return 0;
 	// TODO: implement uninitializer TerminateSharedState
 }
 
-int InitAssetManager(SharedState *s)
+/*int InitAssetManager(SharedState *s)
 {
 	return 0;
-}
+}*/
 int OpenAssetFileA(SharedState *s, std::string &filename)
 {
 	W32Extra *extra = (W32Extra*)(s->extra);
@@ -440,7 +442,7 @@ int CloseAssetFile(SharedState *s)
 	extra->file.close();
 	return 0;
 }
-int TerminateAssetManager(SharedState *s)
+/*int TerminateAssetManager(SharedState *s)
 {
 	return 0;
-}
+}*/
