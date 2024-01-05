@@ -9,7 +9,7 @@ platform_simple_renderer.h - (platform independent) core of all smaller projects
 
 #include <vector>
 #include <chrono>
-#include <assert.h>
+//#include <assert.h>
 #include <string>
 #include <algorithm>
 
@@ -479,7 +479,7 @@ int LoadFileOBJ(SharedState *s, std::string &filename, std::vector<float*> &poin
 	
 	if (/*file_obj.fail()*/OpenAssetFileA(s, filename) != 0)
 	{
-		assert(!"failed to open obj file");
+		ASSERT(!"failed to open obj file");
 		return 1;
 	}
 	
@@ -558,7 +558,7 @@ int LoadFileOBJ(SharedState *s, std::string &filename, std::vector<float*> &poin
 				vals[2] = (int)atoi(g3.c_str()) - 1;
 				triangles.push_back(vals);
 			} else {
-				assert(!"unhandled case in LoadFileOBJ - face has no textures");
+				ASSERT(!"unhandled case in LoadFileOBJ - face has no textures");
 			}
 		}
 	}

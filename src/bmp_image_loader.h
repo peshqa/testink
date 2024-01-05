@@ -38,7 +38,7 @@ int LoadBMPImage(SharedState *s, std::string file_path, SimpleImage *image)
 {
 	if (OpenAssetFileA(s, file_path) != 0)
 	{
-		assert(!"LoadBMPImage - Couldn't open the file");
+		ASSERT(!"LoadBMPImage - Couldn't open the file");
 		return 1;
 	}
 	
@@ -48,13 +48,13 @@ int LoadBMPImage(SharedState *s, std::string file_path, SimpleImage *image)
 	
 	if (header.magic_number != 'MB')
 	{
-		assert(!"LoadBMPImage - Magic number not matching");
+		ASSERT(!"LoadBMPImage - Magic number not matching");
 		return 2;
 	}
 	
 	if (header.offset < 54 || header.bits_per_pixel < 32 || header.compression_method != 0)
 	{
-		assert(!"LoadBMPImage - Unrecognized bmp file format");
+		ASSERT(!"LoadBMPImage - Unrecognized bmp file format");
 		return 3;
 	}
 

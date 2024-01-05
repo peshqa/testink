@@ -1,12 +1,18 @@
 /*
 platform_interface.h - defines functions or "services" that platform layer offers for platform independent layer to use
-also defines some enums
+also defines some enums and macros
 2024/01/01, peshqa
 */
 #pragma once
 
 #include <chrono>
 #include <string>
+
+#ifdef ASSERT_ENABLE
+#define ASSERT(e) if(!(e)) { *(int*)0 = 0; }
+#else
+#define ASSERT(e)
+#endif
 
 enum InputCode : unsigned int
 {
@@ -15,16 +21,6 @@ enum InputCode : unsigned int
 	INPUT_RIGHT = 0x27,
 	INPUT_DOWN = 0x28,
 	INPUT_LSHIFT = 0xA0,
-};
-
-// TODO: delete this?
-enum ARGB8888Color : unsigned int
-{
-	COLOR_WHITE = 0xFFFFFFFF,
-	COLOR_BLACK = 0xFF000000,
-	COLOR_RED 	= 0xFFFF0000,
-	COLOR_GREEN = 0xFF00FF00,
-	COLOR_BLUE 	= 0xFF0000FF
 };
 
 enum ScreenMode : int

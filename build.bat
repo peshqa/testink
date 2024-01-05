@@ -9,6 +9,6 @@ cl && (
 )
 
 
-cl -Zi -EHsc ..\src\main.cpp
+cl -DASSERT_ENABLE=1 -Zi -EHsc ..\src\main.cpp
 
 popd

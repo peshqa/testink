@@ -47,7 +47,7 @@ int LoadPPMImage(SharedState *s, std::string file_path, SimpleImage *image)
 	
 	if (OpenAssetFileA(s, file_path) != 0)
 	{
-		assert(!"LoadPPMImage - Couldn't open the file");
+		ASSERT(!"LoadPPMImage - Couldn't open the file");
 		return 1;
 	}
 	
@@ -58,7 +58,7 @@ int LoadPPMImage(SharedState *s, std::string file_path, SimpleImage *image)
 	//if (line != "P6")
 	if (line[0] != 'P' && line[1] != '6')
 	{
-		assert(!"LoadPPMImage - Magic number not matching");
+		ASSERT(!"LoadPPMImage - Magic number not matching");
 		return 2;
 	}
 	
