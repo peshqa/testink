@@ -30,7 +30,6 @@ Each PPM image consists of the following:
 */
 #pragma once
 
-#include <iostream>
 #include <fstream>
 #include <string>
 

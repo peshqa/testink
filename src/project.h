@@ -6,13 +6,10 @@ Projects are provided with pointers to shared app state and can call functions t
 */
 #pragma once
 
-
 #include "platform_simple_renderer.h"
 #include "snake_game.h"
 #include "project_cube3d.h"
 #include "project_image_render.h"
-
-#include <list>
 
 typedef int (*InitProjectFunction)(SharedState*);
 typedef int (*UpdateProjectFunction)(SharedState*);
@@ -143,7 +140,7 @@ int UpdateProjectSnakeGame(SharedState* state)
 
 int InitProjectArray(Project* &array)
 {
-	// TODO: automate this count
+	// TODO: automate this count OR set the count to a high number instead?
 	int count = 3;
 	array = new Project[count];
 	// First element of the array points to default project

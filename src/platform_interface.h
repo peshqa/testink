@@ -14,6 +14,8 @@ also defines some enums and macros
 #define ASSERT(e)
 #endif
 
+#define ARRAY_LENGTH(a) sizeof(a) / sizeof(a[0])
+
 enum InputCode : unsigned int
 {
 	INPUT_LEFT = 0x25,

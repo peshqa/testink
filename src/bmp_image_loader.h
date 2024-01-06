@@ -7,7 +7,6 @@ data is stored "bottom-to-top", so it is inverted while reading
 
 #pragma once
 
-#include <iostream>
 #include <fstream>
 #include <string>
 
