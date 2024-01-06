@@ -148,7 +148,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 
         char Buffer[256];
         sprintf(Buffer, "ms/f: %.2f,  fps: %.2f,  mc/f: %.2f\n", ms_per_frame, fps, mega_cycles_per_frame);
-        OutputDebugStringA(Buffer);
+        //OutputDebugStringA(Buffer);
 
         prev_counter = current_counter;
         prev_cycle_counter = current_cycle_counter;

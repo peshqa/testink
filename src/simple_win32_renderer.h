@@ -19,8 +19,8 @@ simple_win32_renderer.h - (Windows specific) core of all smaller projects that d
 
 //#include "project.h"
 
-#pragma comment (lib, "Gdi32.lib")
-#pragma comment (lib, "User32.lib")
+//#pragma comment (lib, "Gdi32.lib")
+//#pragma comment (lib, "User32.lib")
 
 typedef struct
 {
