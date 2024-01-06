@@ -9,7 +9,6 @@ platform_simple_renderer.h - (platform independent) core of all smaller projects
 
 #include <vector>
 #include <chrono>
-//#include <assert.h>
 #include <string>
 #include <algorithm>
 

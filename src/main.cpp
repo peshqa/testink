@@ -14,6 +14,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 {
 	srand(time(NULL));
 	
+	LARGE_INTEGER counter_per_sec;
+	QueryPerformanceFrequency(&counter_per_sec);
+	
 	SharedState shared_state{};
 	InitSharedState(&shared_state);
 	
@@ -83,12 +86,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		GWLP_USERDATA,
 		(LONG_PTR)&shared_state
 	);
-    //ShowWindow(hwnd, nCmdShow);
+
 	PlatformGoBorderlessFullscreen(&shared_state);
 	
 	// init screen buffer
-	FillPlatformBitBuffer(shared_state.bitBuff, MakeColor(255, 255, 255, 255));
+	//FillPlatformBitBuffer(shared_state.bitBuff, MakeColor(255, 255, 255, 255));
 	
+	// Frame timing
+	LARGE_INTEGER prev_counter;
+    uint64_t prev_cycle_counter = __rdtsc();
+    QueryPerformanceCounter(&prev_counter);
 	std::chrono::steady_clock::time_point currTime = std::chrono::steady_clock::now();
 	std::chrono::steady_clock::time_point prevTime{};
 
@@ -127,6 +134,24 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		((W32Extra*)(shared_state.extra))->hdc = hdc;
 		PlatformUpdateDisplay(&shared_state, shared_state.client_width, shared_state.client_height);
 		ReleaseDC(hwnd, hdc);
+		
+		uint64_t current_cycle_counter = __rdtsc();
+        LARGE_INTEGER current_counter;
+        QueryPerformanceCounter(&current_counter);
+
+        int64_t counter_elapsed = current_counter.QuadPart - prev_counter.QuadPart;
+        uint64_t cycles_elapsed = current_cycle_counter - prev_cycle_counter;
+
+        float ms_per_frame = 1000.0f * (float)counter_elapsed / counter_per_sec.QuadPart;
+        float fps = (float)counter_per_sec.QuadPart / counter_elapsed;
+        float mega_cycles_per_frame = (float)cycles_elapsed / (1000.0f * 1000.0f);
+
+        char Buffer[256];
+        sprintf(Buffer, "ms/f: %.2f,  fps: %.2f,  mc/f: %.2f\n", ms_per_frame, fps, mega_cycles_per_frame);
+        OutputDebugStringA(Buffer);
+
+        prev_counter = current_counter;
+        prev_cycle_counter = current_cycle_counter;
 		
 		if (shared_state.max_fps > 0)
 		{

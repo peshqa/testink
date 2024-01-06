@@ -45,17 +45,14 @@ int ResizePlatformBitBuffer(PlatformBitBuffer *p, int screenWidth, int screenHei
 	p->width = screenWidth;
 	p->height = screenHeight;
 	
-	if (p->bits != 0)
+	if (p->info != 0)
 	{
-		delete [] p->bits;
+		VirtualFree(p->info, 0, MEM_RELEASE);
 	}
-	p->bits = new int[screenWidth * screenHeight]{};
-	
-	if (p->info == 0)
-	{
-		delete p->info;
-	}
-	p->info = new BITMAPINFO{};
+	int mem_size = screenWidth * screenHeight * sizeof(int) + sizeof(BITMAPINFO);
+	p->info = VirtualAlloc(0, mem_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	p->bits = (char*)p->info + sizeof(BITMAPINFO);
+
 	
 	BITMAPINFO *info = (BITMAPINFO*)(p->info);
 	info->bmiHeader.biSize = sizeof(info->bmiHeader);
@@ -93,10 +90,6 @@ int FillW32BitBuffer(W32BitBuffer *bitBuff, int color)
 	
 	return 0;
 }
-/*int FillPlatformBitBuffer(PlatformBitBuffer *bitBuff, int color)
-{
-	return FillW32BitBuffer((W32BitBuffer*)bitBuff, color);
-}*/
 
 int GrayscaleW32BitBuffer(W32BitBuffer *bitBuff)
 {
@@ -163,7 +156,6 @@ int PlatformUpdateDisplay(SharedState* state, int screenWidth, int screenHeight)
 	
 	return res;
 }
-
 
 int Win32GoBorderlessFullscreen(HWND hwnd)
 {
