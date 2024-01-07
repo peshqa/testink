@@ -9,6 +9,81 @@ Console isn't used by the app (initially), so 'wWinMain' is the main function.
 #include "simple_wasapi_renderer.h"
 #include "simple_win32_renderer.h"
 
+#include <dsound.h>
+#include <math.h>
+
+#define PI32 3.14159265359
+
+#define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter);
+typedef DIRECT_SOUND_CREATE(direct_sound_create);
+
+void InitDirectSound(HWND hwnd, int samples_per_size, int buffer_size, LPDIRECTSOUNDBUFFER  &secondary_buffer)
+{
+	HMODULE Library = LoadLibraryA("dsound.dll");
+	
+	if (!Library)
+	{
+		// TODO: logging?
+		return;
+	}
+	
+	direct_sound_create *DirectSoundCreate = (direct_sound_create *)GetProcAddress(Library, "DirectSoundCreate");
+	LPDIRECTSOUND direct_sound;
+	
+	if(!SUCCEEDED(DirectSoundCreate(0, &direct_sound, 0)))
+	{
+		// TODO: logging?
+		return;
+	}
+	
+	if(!SUCCEEDED(direct_sound->SetCooperativeLevel(hwnd, DSSCL_PRIORITY)))
+	{
+		// TODO: logging?
+		return;
+	}
+	
+	//OutputDebugStringA("Set coop level\n");
+	WAVEFORMATEX wave_format  = {};
+    wave_format.wFormatTag = WAVE_FORMAT_PCM;
+    wave_format.nChannels = 2;
+    wave_format.nSamplesPerSec = samples_per_size;
+    wave_format.wBitsPerSample = 16;
+    wave_format.nBlockAlign = wave_format.nChannels * wave_format.wBitsPerSample / 8;
+    wave_format.nAvgBytesPerSec = wave_format.nSamplesPerSec * wave_format.nBlockAlign;
+	
+	DSBUFFERDESC buffer_desc = {};
+	buffer_desc.dwSize = sizeof(buffer_desc);
+	buffer_desc.dwFlags = DSBCAPS_PRIMARYBUFFER;
+	LPDIRECTSOUNDBUFFER  primary_buffer;
+	
+	if(!SUCCEEDED(direct_sound->CreateSoundBuffer(&buffer_desc, &primary_buffer, 0)))
+	{
+		// TODO: logging?
+		return;
+	}
+	if(!SUCCEEDED(primary_buffer->SetFormat(&wave_format)))
+	{
+		// TODO: logging?
+		return;
+	}
+	//OutputDebugStringA("Set sec buffer format\n");
+	
+	DSBUFFERDESC sec_buffer_desc = {};
+	sec_buffer_desc.dwSize = sizeof(sec_buffer_desc);
+	sec_buffer_desc.dwFlags = 0;
+	sec_buffer_desc.dwBufferBytes = buffer_size;
+    sec_buffer_desc.lpwfxFormat = &wave_format;
+	//LPDIRECTSOUNDBUFFER  secondary_buffer;
+	
+	if(!SUCCEEDED(direct_sound->CreateSoundBuffer(&sec_buffer_desc, &secondary_buffer, 0)))
+	{
+		// TODO: logging?
+		return;
+	}
+	OutputDebugStringA("Direct sound initiated\n");
+	
+	
+}
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
@@ -89,6 +164,19 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 
 	PlatformGoBorderlessFullscreen(&shared_state);
 	
+	// Sound stuff
+	LPDIRECTSOUNDBUFFER  sound_buffer;
+	int samples_per_second = 48000;
+	int bytes_per_sample = 4;
+	int sound_buffer_size = samples_per_second * bytes_per_sample;
+	int tone_hz = 256;
+	int tone_amplitude = 500;
+	int wave_period = samples_per_second / tone_hz;
+	int half_wave_period = wave_period / 2;
+	uint32_t running_sample_index = 0;
+	InitDirectSound(hwnd, samples_per_second, sound_buffer_size, sound_buffer);
+	sound_buffer->Play(0, 0, DSBPLAY_LOOPING);
+	
 	// init screen buffer
 	//FillPlatformBitBuffer(shared_state.bitBuff, MakeColor(255, 255, 255, 255));
 	
@@ -121,12 +209,50 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		std::chrono::duration<float> dur = currTime - prevTime;
 		float elapsedTime = dur.count();
 		
-		// Input (TODO)
+		DWORD play_cursor;
+        DWORD write_cursor;
+		if(SUCCEEDED(sound_buffer->GetCurrentPosition(&play_cursor, &write_cursor)))
+		{
+			DWORD lock_offset = running_sample_index * bytes_per_sample % sound_buffer_size;
+			void *region1;
+			DWORD region1_size;
+			void *region2;
+			DWORD region2_size;
+			DWORD bytes_to_lock;
+	
+			if(play_cursor == lock_offset) {
+				bytes_to_lock = sound_buffer_size;
+			} else if(lock_offset > play_cursor) {
+				bytes_to_lock = sound_buffer_size - lock_offset + play_cursor;
+			} else {
+				bytes_to_lock = play_cursor - lock_offset;
+			}
+	
+			if(SUCCEEDED(sound_buffer->Lock(
+					lock_offset,
+					bytes_to_lock,
+					&region1, &region1_size,
+					&region2, &region2_size,
+					0
+				)))
+			{
+				int16_t *sample_out = (int16_t*)region1;
+				for(int i = 0; i < region1_size / bytes_per_sample; i++) {
+					int16_t value = ((running_sample_index++ / half_wave_period) % 2) ? tone_amplitude : -tone_amplitude;
+					*sample_out++ = value;
+					*sample_out++ = value;
+				}
 		
-		// Update & Render
-
-		//std::wstring title = std::to_wstring((elapsedTime));
-		//SetWindowTextW(hwnd, title.c_str());
+				sample_out = (int16_t*)region2;
+				for(int i = 0; i < region2_size / bytes_per_sample; i++) {
+					int16_t value = ((running_sample_index++ / half_wave_period) % 2) ? tone_amplitude : -tone_amplitude;
+					*sample_out++ = value;
+					*sample_out++ = value;
+				}
+		
+				sound_buffer->Unlock(region1, region1_size, region2, region2_size);
+			}
+        }
 		
 		UpdateProjectFunc(&shared_state);
 		
