@@ -17,14 +17,14 @@ Console isn't used by the app (initially), so 'wWinMain' is the main function.
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter);
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
-void InitDirectSound(HWND hwnd, int samples_per_size, int buffer_size, LPDIRECTSOUNDBUFFER  &secondary_buffer)
+int InitDirectSound(HWND hwnd, int samples_per_size, int buffer_size, LPDIRECTSOUNDBUFFER  &secondary_buffer)
 {
 	HMODULE Library = LoadLibraryA("dsound.dll");
 	
 	if (!Library)
 	{
 		// TODO: logging?
-		return;
+		return -1;
 	}
 	
 	direct_sound_create *DirectSoundCreate = (direct_sound_create *)GetProcAddress(Library, "DirectSoundCreate");
@@ -33,13 +33,13 @@ void InitDirectSound(HWND hwnd, int samples_per_size, int buffer_size, LPDIRECTS
 	if(!SUCCEEDED(DirectSoundCreate(0, &direct_sound, 0)))
 	{
 		// TODO: logging?
-		return;
+		return -2;
 	}
 	
 	if(!SUCCEEDED(direct_sound->SetCooperativeLevel(hwnd, DSSCL_PRIORITY)))
 	{
 		// TODO: logging?
-		return;
+		return -3;
 	}
 	
 	//OutputDebugStringA("Set coop level\n");
@@ -59,12 +59,12 @@ void InitDirectSound(HWND hwnd, int samples_per_size, int buffer_size, LPDIRECTS
 	if(!SUCCEEDED(direct_sound->CreateSoundBuffer(&buffer_desc, &primary_buffer, 0)))
 	{
 		// TODO: logging?
-		return;
+		return -4;
 	}
 	if(!SUCCEEDED(primary_buffer->SetFormat(&wave_format)))
 	{
 		// TODO: logging?
-		return;
+		return -5;
 	}
 	//OutputDebugStringA("Set sec buffer format\n");
 	
@@ -78,11 +78,66 @@ void InitDirectSound(HWND hwnd, int samples_per_size, int buffer_size, LPDIRECTS
 	if(!SUCCEEDED(direct_sound->CreateSoundBuffer(&sec_buffer_desc, &secondary_buffer, 0)))
 	{
 		// TODO: logging?
-		return;
+		return -6;
 	}
 	OutputDebugStringA("Direct sound initiated\n");
 	
-	
+	return 0;
+}
+
+typedef struct
+{
+	int samples_per_second;
+	int bytes_per_sample;
+	int sound_buffer_size;
+	float t_sin;
+	int latency_sample_count;
+	int tone_hz;
+	int tone_amplitude;
+	int wave_period;
+	//int half_wave_period;
+	uint32_t running_sample_index;
+} SoundWaveInfo;
+
+void FillSoundBuffer(LPDIRECTSOUNDBUFFER sound_buffer, SoundWaveInfo *sound, DWORD lock_offset, DWORD bytes_to_lock)
+{
+	void *region1;
+	DWORD region1_size;
+	void *region2;
+	DWORD region2_size;
+
+	if(SUCCEEDED(sound_buffer->Lock(
+			lock_offset,
+			bytes_to_lock,
+			&region1, &region1_size,
+			&region2, &region2_size,
+			0
+		)))
+	{
+		int16_t *sample_out = (int16_t*)region1;
+		for(int i = 0; i < region1_size / sound->bytes_per_sample; i++) {
+			//float t = 2.0f * PI32 * (sound->running_sample_index / (float)sound->wave_period);
+			float sin_value = sinf(sound->t_sin);
+			int16_t value = (int16_t)(sin_value * sound->tone_amplitude);
+			*sample_out++ = value;
+			*sample_out++ = value;
+			sound->running_sample_index++;
+			sound->t_sin += 2.0f * PI32 * (1.0f / (float)sound->wave_period);
+		}
+
+		sample_out = (int16_t*)region2;
+		for(int i = 0; i < region2_size / sound->bytes_per_sample; i++) {
+			//float t = 2.0f * PI32 * (sound->running_sample_index / (float)sound->wave_period);
+			float sin_value = sinf(sound->t_sin);
+			int16_t value = (int16_t)(sin_value * sound->tone_amplitude);
+			*sample_out++ = value;
+			*sample_out++ = value;
+			sound->running_sample_index++;
+			sound->t_sin += 2.0f * PI32 * (1.0f / (float)sound->wave_period);
+		}
+
+		sound_buffer->Unlock(region1, region1_size, region2, region2_size);
+	}
 }
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
@@ -165,16 +220,19 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	PlatformGoBorderlessFullscreen(&shared_state);
 	
 	// Sound stuff
-	LPDIRECTSOUNDBUFFER  sound_buffer;
-	int samples_per_second = 48000;
-	int bytes_per_sample = 4;
-	int sound_buffer_size = samples_per_second * bytes_per_sample;
-	int tone_hz = 256;
-	int tone_amplitude = 500;
-	int wave_period = samples_per_second / tone_hz;
-	int half_wave_period = wave_period / 2;
-	uint32_t running_sample_index = 0;
-	InitDirectSound(hwnd, samples_per_second, sound_buffer_size, sound_buffer);
+	LPDIRECTSOUNDBUFFER sound_buffer;
+	SoundWaveInfo sound = {};
+	sound.samples_per_second = 48000;
+	sound.latency_sample_count = sound.samples_per_second / 10;
+	sound.bytes_per_sample = 4;
+	sound.sound_buffer_size = sound.samples_per_second * sound.bytes_per_sample;
+	sound.tone_hz = 256*2;
+	sound.tone_amplitude = 3000;
+	sound.wave_period = sound.samples_per_second / sound.tone_hz;
+	//sound.half_wave_period = sound.wave_period / 2;
+	sound.running_sample_index = 0;
+	InitDirectSound(hwnd, sound.samples_per_second, sound.sound_buffer_size, sound_buffer);
+	FillSoundBuffer(sound_buffer, &sound, 0, sound.sound_buffer_size);
 	sound_buffer->Play(0, 0, DSBPLAY_LOOPING);
 	
 	// init screen buffer
@@ -209,49 +267,31 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		std::chrono::duration<float> dur = currTime - prevTime;
 		float elapsedTime = dur.count();
 		
+		
+		if (shared_state.input_state['W'] == 1)
+		{
+			sound.tone_hz += (int)(100.0f * elapsedTime);
+			sound.wave_period = sound.samples_per_second / sound.tone_hz;
+		}
+		if (shared_state.input_state['S'] == 1)
+		{
+			sound.tone_hz -= (int)(100.0f * elapsedTime);
+			sound.wave_period = sound.samples_per_second / sound.tone_hz;
+		}
 		DWORD play_cursor;
         DWORD write_cursor;
+		
 		if(SUCCEEDED(sound_buffer->GetCurrentPosition(&play_cursor, &write_cursor)))
 		{
-			DWORD lock_offset = running_sample_index * bytes_per_sample % sound_buffer_size;
-			void *region1;
-			DWORD region1_size;
-			void *region2;
-			DWORD region2_size;
+			DWORD lock_offset = sound.running_sample_index * sound.bytes_per_sample % sound.sound_buffer_size;
 			DWORD bytes_to_lock;
-	
-			if(play_cursor == lock_offset) {
-				bytes_to_lock = sound_buffer_size;
-			} else if(lock_offset > play_cursor) {
-				bytes_to_lock = sound_buffer_size - lock_offset + play_cursor;
+			DWORD target_cursor = (play_cursor + sound.latency_sample_count * sound.bytes_per_sample) % sound.sound_buffer_size;
+			if(lock_offset > target_cursor) {
+				bytes_to_lock = sound.sound_buffer_size - lock_offset + target_cursor;
 			} else {
-				bytes_to_lock = play_cursor - lock_offset;
+				bytes_to_lock = target_cursor - lock_offset;
 			}
-	
-			if(SUCCEEDED(sound_buffer->Lock(
-					lock_offset,
-					bytes_to_lock,
-					&region1, &region1_size,
-					&region2, &region2_size,
-					0
-				)))
-			{
-				int16_t *sample_out = (int16_t*)region1;
-				for(int i = 0; i < region1_size / bytes_per_sample; i++) {
-					int16_t value = ((running_sample_index++ / half_wave_period) % 2) ? tone_amplitude : -tone_amplitude;
-					*sample_out++ = value;
-					*sample_out++ = value;
-				}
-		
-				sample_out = (int16_t*)region2;
-				for(int i = 0; i < region2_size / bytes_per_sample; i++) {
-					int16_t value = ((running_sample_index++ / half_wave_period) % 2) ? tone_amplitude : -tone_amplitude;
-					*sample_out++ = value;
-					*sample_out++ = value;
-				}
-		
-				sound_buffer->Unlock(region1, region1_size, region2, region2_size);
-			}
+			FillSoundBuffer(sound_buffer, &sound, lock_offset, bytes_to_lock);
         }
 		
 		UpdateProjectFunc(&shared_state);
