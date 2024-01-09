@@ -12,7 +12,7 @@ Console isn't used by the app (initially), so 'wWinMain' is the main function.
 #include <dsound.h>
 #include <math.h>
 
-#define PI32 3.14159265359
+#define PI32 3.14159265359f
 
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter);
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
