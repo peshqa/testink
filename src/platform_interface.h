@@ -16,6 +16,8 @@ also defines some enums and macros
 
 #define ARRAY_LENGTH(a) sizeof(a) / sizeof(a[0])
 
+#define PI32 3.14159265359f
+
 enum InputCode : unsigned int
 {
 	INPUT_LEFT = 0x25,
@@ -39,9 +41,20 @@ struct PlatformBitBuffer
 	void *bits;
 	void *info;
 };
+
+struct PlatformSoundBuffer
+{
+	void *buffer;
+	int samples_per_sec;
+	int sample_size;
+	int num_channels;
+	
+	int samples_to_fill;
+};
 struct SharedState
 {
 	PlatformBitBuffer* bitBuff;
+	PlatformSoundBuffer soundBuff;
 	void *callback_update_func;
 	int client_width;
 	int client_height;
@@ -49,6 +62,7 @@ struct SharedState
 	//std::vector<SimpleImage*> images;
 	char dir;
 	void *project_state;
+	
 	std::chrono::steady_clock::time_point curr_time;
 	std::chrono::steady_clock::time_point prev_time;
 	

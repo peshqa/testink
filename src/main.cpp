@@ -8,11 +8,10 @@ Console isn't used by the app (initially), so 'wWinMain' is the main function.
 #include "project.h"
 #include "simple_wasapi_renderer.h"
 #include "simple_win32_renderer.h"
+#include "wav_audio_loader.h"
 
 #include <dsound.h>
 #include <math.h>
-
-#define PI32 3.14159265359f
 
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter);
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
@@ -66,7 +65,6 @@ int InitDirectSound(HWND hwnd, int samples_per_size, int buffer_size, LPDIRECTSO
 		// TODO: logging?
 		return -5;
 	}
-	//OutputDebugStringA("Set sec buffer format\n");
 	
 	DSBUFFERDESC sec_buffer_desc = {};
 	sec_buffer_desc.dwSize = sizeof(sec_buffer_desc);
@@ -80,7 +78,7 @@ int InitDirectSound(HWND hwnd, int samples_per_size, int buffer_size, LPDIRECTSO
 		// TODO: logging?
 		return -6;
 	}
-	OutputDebugStringA("Direct sound initiated\n");
+	//OutputDebugStringA("Direct sound initiated\n");
 	
 	return 0;
 }
@@ -97,6 +95,9 @@ typedef struct
 	int wave_period;
 	//int half_wave_period;
 	uint32_t running_sample_index;
+	
+	float *samples;
+	int num_samples;
 } SoundWaveInfo;
 
 void FillSoundBuffer(LPDIRECTSOUNDBUFFER sound_buffer, SoundWaveInfo *sound, DWORD lock_offset, DWORD bytes_to_lock)
@@ -116,9 +117,9 @@ void FillSoundBuffer(LPDIRECTSOUNDBUFFER sound_buffer, SoundWaveInfo *sound, DWO
 	{
 		int16_t *sample_out = (int16_t*)region1;
 		for(int i = 0; i < region1_size / sound->bytes_per_sample; i++) {
-			//float t = 2.0f * PI32 * (sound->running_sample_index / (float)sound->wave_period);
 			float sin_value = sinf(sound->t_sin);
 			int16_t value = (int16_t)(sin_value * sound->tone_amplitude);
+			int16_t value2 = sound->samples[(sound->running_sample_index) % sound->num_samples]*sound->tone_amplitude;
 			*sample_out++ = value;
 			*sample_out++ = value;
 			sound->running_sample_index++;
@@ -127,13 +128,51 @@ void FillSoundBuffer(LPDIRECTSOUNDBUFFER sound_buffer, SoundWaveInfo *sound, DWO
 
 		sample_out = (int16_t*)region2;
 		for(int i = 0; i < region2_size / sound->bytes_per_sample; i++) {
-			//float t = 2.0f * PI32 * (sound->running_sample_index / (float)sound->wave_period);
 			float sin_value = sinf(sound->t_sin);
 			int16_t value = (int16_t)(sin_value * sound->tone_amplitude);
+			int16_t value2 = sound->samples[(sound->running_sample_index) % sound->num_samples]*sound->tone_amplitude;
 			*sample_out++ = value;
 			*sample_out++ = value;
 			sound->running_sample_index++;
 			sound->t_sin += 2.0f * PI32 * (1.0f / (float)sound->wave_period);
+		}
+
+		sound_buffer->Unlock(region1, region1_size, region2, region2_size);
+	}
+}
+
+void FillDirectSoundBuffer(LPDIRECTSOUNDBUFFER sound_buffer, SoundWaveInfo *sound, DWORD lock_offset, DWORD bytes_to_lock, PlatformSoundBuffer &soundBuff)
+{
+	void *region1;
+	DWORD region1_size;
+	void *region2;
+	DWORD region2_size;
+
+	if (SUCCEEDED(sound_buffer->Lock(
+			lock_offset,
+			bytes_to_lock,
+			&region1, &region1_size,
+			&region2, &region2_size,
+			0
+		)))
+	{
+		int idx = 0;
+		int16_t *sample_out = (int16_t*)region1;
+		for(int i = 0; i < region1_size / sound->bytes_per_sample; i++) {
+			int16_t value = ((int16_t*)(soundBuff.buffer))[idx++];
+			*sample_out++ = value;
+			value = ((int16_t*)(soundBuff.buffer))[idx++];
+			*sample_out++ = value;
+			sound->running_sample_index++;
+		}
+
+		sample_out = (int16_t*)region2;
+		for(int i = 0; i < region2_size / sound->bytes_per_sample; i++) {
+			int16_t value = ((int16_t*)(soundBuff.buffer))[idx++];
+			*sample_out++ = value;
+			value = ((int16_t*)(soundBuff.buffer))[idx++];
+			*sample_out++ = value;
+			sound->running_sample_index++;
 		}
 
 		sound_buffer->Unlock(region1, region1_size, region2, region2_size);
@@ -166,7 +205,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	
 	if (InitProjectFunc(&shared_state) != 0)
 	{
-		return 0;
+		return -1;
 	}
 	
 	shared_state.callback_update_func = projects[current_project].UpdateFunc;
@@ -205,9 +244,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         NULL        // Additional application data
         );
 
-    if (hwnd == NULL)
+    if (!hwnd)
     {
-        return 0;
+        return -2;
     }
 
 	((W32Extra*)(shared_state.extra))->main_window = hwnd;
@@ -223,16 +262,19 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	LPDIRECTSOUNDBUFFER sound_buffer;
 	SoundWaveInfo sound = {};
 	sound.samples_per_second = 48000;
-	sound.latency_sample_count = sound.samples_per_second / 10;
+	sound.latency_sample_count = sound.samples_per_second / 8;
 	sound.bytes_per_sample = 4;
 	sound.sound_buffer_size = sound.samples_per_second * sound.bytes_per_sample;
 	sound.tone_hz = 256*2;
 	sound.tone_amplitude = 3000;
 	sound.wave_period = sound.samples_per_second / sound.tone_hz;
-	//sound.half_wave_period = sound.wave_period / 2;
+	
+	int res = LoadWavFile(sound.samples, sound.num_samples);
+	ASSERT(res == 0);
+	
 	sound.running_sample_index = 0;
 	InitDirectSound(hwnd, sound.samples_per_second, sound.sound_buffer_size, sound_buffer);
-	FillSoundBuffer(sound_buffer, &sound, 0, sound.sound_buffer_size);
+	//FillSoundBuffer(sound_buffer, &sound, 0, sound.sound_buffer_size);
 	sound_buffer->Play(0, 0, DSBPLAY_LOOPING);
 	
 	// init screen buffer
@@ -244,6 +286,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     QueryPerformanceCounter(&prev_counter);
 	std::chrono::steady_clock::time_point currTime = std::chrono::steady_clock::now();
 	std::chrono::steady_clock::time_point prevTime{};
+	
+	shared_state.soundBuff.buffer = new int[48000];
+	ASSERT(shared_state.soundBuff.buffer != 0);
 
     // Run the message loop.
     MSG msg{};
@@ -267,7 +312,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		std::chrono::duration<float> dur = currTime - prevTime;
 		float elapsedTime = dur.count();
 		
-		
 		if (shared_state.input_state['W'] == 1)
 		{
 			sound.tone_hz += (int)(100.0f * elapsedTime);
@@ -280,21 +324,28 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		}
 		DWORD play_cursor;
         DWORD write_cursor;
+		DWORD lock_offset;
+		DWORD bytes_to_lock;
+		DWORD target_cursor;
 		
 		if(SUCCEEDED(sound_buffer->GetCurrentPosition(&play_cursor, &write_cursor)))
 		{
-			DWORD lock_offset = sound.running_sample_index * sound.bytes_per_sample % sound.sound_buffer_size;
-			DWORD bytes_to_lock;
-			DWORD target_cursor = (play_cursor + sound.latency_sample_count * sound.bytes_per_sample) % sound.sound_buffer_size;
+			lock_offset = sound.running_sample_index * sound.bytes_per_sample % sound.sound_buffer_size;
+			target_cursor = (play_cursor + sound.latency_sample_count * sound.bytes_per_sample) % sound.sound_buffer_size;
 			if(lock_offset > target_cursor) {
 				bytes_to_lock = sound.sound_buffer_size - lock_offset + target_cursor;
 			} else {
 				bytes_to_lock = target_cursor - lock_offset;
 			}
-			FillSoundBuffer(sound_buffer, &sound, lock_offset, bytes_to_lock);
-        }
+			//FillSoundBuffer(sound_buffer, &sound, lock_offset, bytes_to_lock);
+			shared_state.soundBuff.samples_to_fill = bytes_to_lock / sound.bytes_per_sample;
+        } else {
+			ASSERT(!"GetCurrentPosition failed!");
+		}
 		
+		//shared_state.soundBuff.samples_to_fill = 0;
 		UpdateProjectFunc(&shared_state);
+		FillDirectSoundBuffer(sound_buffer, &sound, lock_offset, bytes_to_lock, shared_state.soundBuff);
 		
 		HDC hdc = GetDC(hwnd);
 		((W32Extra*)(shared_state.extra))->hdc = hdc;

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 
+#pragma pack(push, 1)
 typedef struct
 {
 	char chunkID[4];
@@ -19,6 +20,7 @@ typedef struct
 	char subchunk2ID[4];
 	unsigned int subchunk2Size;
 } WAVHeader;
+#pragma pack(pop)
 
 int LoadWavFile(float *&samples, int &num_samples)
 {
@@ -46,10 +48,19 @@ int LoadWavFile(float *&samples, int &num_samples)
 		return 3;
 	}
 	
-	num_samples = header.subchunk2Size / sizeof(float);
+	num_samples = header.subchunk2Size / sizeof(float) / 32;
 	samples = new float[num_samples]; // TODO: dont forget delete []
 	
 	file.read((char*)samples, header.subchunk2Size);
+	/*for (int i = 0; i < num_samples; i++)
+	{
+		char tmp = ((char*)samples)[i*4+0];
+		((char*)samples)[i*4+0] = ((char*)samples)[i*4+3];
+		((char*)samples)[i*4+3] = tmp;
+		tmp = ((char*)samples)[i*4+1];
+		((char*)samples)[i*4+1] = ((char*)samples)[i*4+2];
+		((char*)samples)[i*4+2] = tmp;
+	}*/
 	
 	return 0;
 }

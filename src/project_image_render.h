@@ -17,6 +17,9 @@ typedef struct
 	
 	SimpleImage image;
 	SimpleImage font;
+	
+	uint32_t running_sample_index;
+	float last_sin;
 } ProjectStateImageRender;
 
 int InitProjectImageRender(SharedState* state)
@@ -43,66 +46,6 @@ int UpdateProjectImageRender(SharedState* state)
 {
 	ProjectStateImageRender *game_state = (ProjectStateImageRender*)(state->project_state);
 	float delta_time = CalculateDeltaTime(state);
-	
-#if 0 // no input for now
-	if (state->is_lmb_down == 1)
-	{
-		if (game_state->was_lmb_down == 0)
-		{
-			game_state->was_lmb_down = 1;
-			game_state->last_mouse_x = state->mouse_x;
-			game_state->last_mouse_y = state->mouse_y;
-		} else {
-			// Camera rotation by mouse
-			//game_state->yaw   += 0.005f*(-state->mouse_x+game_state->last_mouse_x);
-			//game_state->pitch -= 0.005f*(-state->mouse_y+game_state->last_mouse_y);
-			
-			// Model rotation by mouse
-			game_state->cube_pitch -= 0.005f*(-state->mouse_x+game_state->last_mouse_x);
-			game_state->cube_yaw += 0.005f*(-state->mouse_y+game_state->last_mouse_y);
-			
-			game_state->last_mouse_x = state->mouse_x;
-			game_state->last_mouse_y = state->mouse_y;
-		}
-		//game_state->x_offset += 1.0f*delta_time;
-	} else {
-		game_state->was_lmb_down = 0;
-	}
-
-
-	if (state->input_state['W'] == 1)
-	{
-		game_state->x_offset += target_rot_yx.x*delta_time*move_scale;
-		game_state->y_offset += target_rot_yx.y*delta_time*move_scale;
-		game_state->z_offset += target_rot_yx.z*delta_time*move_scale;
-	}
-	if (state->input_state['A'] == 1)
-	{
-		game_state->z_offset += target_rot_yx.x*delta_time*move_scale;
-		//game_state->y_offset += target_rot_yx.y*delta_time*move_scale;
-		game_state->x_offset -= target_rot_yx.z*delta_time*move_scale;
-	}
-	if (state->input_state['S'] == 1)
-	{
-		game_state->x_offset -= target_rot_yx.x*delta_time*move_scale;
-		game_state->y_offset -= target_rot_yx.y*delta_time*move_scale;
-		game_state->z_offset -= target_rot_yx.z*delta_time*move_scale;
-	}
-	if (state->input_state['D'] == 1)
-	{
-		game_state->z_offset -= target_rot_yx.x*delta_time*move_scale;
-		//game_state->y_offset -= target_rot_yx.y*delta_time*move_scale;
-		game_state->x_offset += target_rot_yx.z*delta_time*move_scale;
-	}
-	if (state->input_state[' '] == 1)
-	{
-		game_state->y_offset += delta_time*2*move_scale;
-	}
-	if (state->input_state[INPUT_LSHIFT] == 1)
-	{
-		game_state->y_offset -= delta_time*2*move_scale;
-	}
-#endif
 	
 	float ox = game_state->x_offset;
 	float oy = game_state->y_offset;
@@ -152,6 +95,40 @@ int UpdateProjectImageRender(SharedState* state)
 	
 	game_state->x_offset += step_x * delta_time;
 	game_state->y_offset += step_y * delta_time;
+	
+	static float wave_period = 220.0f;
+	static float t_sin = 0;
+	
+	if (state->input_state['W'])
+	{
+		wave_period += 100.0f*delta_time;
+	}
+	if (state->input_state['S'])
+	{
+		wave_period -= 100.0f*delta_time;
+	}
+	
+	// Sound
+	for (int i = 0; i < state->soundBuff.samples_to_fill; i++)
+	{
+		float s = sinf(t_sin);
+		int16_t value = s*0xFFFF*0.1f;
+		((int16_t*)(state->soundBuff.buffer))[2*i] = value;
+		((int16_t*)(state->soundBuff.buffer))[2*i+1] = value;
+		t_sin += 2.0f * PI32 * (1.0f / wave_period);
+		if (t_sin > 2.0f * PI32)
+		{
+			t_sin -= 2.0f * PI32; // have to do this so that we don't run out of float precision
+		}
+	}
+	
+	/*
+	// TODO: Temporary, remove later
+	for (int i = 0; i < sound.samples_per_second/8; i++)
+	{
+		DrawPixelf(shared_state.bitBuff, (float)i/sound.samples_per_second*8, scary[i]/0xFFFF*4+0.5f, 0xFF000000);
+	}
+	*/
 	
 	return 0;
 }
