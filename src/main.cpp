@@ -16,7 +16,7 @@ Console isn't used by the app (initially), so 'wWinMain' is the main function.
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter);
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
-int InitDirectSound(HWND hwnd, int samples_per_size, int buffer_size, LPDIRECTSOUNDBUFFER  &secondary_buffer)
+static int InitDirectSound(HWND hwnd, int samples_per_size, int buffer_size, LPDIRECTSOUNDBUFFER  &secondary_buffer)
 {
 	HMODULE Library = LoadLibraryA("dsound.dll");
 	
@@ -83,6 +83,19 @@ int InitDirectSound(HWND hwnd, int samples_per_size, int buffer_size, LPDIRECTSO
 	return 0;
 }
 
+static float W32CalculateDeltaTime(uint64_t s, uint64_t e, LONGLONG pcfreq)
+{
+	float res = (float)(e - s) / pcfreq;
+	return res;
+}
+
+static uint64_t W32GetPerfCounter()
+{
+	LARGE_INTEGER li;
+	QueryPerformanceCounter(&li);
+	return li.QuadPart;
+}
+
 typedef struct
 {
 	int samples_per_second;
@@ -100,7 +113,7 @@ typedef struct
 	int num_samples;
 } SoundWaveInfo;
 
-void FillSoundBuffer(LPDIRECTSOUNDBUFFER sound_buffer, SoundWaveInfo *sound, DWORD lock_offset, DWORD bytes_to_lock)
+static void ZeroSoundBuffer(LPDIRECTSOUNDBUFFER sound_buffer, SoundWaveInfo *sound, DWORD lock_offset, DWORD bytes_to_lock)
 {
 	void *region1;
 	DWORD region1_size;
@@ -117,31 +130,25 @@ void FillSoundBuffer(LPDIRECTSOUNDBUFFER sound_buffer, SoundWaveInfo *sound, DWO
 	{
 		int16_t *sample_out = (int16_t*)region1;
 		for(int i = 0; i < region1_size / sound->bytes_per_sample; i++) {
-			float sin_value = sinf(sound->t_sin);
-			int16_t value = (int16_t)(sin_value * sound->tone_amplitude);
-			int16_t value2 = sound->samples[(sound->running_sample_index) % sound->num_samples]*sound->tone_amplitude;
+			int16_t value = 0;
 			*sample_out++ = value;
 			*sample_out++ = value;
 			sound->running_sample_index++;
-			sound->t_sin += 2.0f * PI32 * (1.0f / (float)sound->wave_period);
 		}
 
 		sample_out = (int16_t*)region2;
 		for(int i = 0; i < region2_size / sound->bytes_per_sample; i++) {
-			float sin_value = sinf(sound->t_sin);
-			int16_t value = (int16_t)(sin_value * sound->tone_amplitude);
-			int16_t value2 = sound->samples[(sound->running_sample_index) % sound->num_samples]*sound->tone_amplitude;
+			int16_t value = 0;
 			*sample_out++ = value;
 			*sample_out++ = value;
 			sound->running_sample_index++;
-			sound->t_sin += 2.0f * PI32 * (1.0f / (float)sound->wave_period);
 		}
 
 		sound_buffer->Unlock(region1, region1_size, region2, region2_size);
 	}
 }
 
-void FillDirectSoundBuffer(LPDIRECTSOUNDBUFFER sound_buffer, SoundWaveInfo *sound, DWORD lock_offset, DWORD bytes_to_lock, PlatformSoundBuffer &soundBuff)
+static void FillDirectSoundBuffer(LPDIRECTSOUNDBUFFER sound_buffer, SoundWaveInfo *sound, DWORD lock_offset, DWORD bytes_to_lock, PlatformSoundBuffer &soundBuff)
 {
 	void *region1;
 	DWORD region1_size;
@@ -183,6 +190,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 {
 	srand(time(NULL));
 	
+	MMRESULT tbp = timeBeginPeriod(1);
+	ASSERT(tbp == TIMERR_NOERROR);
+	
 	LARGE_INTEGER counter_per_sec;
 	QueryPerformanceFrequency(&counter_per_sec);
 	
@@ -194,6 +204,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	{
 		return 1;
 	}*/
+	
 	
 	int default_project = 0;
 	int current_project = default_project;
@@ -274,25 +285,23 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	
 	sound.running_sample_index = 0;
 	InitDirectSound(hwnd, sound.samples_per_second, sound.sound_buffer_size, sound_buffer);
-	//FillSoundBuffer(sound_buffer, &sound, 0, sound.sound_buffer_size);
+	ZeroSoundBuffer(sound_buffer, &sound, 0, sound.sound_buffer_size);
 	sound_buffer->Play(0, 0, DSBPLAY_LOOPING);
 	
 	// init screen buffer
 	//FillPlatformBitBuffer(shared_state.bitBuff, MakeColor(255, 255, 255, 255));
 	
 	// Frame timing
-	LARGE_INTEGER prev_counter;
+	uint64_t prev_counter = W32GetPerfCounter();
     uint64_t prev_cycle_counter = __rdtsc();
-    QueryPerformanceCounter(&prev_counter);
-	std::chrono::steady_clock::time_point currTime = std::chrono::steady_clock::now();
-	std::chrono::steady_clock::time_point prevTime{};
 	
 	shared_state.soundBuff.buffer = new int[48000];
 	ASSERT(shared_state.soundBuff.buffer != 0);
 
     // Run the message loop.
     MSG msg{};
-	while (shared_state.is_running == 1) {
+	while (shared_state.is_running == 1)
+	{
 		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 		{
 			if (msg.message == WM_QUIT)
@@ -305,23 +314,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 			DispatchMessage(&msg);
 		}
 		
-		
-		// Timing
-		prevTime = currTime;
-		currTime = std::chrono::steady_clock::now();
-		std::chrono::duration<float> dur = currTime - prevTime;
-		float elapsedTime = dur.count();
-		
-		if (shared_state.input_state['W'] == 1)
-		{
-			sound.tone_hz += (int)(100.0f * elapsedTime);
-			sound.wave_period = sound.samples_per_second / sound.tone_hz;
-		}
-		if (shared_state.input_state['S'] == 1)
-		{
-			sound.tone_hz -= (int)(100.0f * elapsedTime);
-			sound.wave_period = sound.samples_per_second / sound.tone_hz;
-		}
 		DWORD play_cursor;
         DWORD write_cursor;
 		DWORD lock_offset;
@@ -352,31 +344,52 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		PlatformUpdateDisplay(&shared_state, shared_state.client_width, shared_state.client_height);
 		ReleaseDC(hwnd, hdc);
 		
-		uint64_t current_cycle_counter = __rdtsc();
-        LARGE_INTEGER current_counter;
-        QueryPerformanceCounter(&current_counter);
-
-        int64_t counter_elapsed = current_counter.QuadPart - prev_counter.QuadPart;
-        uint64_t cycles_elapsed = current_cycle_counter - prev_cycle_counter;
-
-        float ms_per_frame = 1000.0f * (float)counter_elapsed / counter_per_sec.QuadPart;
-        float fps = (float)counter_per_sec.QuadPart / counter_elapsed;
-        float mega_cycles_per_frame = (float)cycles_elapsed / (1000.0f * 1000.0f);
-
-        char Buffer[256];
-        sprintf(Buffer, "ms/f: %.2f,  fps: %.2f,  mc/f: %.2f\n", ms_per_frame, fps, mega_cycles_per_frame);
-        //OutputDebugStringA(Buffer);
-
-        prev_counter = current_counter;
-        prev_cycle_counter = current_cycle_counter;
 		
+		// Timing
+		u64 counter_before_sleep = W32GetPerfCounter();
+		float elapsed_ms_before_sleep = 1000.0f * W32CalculateDeltaTime(prev_counter, counter_before_sleep, counter_per_sec.QuadPart);
+
+		int ms_to_sleep;
 		if (shared_state.max_fps > 0)
 		{
 			float sec_per_frame = 1.0f / shared_state.max_fps;
-			if (elapsedTime < sec_per_frame)
-				Sleep((int)((sec_per_frame-elapsedTime) * 1000.0f));
+			if (elapsed_ms_before_sleep < sec_per_frame * 1000.0f)
+			{
+				ms_to_sleep = sec_per_frame*1000.0f - elapsed_ms_before_sleep;
+				
+				if (ms_to_sleep > 0)
+				{
+					Sleep(ms_to_sleep);
+				}
+			} else {
+				OutputDebugStringA("too slow!\n");
+			}
 		}
+		
+		uint64_t current_cycle_counter = __rdtsc();
+        uint64_t current_counter = W32GetPerfCounter();
+
+        int64_t counter_elapsed = current_counter - prev_counter;
+        uint64_t cycles_elapsed = current_cycle_counter - prev_cycle_counter;
+
+        
+        float fps = (float)counter_per_sec.QuadPart / counter_elapsed;
+        float mega_cycles_per_frame = (float)cycles_elapsed / (1000.0f * 1000.0f);
+		
+		
+		float elapsed_ms = 1000.0f * W32CalculateDeltaTime(prev_counter, W32GetPerfCounter(), counter_per_sec.QuadPart);
+		shared_state.delta_time = elapsed_ms / 1000.0f;
+		
+		char Buffer[256];
+		sprintf(Buffer, "ms b4 sleep: %.2f, ms/f: %.2f, sleep: %d,  fps: %.2f,  mc/f: %.2f\n", elapsed_ms_before_sleep, elapsed_ms, ms_to_sleep, fps, mega_cycles_per_frame);
+		OutputDebugStringA(Buffer);
+		
+		prev_counter = current_counter;
+        prev_cycle_counter = current_cycle_counter;
 	}
+	
+	// TODO: on exit audio
+	sound_buffer->Stop();
 
     return 0;
 }

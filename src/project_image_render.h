@@ -45,7 +45,7 @@ int InitProjectImageRender(SharedState* state)
 int UpdateProjectImageRender(SharedState* state)
 {
 	ProjectStateImageRender *game_state = (ProjectStateImageRender*)(state->project_state);
-	float delta_time = CalculateDeltaTime(state);
+	float delta_time = state->delta_time;
 	
 	float ox = game_state->x_offset;
 	float oy = game_state->y_offset;
@@ -79,14 +79,11 @@ int UpdateProjectImageRender(SharedState* state)
 		min_y += step_y * delta_time;
 	}
 	DrawImageExceptColor(state->bitBuff, &game_state->image, min_x, min_y, MakeColor(0, 254, 254, 255));
-	DrawImageOnlyColor(state->bitBuff, &game_state->font, 0, 0, MakeColor(255, 0, 0, 0));
-	DrawBMPFontChar(state->bitBuff, &game_state->font, 100, 100, 'A');
-	DrawBMPFontChar(state->bitBuff, &game_state->font, 120, 120, 'Z');
-	std::string test_string = "And so, a TEST string is being displayed: 2-2=0";
+	std::string test_string = "TEST string";
 	DrawBMPFontString(state->bitBuff, &game_state->font, 100, 140, test_string);
 	
 	test_string = std::to_string(delta_time);
-	test_string = "frame time: " + test_string;
+	test_string = "ft: " + test_string;
 	DrawBMPFontString(state->bitBuff, &game_state->font, 100, 170, test_string);
 	
 	test_string = std::to_string((int)(1.0f / delta_time));
@@ -120,6 +117,7 @@ int UpdateProjectImageRender(SharedState* state)
 		{
 			t_sin -= 2.0f * PI32; // have to do this so that we don't run out of float precision
 		}
+		DrawPixelf(state->bitBuff, (float)i/8000.0f, s/4+0.5f, 0xFF000000);
 	}
 	
 	/*

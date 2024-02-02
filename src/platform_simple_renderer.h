@@ -14,13 +14,13 @@ platform_simple_renderer.h - (platform independent) core of all smaller projects
 
 #include "simple_image.h"
 
-int ConvertRelToPlain(float rel, int start, int end)
+static int ConvertRelToPlain(float rel, int start, int end)
 {
 	int length = end - start;
 	return (int)(length)*rel + start;
 }
 
-float CalculateDeltaTime(SharedState* state)
+static float CalculateDeltaTime(SharedState* state)
 {
 	state->prev_time = state->curr_time;
 	state->curr_time = std::chrono::steady_clock::now();
@@ -28,14 +28,14 @@ float CalculateDeltaTime(SharedState* state)
 	float elapsedTime = dur.count();
 	return elapsedTime;
 }
-float GetDeltaTime(SharedState* state)
+static float GetDeltaTime(SharedState* state)
 {
 	std::chrono::duration<float> dur = state->curr_time - state->prev_time;
 	float elapsedTime = dur.count();
 	return elapsedTime;
 }
 
-int PlatformDrawLine(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2, int color)
+static int PlatformDrawLine(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2, int color)
 {
 	// https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
 	// TODO: add edge cases for horizontal and vertical lines
@@ -66,7 +66,7 @@ int PlatformDrawLine(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2,
 	
 	return 0;
 }
-int DrawPixelf(PlatformBitBuffer *bitBuff, float x1, float y1, int color)
+static int DrawPixelf(PlatformBitBuffer *bitBuff, float x1, float y1, int color)
 {
 	int end_x = bitBuff->width;
 	int end_y = bitBuff->height;
@@ -75,7 +75,7 @@ int DrawPixelf(PlatformBitBuffer *bitBuff, float x1, float y1, int color)
 			ConvertRelToPlain(y1, 0, end_y),
 			color);
 }
-int PlatformDrawLinef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, float y2, int color)
+static int PlatformDrawLinef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, float y2, int color)
 {
 	int end_x = bitBuff->width;
 	int end_y = bitBuff->height;
@@ -87,7 +87,7 @@ int PlatformDrawLinef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, 
 			color);
 }
 // util function to draw filled triangle
-int PlatformGetLineXValues(int x1, int y1, int x2, int y2, std::vector<int> &v)
+static int PlatformGetLineXValues(int x1, int y1, int x2, int y2, std::vector<int> &v)
 {
 	int dx = abs(x2 - x1);
     int sx = x1 < x2 ? 1 : -1;
@@ -125,7 +125,7 @@ int PlatformGetLineXValues(int x1, int y1, int x2, int y2, std::vector<int> &v)
 	v.push_back(last_x);
 	return 0;
 }
-int DrawHorizontalLine(PlatformBitBuffer *bitBuff, int x1, int x2, int y, int color)
+static int DrawHorizontalLine(PlatformBitBuffer *bitBuff, int x1, int x2, int y, int color)
 {
 	int tmp;
 	if (x2 < x1)
@@ -140,7 +140,7 @@ int DrawHorizontalLine(PlatformBitBuffer *bitBuff, int x1, int x2, int y, int co
 	}
 	return 0;
 }
-int DrawTrianglef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, float y2, float x3, float y3, int color)
+static int DrawTrianglef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, float y2, float x3, float y3, int color)
 {
 	PlatformDrawLinef(bitBuff, x1, y1, x2, y2, color);
 	PlatformDrawLinef(bitBuff, x1, y1, x3, y3, color);
@@ -148,7 +148,7 @@ int DrawTrianglef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, floa
 	return 0;
 }
 // Vertical gradient
-int DrawGradientScreen(PlatformBitBuffer *bitBuff, int s_red, int s_green, int s_blue, int e_red, int e_blue, int e_green)
+static int DrawGradientScreen(PlatformBitBuffer *bitBuff, int s_red, int s_green, int s_blue, int e_red, int e_blue, int e_green)
 {
 	for (int i = 0; i < bitBuff->width; i++)
 	{
@@ -164,7 +164,7 @@ int DrawGradientScreen(PlatformBitBuffer *bitBuff, int s_red, int s_green, int s
 	}
 	return 0;
 }
-int FillTriangle(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2, int x3, int y3, int color)
+static int FillTriangle(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2, int x3, int y3, int color)
 {
 	// Sort the points so that y1 <= y2 <= y3
 	int tmp;
@@ -213,7 +213,7 @@ int FillTriangle(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2, int
 	
 	return 0;
 }
-int TextureTriangle(PlatformBitBuffer *bitBuff,
+static int TextureTriangle(PlatformBitBuffer *bitBuff,
 					int x1, int y1, float u1, float v1, float w1,
 					int x2, int y2, float u2, float v2, float w2,
 					int x3, int y3, float u3, float v3, float w3,
@@ -395,7 +395,7 @@ int TextureTriangle(PlatformBitBuffer *bitBuff,
 	}	
 	return 0;
 }
-int FillTrianglef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, float y2, float x3, float y3, int color)
+static int FillTrianglef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, float y2, float x3, float y3, int color)
 {
 	int end_x = bitBuff->width;
 	int end_y = bitBuff->height;
@@ -408,7 +408,7 @@ int FillTrianglef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, floa
 			ConvertRelToPlain(y3, 0, end_y),
 			color);
 }
-int TextureTrianglef(PlatformBitBuffer *bitBuff,
+static int TextureTrianglef(PlatformBitBuffer *bitBuff,
 					float x1, float y1, float u1, float v1, float w1,
 					float x2, float y2, float u2, float v2, float w2,
 					float x3, float y3, float u3, float v3, float w3,
@@ -422,7 +422,7 @@ int TextureTrianglef(PlatformBitBuffer *bitBuff,
 			ConvertRelToPlain(x3, 0, end_x), ConvertRelToPlain(y3, 0, end_y), u3, v3, w3,
 			img, depth_buffer);
 }
-int PlatformFillRect(PlatformBitBuffer *bitBuff, int left, int top, int right, int bottom, int color)
+static int PlatformFillRect(PlatformBitBuffer *bitBuff, int left, int top, int right, int bottom, int color)
 {
 	for (int y = top; y < bottom; y++)
 	{
@@ -434,43 +434,43 @@ int PlatformFillRect(PlatformBitBuffer *bitBuff, int left, int top, int right, i
 	return 0;
 }
 
-int GetPlatformBitBufferWidth(PlatformBitBuffer *bitBuff)
+static int GetPlatformBitBufferWidth(PlatformBitBuffer *bitBuff)
 {
 	return bitBuff->width;
 }
-int GetPlatformBitBufferHeight(PlatformBitBuffer *bitBuff)
+static int GetPlatformBitBufferHeight(PlatformBitBuffer *bitBuff)
 {
 	return bitBuff->height;
 }
 
-int FillPlatformBitBuffer(PlatformBitBuffer *bitBuff, int color)
+static int FillPlatformBitBuffer(PlatformBitBuffer *bitBuff, int color)
 {
 	return PlatformFillRect(bitBuff, 0, 0,
 		GetPlatformBitBufferWidth(bitBuff),
 		GetPlatformBitBufferHeight(bitBuff), color);
 }
 
-int ConvertRelXToX(float rel_x, PlatformBitBuffer *bitBuff)
+static int ConvertRelXToX(float rel_x, PlatformBitBuffer *bitBuff)
 {
 	return (int)(bitBuff->width)*rel_x;
 }
-int ConvertRelYToY(float rel_y, PlatformBitBuffer *bitBuff)
+static int ConvertRelYToY(float rel_y, PlatformBitBuffer *bitBuff)
 {
 	return (int)(bitBuff->height)*rel_y;
 }
 // TODO: get rid of those two below
-int ConvertRelXToXse(float rel_x, int start, int end)
+static int ConvertRelXToXse(float rel_x, int start, int end)
 {
 	int length = end - start;
 	return (int)(length)*rel_x + start;
 }
-int ConvertRelYToYse(float rel_y, int start, int end)
+static int ConvertRelYToYse(float rel_y, int start, int end)
 {
 	int length = end - start;
 	return (int)(length)*rel_y + start;
 }
 
-int LoadFileOBJ(SharedState *s, std::string &filename, std::vector<float*> &points, std::vector<int*> &triangles,
+static int LoadFileOBJ(SharedState *s, std::string &filename, std::vector<float*> &points, std::vector<int*> &triangles,
 				std::vector<float*> &texture_points, std::vector<int*> &texture_map)
 {
 	

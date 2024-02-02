@@ -39,13 +39,13 @@ typedef struct
 } BitmapFileHeader;
 #pragma pack(pop)
 
-int TerminateImage(SimpleImage *image)
+static int TerminateImage(SimpleImage *image)
 {
 	delete [] image->pixels;
 	return 0;
 }
 
-int LoadPPMImage(SharedState *s, std::string file_path, SimpleImage *image)
+static int LoadPPMImage(SharedState *s, std::string file_path, SimpleImage *image)
 {
 	
 	//std::ifstream file(file_path, std::ifstream::binary);
@@ -122,7 +122,7 @@ int LoadPPMImage(SharedState *s, std::string file_path, SimpleImage *image)
 	return 0;
 }
 
-int LoadBMPImage(SharedState *s, std::string file_path, SimpleImage *image)
+static int LoadBMPImage(SharedState *s, std::string file_path, SimpleImage *image)
 {
 	if (OpenAssetFileA(s, file_path) != 0)
 	{
@@ -175,7 +175,7 @@ int LoadBMPImage(SharedState *s, std::string file_path, SimpleImage *image)
 	return 0;
 }
 
-int SampleTexture(SimpleImage *img, float u, float v)
+static int SampleTexture(SimpleImage *img, float u, float v)
 {
 	if (u >= 0.0f && u <= 1.0f && v >= 0.0f && v <= 1.0f)
 	{
@@ -184,7 +184,7 @@ int SampleTexture(SimpleImage *img, float u, float v)
 	return MakeColor(255, 241, 87, 236);
 }
 
-void DrawImage(PlatformBitBuffer *bitBuff, SimpleImage *image, int min_x, int min_y)
+static void DrawImage(PlatformBitBuffer *bitBuff, SimpleImage *image, int min_x, int min_y)
 {
 	for (int j = 0; j < image->height; j++)
 	{
@@ -195,7 +195,7 @@ void DrawImage(PlatformBitBuffer *bitBuff, SimpleImage *image, int min_x, int mi
 	}
 }
 
-void DrawImageExceptColor(PlatformBitBuffer *bitBuff, SimpleImage *image, int min_x, int min_y, int vanish_color)
+static void DrawImageExceptColor(PlatformBitBuffer *bitBuff, SimpleImage *image, int min_x, int min_y, int vanish_color)
 {
 	for (int j = 0; j < image->height; j++)
 	{
@@ -207,7 +207,7 @@ void DrawImageExceptColor(PlatformBitBuffer *bitBuff, SimpleImage *image, int mi
 	}
 }
 
-void DrawImageOnlyColor(PlatformBitBuffer *bitBuff, SimpleImage *image, int min_x, int min_y, int single_color)
+static void DrawImageOnlyColor(PlatformBitBuffer *bitBuff, SimpleImage *image, int min_x, int min_y, int single_color)
 {
 	for (int j = 0; j < image->height; j++)
 	{
@@ -219,7 +219,7 @@ void DrawImageOnlyColor(PlatformBitBuffer *bitBuff, SimpleImage *image, int min_
 	}
 }
 
-int CharToBMPFontCharIndex(char c)
+static int CharToBMPFontCharIndex(char c)
 {
 	if (c >= 'A' && c <= 'Z')
 	{
@@ -252,7 +252,7 @@ int CharToBMPFontCharIndex(char c)
 	return -1;
 }
 
-void DrawBMPFontChar(PlatformBitBuffer *bitBuff, SimpleImage *font, int min_x, int min_y, char c)
+static void DrawBMPFontChar(PlatformBitBuffer *bitBuff, SimpleImage *font, int min_x, int min_y, char c)
 {
 	int font_color = MakeColor(255, 0, 0, 0);
 	int index = CharToBMPFontCharIndex(c);
@@ -270,7 +270,7 @@ void DrawBMPFontChar(PlatformBitBuffer *bitBuff, SimpleImage *font, int min_x, i
 	}
 }
 
-void DrawBMPFontString(PlatformBitBuffer *bitBuff, SimpleImage *font, int min_x, int min_y, std::string &str)
+static void DrawBMPFontString(PlatformBitBuffer *bitBuff, SimpleImage *font, int min_x, int min_y, std::string &str)
 {
 	for (int i = 0; i < str.length(); i++)
 	{

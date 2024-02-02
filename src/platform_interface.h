@@ -8,6 +8,8 @@ also defines some enums and macros
 #include <chrono>
 #include <string>
 
+typedef uint64_t u64;
+
 #ifdef ASSERT_ENABLE
 #define ASSERT(e) if(!(e)) { *(int*)0 = 0; }
 #else
@@ -62,6 +64,8 @@ struct SharedState
 	//std::vector<SimpleImage*> images;
 	char dir;
 	void *project_state;
+	
+	float delta_time;
 	
 	std::chrono::steady_clock::time_point curr_time;
 	std::chrono::steady_clock::time_point prev_time;

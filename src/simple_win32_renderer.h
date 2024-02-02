@@ -40,7 +40,7 @@ typedef struct
 
 typedef int (*CallbackUpdateFunction)(SharedState*);
 
-int ResizePlatformBitBuffer(PlatformBitBuffer *p, int screenWidth, int screenHeight)
+static int ResizePlatformBitBuffer(PlatformBitBuffer *p, int screenWidth, int screenHeight)
 {
 	p->width = screenWidth;
 	p->height = screenHeight;
@@ -65,7 +65,7 @@ int ResizePlatformBitBuffer(PlatformBitBuffer *p, int screenWidth, int screenHei
 	return 0;
 }
 
-int PlatformDrawPixel(PlatformBitBuffer *bB, int x, int y, int color)
+static int PlatformDrawPixel(PlatformBitBuffer *bB, int x, int y, int color)
 {
 	W32BitBuffer *bitBuff = (W32BitBuffer*)bB;
 	if (x < 0 || x >= bitBuff->width || y < 0 || y >= bitBuff->height)
@@ -76,12 +76,12 @@ int PlatformDrawPixel(PlatformBitBuffer *bB, int x, int y, int color)
 	return 0;
 }
 
-int MakeColor(int a, int r, int g, int b)
+static int MakeColor(int a, int r, int g, int b)
 {
 	return (a<<24) + (r<<16) + (g<<8) + b;
 }
 
-int FillW32BitBuffer(W32BitBuffer *bitBuff, int color)
+static int FillW32BitBuffer(W32BitBuffer *bitBuff, int color)
 {
 	for (int i = 0; i < bitBuff->width*bitBuff->height; i++)
 	{
@@ -91,7 +91,7 @@ int FillW32BitBuffer(W32BitBuffer *bitBuff, int color)
 	return 0;
 }
 
-int GrayscaleW32BitBuffer(W32BitBuffer *bitBuff)
+static int GrayscaleW32BitBuffer(W32BitBuffer *bitBuff)
 {
 	for (int i = 0; i < bitBuff->width*bitBuff->height; i++)
 	{
@@ -102,7 +102,7 @@ int GrayscaleW32BitBuffer(W32BitBuffer *bitBuff)
 	
 	return 0;
 }
-int RedW32BitBuffer(W32BitBuffer *bitBuff)
+static int RedW32BitBuffer(W32BitBuffer *bitBuff)
 {
 	for (int i = 0; i < bitBuff->width*bitBuff->height; i++)
 	{
@@ -113,7 +113,7 @@ int RedW32BitBuffer(W32BitBuffer *bitBuff)
 	return 0;
 }
 
-int W32UpdateDisplay(HDC hdc, int screenWidth, int screenHeight, W32BitBuffer *bitBuff)
+static int W32UpdateDisplay(HDC hdc, int screenWidth, int screenHeight, W32BitBuffer *bitBuff)
 {
 	int res = StretchDIBits(
 	  hdc,
@@ -133,7 +133,7 @@ int W32UpdateDisplay(HDC hdc, int screenWidth, int screenHeight, W32BitBuffer *b
 	
 	return res;
 }
-int PlatformUpdateDisplay(SharedState* state, int screenWidth, int screenHeight)
+static int PlatformUpdateDisplay(SharedState* state, int screenWidth, int screenHeight)
 {
 	PlatformBitBuffer *bitBuff = state->bitBuff;
 	W32Extra *extra = (W32Extra*)(state->extra);
@@ -157,7 +157,7 @@ int PlatformUpdateDisplay(SharedState* state, int screenWidth, int screenHeight)
 	return res;
 }
 
-int Win32GoBorderlessFullscreen(HWND hwnd)
+static int Win32GoBorderlessFullscreen(HWND hwnd)
 {
 	int w = GetSystemMetrics(SM_CXSCREEN);
 	int h = GetSystemMetrics(SM_CYSCREEN);
@@ -165,7 +165,7 @@ int Win32GoBorderlessFullscreen(HWND hwnd)
 	SetWindowPos(hwnd, HWND_TOP, 0, 0, w, h, SWP_FRAMECHANGED);
 	return 0;
 }
-int PlatformGoBorderlessFullscreen(SharedState *s)
+static int PlatformGoBorderlessFullscreen(SharedState *s)
 {
 	HWND hwnd = ((W32Extra*)(s->extra))->main_window;
 	int w = GetSystemMetrics(SM_CXSCREEN);
@@ -174,14 +174,14 @@ int PlatformGoBorderlessFullscreen(SharedState *s)
 	SetWindowPos(hwnd, HWND_TOP, 0, 0, w, h, SWP_FRAMECHANGED);
 	return 0;
 }
-int PlatformGoWindowed(SharedState *s)
+static int PlatformGoWindowed(SharedState *s)
 {
 	HWND hwnd = ((W32Extra*)(s->extra))->main_window;
 	SetWindowLongPtr(hwnd, GWL_STYLE, WS_VISIBLE | WS_OVERLAPPEDWINDOW);
 	SetWindowPos(hwnd, HWND_TOP, 100, 100, 500, 500, SWP_FRAMECHANGED);
 	return 0;
 }
-int Win32GoFullscreen(HWND hwnd)
+static int Win32GoFullscreen(HWND hwnd)
 {
 	// TODO: figure out how to implement fullscreen mode
 	// TODO: read this https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
@@ -194,7 +194,7 @@ int Win32GoFullscreen(HWND hwnd)
 	return 1;
 }
 
-int ToggleFullscreen(SharedState *shared_state)
+static int ToggleFullscreen(SharedState *shared_state)
 {
 	if (shared_state->screen_mode == SCREEN_MODE_WINDOWED)
 	{
@@ -208,7 +208,7 @@ int ToggleFullscreen(SharedState *shared_state)
 	return 0;
 }
 
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT res = 0;
 	SharedState *shared_state{};
@@ -395,46 +395,38 @@ int InitSharedState(SharedState *shared_state)
 	
 	shared_state->asset_path = "../assets/";
 	
-	shared_state->max_fps = 300;
+	shared_state->max_fps = 60;
 	
 	return 0;
 	// TODO: implement uninitializer TerminateSharedState
 }
 
-/*int InitAssetManager(SharedState *s)
-{
-	return 0;
-}*/
-int OpenAssetFileA(SharedState *s, std::string &filename)
+static int OpenAssetFileA(SharedState *s, std::string &filename)
 {
 	W32Extra *extra = (W32Extra*)(s->extra);
 	extra->file.open(filename, std::ifstream::binary);
 	return extra->file.fail();
 }
-int ReadAssetLineA(SharedState *s, std::string &line)
+static int ReadAssetLineA(SharedState *s, std::string &line)
 {
 	W32Extra *extra = (W32Extra*)(s->extra);
 	return !getline(extra->file, line).eof();
 }
-int ReadAssetBytesA(SharedState *s, char *buffer, unsigned int bytes)
+static int ReadAssetBytesA(SharedState *s, char *buffer, unsigned int bytes)
 {
 	W32Extra *extra = (W32Extra*)(s->extra);
 	extra->file.read(buffer, bytes);
 	return 0;
 }
-int ReadAssetUntilSpaceA(SharedState *s, std::string &line)
+static int ReadAssetUntilSpaceA(SharedState *s, std::string &line)
 {
 	W32Extra *extra = (W32Extra*)(s->extra);
 	extra->file >> line;
 	return 0;
 }
-int CloseAssetFile(SharedState *s)
+static int CloseAssetFile(SharedState *s)
 {
 	W32Extra *extra = (W32Extra*)(s->extra);
 	extra->file.close();
 	return 0;
 }
-/*int TerminateAssetManager(SharedState *s)
-{
-	return 0;
-}*/
