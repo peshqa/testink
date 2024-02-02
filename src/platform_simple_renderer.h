@@ -8,7 +8,6 @@ platform_simple_renderer.h - (platform independent) core of all smaller projects
 #include "platform_interface.h"
 
 #include <vector>
-#include <chrono>
 #include <string>
 #include <algorithm>
 
@@ -18,21 +17,6 @@ static int ConvertRelToPlain(float rel, int start, int end)
 {
 	int length = end - start;
 	return (int)(length)*rel + start;
-}
-
-static float CalculateDeltaTime(SharedState* state)
-{
-	state->prev_time = state->curr_time;
-	state->curr_time = std::chrono::steady_clock::now();
-	std::chrono::duration<float> dur = state->curr_time - state->prev_time;
-	float elapsedTime = dur.count();
-	return elapsedTime;
-}
-static float GetDeltaTime(SharedState* state)
-{
-	std::chrono::duration<float> dur = state->curr_time - state->prev_time;
-	float elapsedTime = dur.count();
-	return elapsedTime;
 }
 
 static int PlatformDrawLine(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2, int color)

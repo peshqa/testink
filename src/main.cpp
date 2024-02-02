@@ -388,8 +388,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         prev_cycle_counter = current_cycle_counter;
 	}
 	
-	// TODO: on exit audio
-	sound_buffer->Stop();
+	// TODO: on exit audio ends abruptly causing unpleasent scratch
+	//sound_buffer->Stop();
 
     return 0;
 }

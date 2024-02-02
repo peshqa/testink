@@ -38,7 +38,6 @@ int InitProjectImageRender(SharedState* state)
 	LoadBMPImage(state, font_path, &p_state->font);
 	
 	state->project_state = p_state;
-	CalculateDeltaTime(state);
 	return 0;
 }
 

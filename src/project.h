@@ -28,8 +28,6 @@ int InitProjectSnakeGame(SharedState* state)
 	InitSnakeGame(snake_game, 10, 10);
 	state->project_state = snake_game;
 	
-	CalculateDeltaTime(state);
-	
 	return 0;
 }
 
@@ -37,7 +35,7 @@ int UpdateProjectSnakeGame(SharedState* state)
 {
 	SnakeGameState *game_state = (SnakeGameState*)(state->project_state);
 	
-	float delta_time = CalculateDeltaTime(state);
+	float delta_time = state->delta_time;
 	
 	if (state->dir == 'l')
 	{

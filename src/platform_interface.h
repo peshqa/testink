@@ -5,7 +5,6 @@ also defines some enums and macros
 */
 #pragma once
 
-#include <chrono>
 #include <string>
 
 typedef uint64_t u64;
@@ -66,9 +65,6 @@ struct SharedState
 	void *project_state;
 	
 	float delta_time;
-	
-	std::chrono::steady_clock::time_point curr_time;
-	std::chrono::steady_clock::time_point prev_time;
 	
 	std::string asset_path;
 	

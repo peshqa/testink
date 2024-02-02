@@ -69,14 +69,13 @@ int InitProject3DCube(SharedState* state)
 	LoadPPMImage(state, texture_path, &p_state->image);
 	
 	state->project_state = p_state;
-	CalculateDeltaTime(state);
 	return 0;
 }
 
 int UpdateProject3DCube(SharedState* state)
 {
 	ProjectState3DCube *game_state = (ProjectState3DCube*)(state->project_state);
-	float delta_time = CalculateDeltaTime(state);
+	float delta_time = state->delta_time;
 	static float cam_rot = 0.0f;
 	
 	float *depth_buffer = new float[state->client_width*state->client_height];
