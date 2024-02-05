@@ -34,8 +34,8 @@ int InitProjectImageRender(SharedState* state)
 	
 	std::string image_path = state->asset_path + "test.bmp";
 	std::string font_path = state->asset_path + "efortless_font_threshold.bmp";
-	LoadBMPImage(state, image_path, &p_state->image);
-	LoadBMPImage(state, font_path, &p_state->font);
+	LoadBMPImage(state, (char*)image_path.c_str(), &p_state->image);
+	LoadBMPImage(state, (char*)font_path.c_str(), &p_state->font);
 	
 	state->project_state = p_state;
 	return 0;

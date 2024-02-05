@@ -8,6 +8,13 @@ also defines some enums and macros
 #include <string>
 
 typedef uint64_t u64;
+typedef uint32_t u32;
+typedef uint16_t u16;
+typedef uint8_t  u8;
+typedef int64_t i64;
+typedef int32_t i32;
+typedef int16_t i16;
+typedef int8_t  i8;
 
 #ifdef ASSERT_ENABLE
 #define ASSERT(e) if(!(e)) { *(int*)0 = 0; }
@@ -89,7 +96,10 @@ struct SharedState
 // Functions to be implemented by the OS abstraction layer
 
 int PlatformGoBorderlessFullscreen(SharedState *s);
+u32 PlatformReadWholeFile(char *filename, void *&p);
+int PlatformFreeFileMemory(void *p);
 
+// TODO: to be removed/reimplemented
 int OpenAssetFileA(SharedState *s, std::string &filename);
 int ReadAssetLineA(SharedState *s, std::string &line);
 int ReadAssetBytesA(SharedState *s, char *buf, unsigned int bytes);

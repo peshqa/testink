@@ -16,6 +16,47 @@ Console isn't used by the app (initially), so 'wWinMain' is the main function.
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter);
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
+// NOTE: not made for files bigger than 4GB (ReadFilee uses DWORD)
+// returns 0 if failed (no memory commited)
+static u32 PlatformReadWholeFile(char *filename, void *&p)
+{
+	LARGE_INTEGER file_size;
+	HANDLE file;
+	u32 result = 0;
+	
+	file = CreateFileA(filename, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+	
+	if (file == INVALID_HANDLE_VALUE)
+	{
+		return 0;
+	}
+	
+	if (GetFileSizeEx(file, &file_size))
+	{
+		ASSERT(file_size.QuadPart <= 0xFFFFFFFF);
+		DWORD file_size32 = (DWORD)file_size.QuadPart;
+		p = VirtualAlloc(0, file_size32, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+		
+		if (p)
+		{
+			DWORD bytes_read;
+			if (ReadFile(file, p, file_size32, &bytes_read, 0) && bytes_read == file_size32)
+			{
+				result = bytes_read;
+			} else {
+				VirtualFree(p, 0, MEM_RELEASE);
+			}
+		}
+	}
+	CloseHandle(file);
+	return result;
+}
+
+static int PlatformFreeFileMemory(void *p)
+{
+	VirtualFree(p, 0, MEM_RELEASE);
+}
+
 static int InitDirectSound(HWND hwnd, int samples_per_size, int buffer_size, LPDIRECTSOUNDBUFFER  &secondary_buffer)
 {
 	HMODULE Library = LoadLibraryA("dsound.dll");

@@ -121,8 +121,8 @@ static int LoadPPMImage(SharedState *s, std::string file_path, SimpleImage *imag
 	CloseAssetFile(s);
 	return 0;
 }
-
-static int LoadBMPImage(SharedState *s, std::string file_path, SimpleImage *image)
+/*
+static int oldLoadBMPImage(SharedState *s, std::string file_path, SimpleImage *image)
 {
 	if (OpenAssetFileA(s, file_path) != 0)
 	{
@@ -173,6 +173,50 @@ static int LoadBMPImage(SharedState *s, std::string file_path, SimpleImage *imag
 	
 	CloseAssetFile(s);
 	return 0;
+}*/
+static int LoadBMPImage(SharedState *s, char *file_path, SimpleImage *image)
+{
+	void *memory;
+	if (PlatformReadWholeFile(file_path, memory) == 0)
+	{
+		ASSERT(!"LoadBMPImage - Couldn't open the file");
+		return 1;
+	}
+
+	BitmapFileHeader *header = (BitmapFileHeader*)memory;
+	
+	if (header->magic_number != 'MB')
+	{
+		ASSERT(!"LoadBMPImage - Magic number not matching");
+		return 2;
+	}
+	
+	if (header->offset < 54 || header->bits_per_pixel < 32 || header->compression_method != 0)
+	{
+		ASSERT(!"LoadBMPImage - Unrecognized bmp file format");
+		return 3;
+	}
+
+	image->pixels = (int*)((u8*)memory + header->offset);
+	//image->pixels = (int*)&memory;
+	image->width = header->width;
+	image->height = header->height;
+	
+	ASSERT(image->height > 0); // if image->height < 0, then the image is top-to-bottom
+
+	/*for (int y = 0; y < header->height; y++)
+	{
+		for (int x = 0; x < header->width; x++)
+		{
+			image->pixels[(header->height)*header->width+x] = MakeColor(255,
+				(int)(((i8*)(image->pixels))[y*header->width*4+x*4]  ),
+				(int)(((i8*)(image->pixels))[y*header->width*4+x*4+1]),
+				(int)(((i8*)(image->pixels))[y*header->width*4+x*4+2])
+				);
+		}
+	}*/
+
+	return 0;
 }
 
 static int SampleTexture(SimpleImage *img, float u, float v)
@@ -190,7 +234,7 @@ static void DrawImage(PlatformBitBuffer *bitBuff, SimpleImage *image, int min_x,
 	{
 		for (int i = 0; i < image->width; i++)
 		{
-			PlatformDrawPixel(bitBuff, min_x+i, min_y+j, image->pixels[image->width*j+i]);
+			PlatformDrawPixel(bitBuff, min_x+i, min_y+j, image->pixels[image->width*(image->height-j-1)+i]);
 		}
 	}
 }
@@ -201,8 +245,8 @@ static void DrawImageExceptColor(PlatformBitBuffer *bitBuff, SimpleImage *image,
 	{
 		for (int i = 0; i < image->width; i++)
 		{
-			if ((image->pixels[image->width*j+i] & vanish_color) != vanish_color)
-				PlatformDrawPixel(bitBuff, min_x+i, min_y+j, image->pixels[image->width*j+i]);
+			if ((image->pixels[image->width*(image->height-j-1)+i] & vanish_color) != vanish_color)
+				PlatformDrawPixel(bitBuff, min_x+i, min_y+j, image->pixels[image->width*(image->height-j-1)+i]);
 		}
 	}
 }
