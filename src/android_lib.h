@@ -7,6 +7,55 @@
 #include <string>
 #include <vector>
 
+// returns 0 if failed (no memory commited)
+u32 PlatformReadWholeFile(SharedState *s, char *filename, void *&p)
+{
+	AndroidExtra *extra = (AndroidExtra*)(s->extra);
+	AAssetManager* mgr = AAssetManager_fromJava(extra->env, extra->asset_manager);
+	extra->asset = AAssetManager_open(mgr, filename, AASSET_MODE_BUFFER);
+	
+	if (extra->asset != 0)
+	{
+		p = (void*)AAsset_getBuffer(extra->asset);
+        off_t size = AAsset_getLength(extra->asset);
+		return size;
+	}
+	// TODO: sould we close the asset?
+	return 0;
+	/*
+	LARGE_INTEGER file_size;
+	HANDLE file;
+	u32 result = 0;
+	
+	file = CreateFileA(filename, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+	
+	if (file == INVALID_HANDLE_VALUE)
+	{
+		return 0;
+	}
+	
+	if (GetFileSizeEx(file, &file_size))
+	{
+		ASSERT(file_size.QuadPart <= 0xFFFFFFFF);
+		DWORD file_size32 = (DWORD)file_size.QuadPart;
+		p = VirtualAlloc(0, file_size32, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+		
+		if (p)
+		{
+			DWORD bytes_read;
+			if (ReadFile(file, p, file_size32, &bytes_read, 0) && bytes_read == file_size32)
+			{
+				result = bytes_read;
+			} else {
+				VirtualFree(p, 0, MEM_RELEASE);
+			}
+		}
+	}
+	CloseHandle(file);
+	return result;
+	*/
+}
+
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_peshqa_testink_GameEngine_initData(
 		JNIEnv *env,
@@ -128,6 +177,8 @@ Java_com_peshqa_testink_GameEngine_updateAndRenderGame(
 	
 	shared_state->client_width = info.width;
 	shared_state->client_height = info.height;
+	// TODO: implement frame timing
+	shared_state->delta_time = 0.013;
 	UpdateProjectFunction UpdateFunc = (UpdateProjectFunction)(shared_state->callback_update_func);
 	UpdateFunc(shared_state);
 	

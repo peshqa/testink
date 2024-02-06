@@ -38,12 +38,12 @@ typedef struct
 	unsigned int num_important_colors; // ?
 } BitmapFileHeader;
 #pragma pack(pop)
-
+/*
 static int TerminateImage(SimpleImage *image)
 {
 	delete [] image->pixels;
 	return 0;
-}
+}*/
 
 static int LoadPPMImage(SharedState *s, std::string file_path, SimpleImage *image)
 {
@@ -177,7 +177,7 @@ static int oldLoadBMPImage(SharedState *s, std::string file_path, SimpleImage *i
 static int LoadBMPImage(SharedState *s, char *file_path, SimpleImage *image)
 {
 	void *memory;
-	if (PlatformReadWholeFile(file_path, memory) == 0)
+	if (PlatformReadWholeFile(s, file_path, memory) == 0)
 	{
 		ASSERT(!"LoadBMPImage - Couldn't open the file");
 		return 1;
@@ -185,7 +185,7 @@ static int LoadBMPImage(SharedState *s, char *file_path, SimpleImage *image)
 
 	BitmapFileHeader *header = (BitmapFileHeader*)memory;
 	
-	if (header->magic_number != 'MB')
+	if (header->magic_number != 0x4d42) // 'MB'
 	{
 		ASSERT(!"LoadBMPImage - Magic number not matching");
 		return 2;
@@ -204,6 +204,7 @@ static int LoadBMPImage(SharedState *s, char *file_path, SimpleImage *image)
 	
 	ASSERT(image->height > 0); // if image->height < 0, then the image is top-to-bottom
 
+	// NOTE: probably need to enable this to work on other platforms
 	/*for (int y = 0; y < header->height; y++)
 	{
 		for (int x = 0; x < header->width; x++)
@@ -308,7 +309,7 @@ static void DrawBMPFontChar(PlatformBitBuffer *bitBuff, SimpleImage *font, int m
 	{
 		for (int i = 0; i < 16; i++)
 		{
-			if (font->pixels[font->width*j+i+index*16] == font_color)
+			if (font->pixels[font->width*(font->height-j-1)+i+index*16] == font_color)
 				PlatformDrawPixel(bitBuff, min_x+i, min_y+j, font_color);
 		}
 	}

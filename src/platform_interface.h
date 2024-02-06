@@ -96,7 +96,7 @@ struct SharedState
 // Functions to be implemented by the OS abstraction layer
 
 int PlatformGoBorderlessFullscreen(SharedState *s);
-u32 PlatformReadWholeFile(char *filename, void *&p);
+u32 PlatformReadWholeFile(SharedState *s, char *filename, void *&p);
 int PlatformFreeFileMemory(void *p);
 
 // TODO: to be removed/reimplemented

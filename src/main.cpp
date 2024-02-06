@@ -18,7 +18,7 @@ typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
 // NOTE: not made for files bigger than 4GB (ReadFilee uses DWORD)
 // returns 0 if failed (no memory commited)
-static u32 PlatformReadWholeFile(char *filename, void *&p)
+static u32 PlatformReadWholeFile(SharedState *s, char *filename, void *&p)
 {
 	LARGE_INTEGER file_size;
 	HANDLE file;
