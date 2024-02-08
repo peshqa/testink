@@ -240,25 +240,24 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	SharedState shared_state{};
 	InitSharedState(&shared_state);
 	
-	/*int res = InitWASAPIRenderer();
-	if (res != 0)
-	{
-		return 1;
-	}*/
-	
-	
 	int default_project = 0;
 	int current_project = default_project;
 	Project* projects{};
 	InitProjectArray(projects);
 	
+	// Provide memory for the project
+	// NOTE: all the memory is cleared to zero
+	LPVOID memory_offset = (LPVOID)GIGABYTES(250);
+	shared_state.project_memory_size = MEGABYTES(250);
+	shared_state.project_memory = VirtualAlloc(0, shared_state.project_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	
+	ASSERT(shared_state.project_memory);
+	
 	InitProjectFunction InitProjectFunc = (InitProjectFunction)(projects[current_project].InitFunc);
 	UpdateProjectFunction UpdateProjectFunc = (UpdateProjectFunction)(projects[current_project].UpdateFunc);
 	
-	if (InitProjectFunc(&shared_state) != 0)
-	{
-		return -1;
-	}
+	int res = InitProjectFunc(&shared_state);
+	ASSERT(res == 0);
 	
 	shared_state.callback_update_func = projects[current_project].UpdateFunc;
 	
@@ -321,7 +320,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	sound.tone_amplitude = 3000;
 	sound.wave_period = sound.samples_per_second / sound.tone_hz;
 	
-	int res = LoadWavFile(sound.samples, sound.num_samples);
+	int load_wav_res = LoadWavFile(sound.samples, sound.num_samples);
 	ASSERT(res == 0);
 	
 	sound.running_sample_index = 0;

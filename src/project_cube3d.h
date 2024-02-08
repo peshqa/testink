@@ -46,7 +46,7 @@ int InitProject3DCube(SharedState* state)
 {
 	//InitAssetManager(state);
 	
-	ProjectState3DCube *p_state = new ProjectState3DCube{};
+	ProjectState3DCube *p_state = (ProjectState3DCube *)state->project_memory;
 	p_state->x_offset = 0;
 	p_state->y_offset = 0;
 	p_state->z_offset = 0;
@@ -62,19 +62,22 @@ int InitProject3DCube(SharedState* state)
 	p_state->cube_yaw   = 0.0f;
 	p_state->cube_pitch = 0.0f;
 	
-	std::string model_name = "cube";
-	std::string model_path = state->asset_path + model_name + ".obj";
-	std::string texture_path = state->asset_path + model_name + ".ppm";
-	LoadFileOBJ(state, model_path, p_state->vertices, p_state->triangles, p_state->texture_vertices, p_state->tri_tex_map);
-	LoadPPMImage(state, texture_path, &p_state->image);
 	
-	state->project_state = p_state;
+	char model_path[128];
+	char texture_path[128];
+	ConcatNT(state->asset_path, "cube.obj", model_path);
+	ConcatNT(state->asset_path, "test.bmp", texture_path);
+	//std::string model_path = state->asset_path + model_name + ".obj";
+	//std::string texture_path = state->asset_path + "test.bmp";
+	LoadFileOBJ(state, model_path, p_state->vertices, p_state->triangles, p_state->texture_vertices, p_state->tri_tex_map);
+	LoadBMPImage(state, (char*)texture_path, &p_state->image);
+
 	return 0;
 }
 
 int UpdateProject3DCube(SharedState* state)
 {
-	ProjectState3DCube *game_state = (ProjectState3DCube*)(state->project_state);
+	ProjectState3DCube *game_state = (ProjectState3DCube*)(state->project_memory);
 	float delta_time = state->delta_time;
 	static float cam_rot = 0.0f;
 	

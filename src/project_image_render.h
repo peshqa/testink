@@ -24,7 +24,7 @@ typedef struct
 
 int InitProjectImageRender(SharedState* state)
 {
-	ProjectStateImageRender *p_state = new ProjectStateImageRender{};
+	ProjectStateImageRender *p_state = (ProjectStateImageRender *)state->project_memory;
 	p_state->x_offset = 0.0f;
 	p_state->y_offset = 0.0f;
 	
@@ -32,18 +32,20 @@ int InitProjectImageRender(SharedState* state)
 	p_state->last_mouse_y = 0;
 	p_state->was_lmb_down = 0;
 	
-	std::string image_path = state->asset_path + "test.bmp";
-	std::string font_path = state->asset_path + "efortless_font_threshold.bmp";
-	LoadBMPImage(state, (char*)image_path.c_str(), &p_state->image);
-	LoadBMPImage(state, (char*)font_path.c_str(), &p_state->font);
+	char image_path[128];
+	char font_path[128];
+	ConcatNT(state->asset_path, "test.bmp", image_path);
+	ConcatNT(state->asset_path, "efortless_font_threshold.bmp", font_path);
 	
-	state->project_state = p_state;
+	LoadBMPImage(state, image_path, &p_state->image);
+	LoadBMPImage(state, font_path, &p_state->font);
+	
 	return 0;
 }
 
 int UpdateProjectImageRender(SharedState* state)
 {
-	ProjectStateImageRender *game_state = (ProjectStateImageRender*)(state->project_state);
+	ProjectStateImageRender *game_state = (ProjectStateImageRender*)(state->project_memory);
 	float delta_time = state->delta_time;
 	
 	float ox = game_state->x_offset;
@@ -118,14 +120,6 @@ int UpdateProjectImageRender(SharedState* state)
 		}
 		DrawPixelf(state->bitBuff, (float)i/8000.0f, s/4+0.5f, 0xFF000000);
 	}
-	
-	/*
-	// TODO: Temporary, remove later
-	for (int i = 0; i < sound.samples_per_second/8; i++)
-	{
-		DrawPixelf(shared_state.bitBuff, (float)i/sound.samples_per_second*8, scary[i]/0xFFFF*4+0.5f, 0xFF000000);
-	}
-	*/
 	
 	return 0;
 }

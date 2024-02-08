@@ -13,6 +13,27 @@ platform_simple_renderer.h - (platform independent) core of all smaller projects
 
 #include "simple_image.h"
 
+static int Concat(int src1_count, char* src1, int src2_count, char* src2, int dest_count, char* dest)
+{
+	int dest_idx = 0;
+	for (int i = 0; i < src1_count && i < dest_count; i++)
+	{
+		dest[dest_idx++] = src1[i];
+	}
+	for (int i = 0; i < src2_count && i < dest_count; i++)
+	{
+		dest[dest_idx++] = src2[i];
+	}
+	return 0;
+}
+// NOTE: for null terminated strings
+static void ConcatNT(char* src1, char* src2, char* dest)
+{
+	while (*dest++ = *src1++);
+	dest--;
+	while (*dest++ = *src2++);
+}
+
 static int ConvertRelToPlain(float rel, int start, int end)
 {
 	int length = end - start;
@@ -454,13 +475,14 @@ static int ConvertRelYToYse(float rel_y, int start, int end)
 	return (int)(length)*rel_y + start;
 }
 
-static int LoadFileOBJ(SharedState *s, std::string &filename, std::vector<float*> &points, std::vector<int*> &triangles,
+// NOTE: NOT WORKING
+static int LoadFileOBJ(SharedState *s, char *filename, std::vector<float*> &points, std::vector<int*> &triangles,
 				std::vector<float*> &texture_points, std::vector<int*> &texture_map)
 {
 	
 	//std::ifstream file_obj(filename);
 	
-	if (/*file_obj.fail()*/OpenAssetFileA(s, filename) != 0)
+	/*if (OpenAssetFileA(s, filename) != 0)
 	{
 		ASSERT(!"failed to open obj file");
 		return 1;
@@ -468,7 +490,7 @@ static int LoadFileOBJ(SharedState *s, std::string &filename, std::vector<float*
 	
 	std::string line;
 	
-	while(/*getline(file_obj, line)*/ReadAssetLineA(s, line))
+	while(ReadAssetLineA(s, line))
 	{
 		if (line[0] == 'v' && line[1] == ' ')
 		{
@@ -547,6 +569,6 @@ static int LoadFileOBJ(SharedState *s, std::string &filename, std::vector<float*
 	}
 	
 	CloseAssetFile(s);
-	
+	*/
 	return 0;
 }

@@ -401,6 +401,7 @@ int InitSharedState(SharedState *shared_state)
 	// TODO: implement uninitializer TerminateSharedState
 }
 
+/*
 static int OpenAssetFileA(SharedState *s, std::string &filename)
 {
 	W32Extra *extra = (W32Extra*)(s->extra);
@@ -429,4 +430,4 @@ static int CloseAssetFile(SharedState *s)
 	W32Extra *extra = (W32Extra*)(s->extra);
 	extra->file.close();
 	return 0;
-}
+}*/

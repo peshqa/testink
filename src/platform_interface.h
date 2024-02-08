@@ -24,6 +24,11 @@ typedef int8_t  i8;
 
 #define ARRAY_LENGTH(a) sizeof(a) / sizeof(a[0])
 
+#define KILOBYTES(b)  (1024*(b)            )
+#define MEGABYTES(kb) (1024*(KILOBYTES(kb)))
+#define GIGABYTES(mb) (1024*(MEGABYTES(mb)))
+#define TERABYTES(gb) (1024*(GIGABYTES(gb)))
+
 #define PI32 3.14159265359f
 
 enum InputCode : unsigned int
@@ -67,13 +72,13 @@ struct SharedState
 	int client_width;
 	int client_height;
 	int scale;
-	//std::vector<SimpleImage*> images;
 	char dir;
-	void *project_state;
+	void *project_memory;
+	size_t project_memory_size;
 	
 	float delta_time;
 	
-	std::string asset_path;
+	char *asset_path; // TODO: is this a good idea?
 	
 	int is_lmb_down;
 	int mouse_x;

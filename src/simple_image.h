@@ -4,8 +4,8 @@ ppm_image_loader.h - this header file combines different file format loaders
 */
 #pragma once
 
-#include <fstream>
-#include <string>
+//#include <fstream>
+//#include <string>
 
 // define some common stuff
 typedef struct
@@ -44,21 +44,18 @@ static int TerminateImage(SimpleImage *image)
 	delete [] image->pixels;
 	return 0;
 }*/
-
-static int LoadPPMImage(SharedState *s, std::string file_path, SimpleImage *image)
+// TODO: reimplement this
+/*
+static int LoadPPMImage(SharedState *s, char* file_path, SimpleImage *image)
 {
-	
-	//std::ifstream file(file_path, std::ifstream::binary);
-	
-	if (OpenAssetFileA(s, file_path) != 0)
+	void *memory;
+	if (PlatformReadWholeFile(s, file_path, memory) == 0)
 	{
 		ASSERT(!"LoadPPMImage - Couldn't open the file");
 		return 1;
 	}
 	
-	std::string line;
-	ReadAssetLineA(s, line);
-	//file >> magic_number;
+	char* line = (char*)memory;
 	
 	//if (line != "P6")
 	if (line[0] != 'P' && line[1] != '6')
@@ -102,15 +99,10 @@ static int LoadPPMImage(SharedState *s, std::string file_path, SimpleImage *imag
 	{
 		for (int x = 0; x < width; x++)
 		{
-			/*int pixel = 0;
-			pixel += buffer[y*width*3+x*3] << 16;
-			pixel += buffer[y*width*3+x*3+1] << 8;
-			pixel += buffer[y*width*3+x*3+2];
-			
-			image->pixels[y*width+x] = pixel;*/
+
 			image->pixels[y*width+x] = MakeColor(255,
-				buffer[y*width*3+x*3]/* << 16*/,
-				buffer[y*width*3+x*3+1]/* << 8*/,
+				buffer[y*width*3+x*3],
+				buffer[y*width*3+x*3+1],
 				buffer[y*width*3+x*3+2]
 				);
 		}
@@ -121,6 +113,7 @@ static int LoadPPMImage(SharedState *s, std::string file_path, SimpleImage *imag
 	CloseAssetFile(s);
 	return 0;
 }
+*/
 /*
 static int oldLoadBMPImage(SharedState *s, std::string file_path, SimpleImage *image)
 {
@@ -299,7 +292,7 @@ static int CharToBMPFontCharIndex(char c)
 
 static void DrawBMPFontChar(PlatformBitBuffer *bitBuff, SimpleImage *font, int min_x, int min_y, char c)
 {
-	int font_color = MakeColor(255, 0, 0, 0);
+	int font_color = MakeColor(0, 0, 0, 0);
 	int index = CharToBMPFontCharIndex(c);
 	if (index < 0)
 	{

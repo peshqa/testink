@@ -24,16 +24,15 @@ typedef struct
 
 int InitProjectSnakeGame(SharedState* state)
 {
-	SnakeGameState* snake_game = new SnakeGameState{};
+	SnakeGameState* snake_game = (SnakeGameState*)(state->project_memory);
 	InitSnakeGame(snake_game, 10, 10);
-	state->project_state = snake_game;
 	
 	return 0;
 }
 
 int UpdateProjectSnakeGame(SharedState* state)
 {
-	SnakeGameState *game_state = (SnakeGameState*)(state->project_state);
+	SnakeGameState *game_state = (SnakeGameState*)(state->project_memory);
 	
 	float delta_time = state->delta_time;
 	
