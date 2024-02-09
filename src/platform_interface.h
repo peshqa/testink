@@ -37,6 +37,18 @@ enum InputCode : unsigned int
 	INPUT_UP = 0x26,
 	INPUT_RIGHT = 0x27,
 	INPUT_DOWN = 0x28,
+	INPUT_F1 = 0x70,
+	INPUT_F2,
+	INPUT_F3,
+	INPUT_F4,
+	INPUT_F5,
+	INPUT_F6,
+	INPUT_F7,
+	INPUT_F8,
+	INPUT_F9,
+	INPUT_F10,
+	INPUT_F11,
+	INPUT_F12,
 	INPUT_LSHIFT = 0xA0,
 };
 
@@ -102,7 +114,7 @@ struct SharedState
 
 int PlatformGoBorderlessFullscreen(SharedState *s);
 u32 PlatformReadWholeFile(SharedState *s, char *filename, void *&p);
-int PlatformFreeFileMemory(void *p);
+int PlatformFreeFileMemory(SharedState *s, void *p);
 
 // TODO: to be removed/reimplemented
 int OpenAssetFileA(SharedState *s, std::string &filename);

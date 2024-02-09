@@ -52,7 +52,22 @@ static u32 PlatformReadWholeFile(SharedState *s, char *filename, void *&p)
 	return result;
 }
 
-static int PlatformFreeFileMemory(void *p)
+static u32 PlatformWriteWholeFile(SharedState *s, char *filename, void *&p, size_t bytes_to_write)
+{
+	DWORD bytes_written;
+	HANDLE file = CreateFileA(filename, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+	
+	if (file == INVALID_HANDLE_VALUE)
+	{
+		return 0;
+	}
+	
+	WriteFile(file, p, bytes_to_write, &bytes_written, 0);
+	CloseHandle(file);
+	return (u32)bytes_written;
+}
+
+static int PlatformFreeFileMemory(SharedState *s, void *p)
 {
 	VirtualFree(p, 0, MEM_RELEASE);
 }
@@ -247,9 +262,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	
 	// Provide memory for the project
 	// NOTE: all the memory is cleared to zero
-	LPVOID memory_offset = (LPVOID)GIGABYTES(250);
-	shared_state.project_memory_size = MEGABYTES(250);
-	shared_state.project_memory = VirtualAlloc(0, shared_state.project_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	// TODO: for a 32-bit app might need a lower offset (under 2 GB)
+	LPVOID memory_offset = (LPVOID)GIGABYTES(500);
+	shared_state.project_memory_size = MEGABYTES(25);
+	shared_state.project_memory = VirtualAlloc(memory_offset, shared_state.project_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	
 	ASSERT(shared_state.project_memory);
 	
@@ -352,6 +368,17 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 			
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
+		}
+		
+		char *save_name = "project_state.tst";
+		// Project state saving/loading
+		if (shared_state.input_state[INPUT_F5] & 1)
+		{
+			PlatformWriteWholeFile(&shared_state, save_name, shared_state.project_memory, shared_state.project_memory_size);
+		}
+		if (shared_state.input_state[INPUT_F6] & 1)
+		{
+			PlatformReadWholeFile(&shared_state, save_name, shared_state.project_memory);
 		}
 		
 		DWORD play_cursor;

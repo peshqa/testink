@@ -246,8 +246,10 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 			
 			if (wParam == MK_LBUTTON)
 			{
+				shared_state->is_lmb_down <<= 1;
 				shared_state->is_lmb_down = 1;
 			} else {
+				shared_state->is_lmb_down <<= 1;
 				shared_state->is_lmb_down = 0;
 			}
 		}
@@ -291,6 +293,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 			case VK_MENU:    // converts to VK_LMENU or VK_RMENU
 				vkCode = LOWORD(MapVirtualKeyW(scanCode, MAPVK_VSC_TO_VK_EX));
 			default:
+				shared_state->input_state[vkCode] <<= 1;
 				shared_state->input_state[vkCode] = is_down;
 			}
 			
