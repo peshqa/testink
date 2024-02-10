@@ -30,6 +30,7 @@ typedef int8_t  i8;
 #define TERABYTES(gb) (1024*(GIGABYTES(gb)))
 
 #define PI32 3.14159265359f
+#define INPUT_KEY_COUNT 300
 
 enum InputCode : unsigned int
 {
@@ -96,7 +97,7 @@ struct SharedState
 	int mouse_x;
 	int mouse_y;
 	
-	unsigned char input_state[300];
+	unsigned char input_state[INPUT_KEY_COUNT];
 	
 	int is_running;
 	int max_fps;

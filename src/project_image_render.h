@@ -101,7 +101,7 @@ int UpdateProjectImageRender(SharedState* state)
 	game_state->y_offset += game_state->step_y * delta_time;
 	
 	
-	if (state->input_state['W'] & 1)
+	if (((state->input_state['W'] & 0b11) == 0b01))
 	{
 		game_state->wave_period += 100.0f*delta_time;
 	}
@@ -114,8 +114,8 @@ int UpdateProjectImageRender(SharedState* state)
 	for (int i = 0; i < state->soundBuff.samples_to_fill; i++)
 	{
 		float s = sinf(game_state->t_sin);
-		//int16_t value = s*0xFFFF*0.1f;
-		int16_t value = 0;
+		int16_t value = s*0xFFFF*0.1f;
+		//int16_t value = 0;
 		((int16_t*)(state->soundBuff.buffer))[2*i] = value;
 		((int16_t*)(state->soundBuff.buffer))[2*i+1] = value;
 		game_state->t_sin += 2.0f * PI32 * (1.0f / game_state->wave_period);

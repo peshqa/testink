@@ -411,6 +411,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		PlatformUpdateDisplay(&shared_state, shared_state.client_width, shared_state.client_height);
 		ReleaseDC(hwnd, hdc);
 		
+		for (int i = 0; i < INPUT_KEY_COUNT; i++)
+		{
+			u8 last_input = shared_state.input_state[i] & 1;
+			shared_state.input_state[i] <<= 1;
+			shared_state.input_state[i] += last_input;
+		}
+		
 		
 		// Timing
 		u64 counter_before_sleep = W32GetPerfCounter();
