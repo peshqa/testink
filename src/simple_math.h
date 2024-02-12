@@ -1,11 +1,68 @@
 /*
-simple_3d_gfx.h - self explanatory header name
+simple_math.h - self explanatory header name
 2023/09/25, peshqa
 */
 #pragma once
 
 #include <math.h>
 #include <vector>
+
+#define PI32 3.14159265359f
+
+typedef union
+{
+	struct
+	{
+		float x;
+		float y;
+	};
+	struct
+	{
+		float width;
+		float height;
+	};
+	float elem[2];
+} Vec2;
+
+typedef union
+{
+	struct
+	{
+		float x;
+		float y;
+		float z;
+	};
+	struct
+	{
+		float r;
+		float g;
+		float b;
+	};
+	float elem[3];
+} Vec3;
+
+Vec2 operator+(Vec2 a, Vec2 b)
+{
+	Vec2 res;
+	res.x = a.x + b.x;
+	res.y = a.y + b.y;
+	return res;
+}
+
+Vec2 operator*(Vec2 v, float f)
+{
+	Vec2 res;
+	res.x = v.x * f;
+	res.y = v.y * f;
+	return res;
+}
+Vec2 operator*(float f, Vec2 v)
+{
+	Vec2 res;
+	res.x = v.x *f;
+	res.y = v.y *f;
+	return res;
+}
 
 typedef struct
 {

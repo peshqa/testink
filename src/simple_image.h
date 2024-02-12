@@ -302,7 +302,7 @@ static void DrawBMPFontChar(PlatformBitBuffer *bitBuff, SimpleImage *font, int m
 	{
 		for (int i = 0; i < 16; i++)
 		{
-			if (font->pixels[font->width*(font->height-j-1)+i+index*16] == font_color)
+			if (font->pixels[font->width*j+i+index*16] == font_color)
 				PlatformDrawPixel(bitBuff, min_x+i, min_y+j, font_color);
 		}
 	}

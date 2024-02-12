@@ -57,7 +57,7 @@ static int ResizePlatformBitBuffer(PlatformBitBuffer *p, int screenWidth, int sc
 	BITMAPINFO *info = (BITMAPINFO*)(p->info);
 	info->bmiHeader.biSize = sizeof(info->bmiHeader);
 	info->bmiHeader.biWidth = screenWidth;
-	info->bmiHeader.biHeight = -screenHeight;
+	info->bmiHeader.biHeight = screenHeight;
 	info->bmiHeader.biPlanes = 1;
 	info->bmiHeader.biBitCount = 8 * sizeof(int);
 	info->bmiHeader.biCompression = BI_RGB;

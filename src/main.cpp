@@ -372,11 +372,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		
 		char *save_name = "project_state.tst";
 		// Project state saving/loading
-		if (shared_state.input_state[INPUT_F5] & 1)
+		if ((shared_state.input_state[INPUT_F5] & 0b11) == 1)
 		{
 			PlatformWriteWholeFile(&shared_state, save_name, shared_state.project_memory, shared_state.project_memory_size);
 		}
-		if (shared_state.input_state[INPUT_F6] & 1)
+		if ((shared_state.input_state[INPUT_F6] & 0b11) == 1)
 		{
 			PlatformReadWholeFile(&shared_state, save_name, shared_state.project_memory);
 		}

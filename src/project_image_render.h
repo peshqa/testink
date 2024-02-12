@@ -8,6 +8,15 @@ project_image_render.h - image rendering test
 
 typedef struct
 {
+	Vec2 dim;
+	Vec2 pos;
+	Vec2 vel;
+	Vec2 accel;
+	Vec3 color;
+} SimpleEntity;
+
+typedef struct
+{
 	float x_offset;
 	float y_offset;
 	
@@ -17,6 +26,8 @@ typedef struct
 	
 	SimpleImage image;
 	SimpleImage font;
+	
+	SimpleEntity ent;
 	
 	float wave_period;
 	float t_sin;
@@ -34,6 +45,10 @@ int InitProjectImageRender(SharedState* state)
 	p_state->last_mouse_x = 0;
 	p_state->last_mouse_y = 0;
 	p_state->was_lmb_down = 0;
+	
+	p_state->ent.dim = {0.25f, 0.25f};
+	p_state->ent.pos = {0.5f, 0.5f};
+	p_state->ent.color = {0.85f, 0.75f, 0.1f};
 	
 	p_state->wave_period = 220.0f;
 	p_state->t_sin = 0.0f;
@@ -60,10 +75,42 @@ int UpdateProjectImageRender(SharedState* state)
 	float ox = game_state->x_offset;
 	float oy = game_state->y_offset;
 	
-	//FillPlatformBitBuffer(state->bitBuff, MakeColor(255,25,12,6)); // solid color
-	DrawGradientScreen(state->bitBuff, 106, 104, 203, 255, 255, 255); // fancy vertical gradient
+	FillPlatformBitBuffer(state->bitBuff, MakeColor(255,50,24,6)); // solid color
+	//DrawGradientScreen(state->bitBuff, 106, 104, 203, 255, 255, 255); // fancy vertical gradient
 	
-	int min_x = ConvertRelToPlain(ox, 0, state->bitBuff->width);
+	game_state->ent.accel = {};
+	if (((state->input_state['W'] & 0b1) == 0b1))
+	{
+		game_state->ent.accel.y = 1.0f;
+	}
+	if (((state->input_state['S'] & 0b1) == 0b1))
+	{
+		game_state->ent.accel.y = -1.0f;
+	}
+	if (((state->input_state['A'] & 0b1) == 0b1))
+	{
+		game_state->ent.accel.x = -1.0f;
+	}
+	if (((state->input_state['D'] & 0b1) == 0b1))
+	{
+		game_state->ent.accel.x = 1.0f;
+	}
+	game_state->ent.pos = game_state->ent.accel*0.5f*delta_time*delta_time + game_state->ent.vel*delta_time + game_state->ent.pos;
+	game_state->ent.vel = game_state->ent.accel*delta_time + game_state->ent.vel;
+	
+	//game_state->ent.vel = game_state->ent.vel * (1.0f - 660.99f * delta_time);
+	
+	DrawSimpleEntity(state->bitBuff, game_state->ent.dim, game_state->ent.pos, game_state->ent.color);
+	static float offset = 0.0f;
+	offset += 0.25*delta_time;
+	if (offset > 0.2f)
+		offset -= 0.2f;
+	for (int i = 4; i >= 0; i--)
+	{
+		DrawSimpleCirclef(state->bitBuff, 0.10f+.2f*i+offset, game_state->ent.pos, {});
+		DrawSimpleCirclef(state->bitBuff, 0.0f+.2f*i+offset, game_state->ent.pos, {0.5f, 0.5f, 1});
+	}
+	/*int min_x = ConvertRelToPlain(ox, 0, state->bitBuff->width);
 	int min_y = ConvertRelToPlain(oy, 0, state->bitBuff->height);
 	if (game_state->step_x > 0 && min_x >= state->bitBuff->width-game_state->image.width)
 	{
@@ -86,19 +133,18 @@ int UpdateProjectImageRender(SharedState* state)
 		min_y += game_state->step_y * delta_time;
 	}
 	DrawImageExceptColor(state->bitBuff, &game_state->image, min_x, min_y, MakeColor(0, 254, 254, 255));
-	std::string test_string = "TEST string";
-	DrawBMPFontString(state->bitBuff, &game_state->font, 100, 140, test_string);
 	
-	test_string = std::to_string(delta_time);
+	
+	game_state->x_offset += game_state->step_x * delta_time;
+	game_state->y_offset += game_state->step_y * delta_time;*/
+	
+	std::string test_string = std::to_string(delta_time);
 	test_string = "ft: " + test_string;
 	DrawBMPFontString(state->bitBuff, &game_state->font, 100, 170, test_string);
 	
 	test_string = std::to_string((int)(1.0f / delta_time));
 	test_string = "FPS: " + test_string;
 	DrawBMPFontString(state->bitBuff, &game_state->font, 100, 190, test_string);
-	
-	game_state->x_offset += game_state->step_x * delta_time;
-	game_state->y_offset += game_state->step_y * delta_time;
 	
 	
 	if (((state->input_state['W'] & 0b11) == 0b01))
@@ -114,8 +160,8 @@ int UpdateProjectImageRender(SharedState* state)
 	for (int i = 0; i < state->soundBuff.samples_to_fill; i++)
 	{
 		float s = sinf(game_state->t_sin);
-		int16_t value = s*0xFFFF*0.1f;
-		//int16_t value = 0;
+		//int16_t value = s*0xFFFF*0.1f;
+		int16_t value = 0;
 		((int16_t*)(state->soundBuff.buffer))[2*i] = value;
 		((int16_t*)(state->soundBuff.buffer))[2*i+1] = value;
 		game_state->t_sin += 2.0f * PI32 * (1.0f / game_state->wave_period);
@@ -123,7 +169,7 @@ int UpdateProjectImageRender(SharedState* state)
 		{
 			game_state->t_sin -= 2.0f * PI32; // have to do this so that we don't run out of float precision
 		}
-		DrawPixelf(state->bitBuff, (float)i/8000.0f, s/4+0.5f, 0xFF000000);
+		//DrawPixelf(state->bitBuff, (float)i/8000.0f, s/4+0.5f, 0xFF000000);
 	}
 	
 	return 0;

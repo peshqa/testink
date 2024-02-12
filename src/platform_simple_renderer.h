@@ -4,7 +4,7 @@ platform_simple_renderer.h - (platform independent) core of all smaller projects
 */
 #pragma once
 
-#include "simple_3d_gfx.h"
+#include "simple_math.h"
 #include "platform_interface.h"
 
 #include <vector>
@@ -473,6 +473,88 @@ static int ConvertRelYToYse(float rel_y, int start, int end)
 {
 	int length = end - start;
 	return (int)(length)*rel_y + start;
+}
+
+static void DrawSimpleEntity(PlatformBitBuffer *bitBuff, Vec2 dim, Vec2 pos, Vec3 color)
+{
+	int x_min = pos.x*bitBuff->width;
+	int y_min = pos.y*bitBuff->height;
+	int x_max = (pos.x+dim.x)*bitBuff->width;
+	int y_max = (pos.y+dim.y)*bitBuff->height;
+	int color32 = MakeColor(255, 255*color.r, 255*color.g, 255*color.b);
+	PlatformFillRect(bitBuff, x_min, y_min, x_max, y_max, color32);
+}
+
+static void DrawSimpleCircle(PlatformBitBuffer *bitBuff, int radius, Vec2 pos, Vec3 color)
+{
+	int color32 = MakeColor(255, 255*color.r, 255*color.g, 255*color.b);
+	int t1 = radius / 16;
+	int t2;
+	int x = radius;
+	int y = 0;
+	while (x >= y)
+	{
+		/*
+		PlatformDrawPixel(bitBuff, pos.x*bitBuff->width-x, pos.y*bitBuff->height-y, color32);
+		PlatformDrawPixel(bitBuff, pos.x*bitBuff->width+x, pos.y*bitBuff->height+y, color32);
+		PlatformDrawPixel(bitBuff, pos.x*bitBuff->width+y, pos.y*bitBuff->height+x, color32);
+		PlatformDrawPixel(bitBuff, pos.x*bitBuff->width-y, pos.y*bitBuff->height-x, color32);
+		
+		PlatformDrawPixel(bitBuff, pos.x*bitBuff->width+x, pos.y*bitBuff->height-y, color32);
+		PlatformDrawPixel(bitBuff, pos.x*bitBuff->width-x, pos.y*bitBuff->height+y, color32);
+		PlatformDrawPixel(bitBuff, pos.x*bitBuff->width-y, pos.y*bitBuff->height+x, color32);
+		PlatformDrawPixel(bitBuff, pos.x*bitBuff->width+y, pos.y*bitBuff->height-x, color32);*/
+		
+		DrawHorizontalLine(bitBuff, pos.x*bitBuff->width-x, pos.x*bitBuff->width+x, pos.y*bitBuff->height-y, color32);
+		DrawHorizontalLine(bitBuff, pos.x*bitBuff->width-x, pos.x*bitBuff->width+x, pos.y*bitBuff->height+y, color32);
+		DrawHorizontalLine(bitBuff, pos.x*bitBuff->width-y, pos.x*bitBuff->width+y, pos.y*bitBuff->height-x, color32);
+		DrawHorizontalLine(bitBuff, pos.x*bitBuff->width-y, pos.x*bitBuff->width+y, pos.y*bitBuff->height+x, color32);
+		y++;
+		t1 += y;
+		t2 = t1 - x;
+		if (t2 >= 0)
+		{
+			t1 = t2;
+			x--;
+		}
+	}
+	//PlatformFillRect(bitBuff, x_min, y_min, x_max, y_max, color32);
+}
+static void DrawSimpleCirclef(PlatformBitBuffer *bitBuff, float radiusf, Vec2 pos, Vec3 color)
+{
+	int radius = radiusf*bitBuff->height;
+	int color32 = MakeColor(255, 255*color.r, 255*color.g, 255*color.b);
+	int t1 = radius / 16;
+	int t2;
+	int x = radius;
+	int y = 0;
+	while (x >= y)
+	{
+		/*
+		PlatformDrawPixel(bitBuff, pos.x*bitBuff->width-x, pos.y*bitBuff->height-y, color32);
+		PlatformDrawPixel(bitBuff, pos.x*bitBuff->width+x, pos.y*bitBuff->height+y, color32);
+		PlatformDrawPixel(bitBuff, pos.x*bitBuff->width+y, pos.y*bitBuff->height+x, color32);
+		PlatformDrawPixel(bitBuff, pos.x*bitBuff->width-y, pos.y*bitBuff->height-x, color32);
+		
+		PlatformDrawPixel(bitBuff, pos.x*bitBuff->width+x, pos.y*bitBuff->height-y, color32);
+		PlatformDrawPixel(bitBuff, pos.x*bitBuff->width-x, pos.y*bitBuff->height+y, color32);
+		PlatformDrawPixel(bitBuff, pos.x*bitBuff->width-y, pos.y*bitBuff->height+x, color32);
+		PlatformDrawPixel(bitBuff, pos.x*bitBuff->width+y, pos.y*bitBuff->height-x, color32);*/
+		
+		DrawHorizontalLine(bitBuff, pos.x*bitBuff->width-x, pos.x*bitBuff->width+x, pos.y*bitBuff->height-y, color32);
+		DrawHorizontalLine(bitBuff, pos.x*bitBuff->width-x, pos.x*bitBuff->width+x, pos.y*bitBuff->height+y, color32);
+		DrawHorizontalLine(bitBuff, pos.x*bitBuff->width-y, pos.x*bitBuff->width+y, pos.y*bitBuff->height-x, color32);
+		DrawHorizontalLine(bitBuff, pos.x*bitBuff->width-y, pos.x*bitBuff->width+y, pos.y*bitBuff->height+x, color32);
+		y++;
+		t1 += y;
+		t2 = t1 - x;
+		if (t2 >= 0)
+		{
+			t1 = t2;
+			x--;
+		}
+	}
+	//PlatformFillRect(bitBuff, x_min, y_min, x_max, y_max, color32);
 }
 
 // NOTE: NOT WORKING

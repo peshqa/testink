@@ -29,7 +29,6 @@ typedef int8_t  i8;
 #define GIGABYTES(mb) (1024*(MEGABYTES(mb)))
 #define TERABYTES(gb) (1024*(GIGABYTES(gb)))
 
-#define PI32 3.14159265359f
 #define INPUT_KEY_COUNT 300
 
 enum InputCode : unsigned int
