@@ -141,8 +141,8 @@ int InitProjectArray(Project* &array)
 	int count = 3;
 	array = new Project[count];
 	// First element of the array points to default project
-	array[0].InitFunc = (void*)InitProjectImageRender;
-	array[0].UpdateFunc = (void*)UpdateProjectImageRender;
+	array[0].InitFunc = (void*)InitProject3DCube;
+	array[0].UpdateFunc = (void*)UpdateProject3DCube;
 	
 	// TODO array[0].name = ...
 	array[1].InitFunc = (void*)InitProjectSnakeGame;
@@ -150,6 +150,9 @@ int InitProjectArray(Project* &array)
 	
 	array[2].InitFunc = (void*)InitProject3DCube;
 	array[2].UpdateFunc = (void*)UpdateProject3DCube;
+	
+	array[3].InitFunc = (void*)InitProjectImageRender;
+	array[3].UpdateFunc = (void*)UpdateProjectImageRender;
 	
 	return 0;
 }

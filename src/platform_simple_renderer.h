@@ -557,14 +557,15 @@ static void DrawSimpleCirclef(PlatformBitBuffer *bitBuff, float radiusf, Vec2 po
 	//PlatformFillRect(bitBuff, x_min, y_min, x_max, y_max, color32);
 }
 
-// NOTE: NOT WORKING
-static int LoadFileOBJ(SharedState *s, char *filename, std::vector<float*> &points, std::vector<int*> &triangles,
-				std::vector<float*> &texture_points, std::vector<int*> &texture_map)
+static int LoadFileOBJ(SharedState *s, char *filename_, Vec3 *points, int *points_count, std::vector<int*> &triangles,
+				Vec2 *tex_points, int *tex_points_count, std::vector<int*> &texture_map)
 {
-	
+	int points_next_free = *points_count;
+	int tex_points_next_free = *tex_points_count;
+	std::string filename = std::string(filename_);
 	//std::ifstream file_obj(filename);
 	
-	/*if (OpenAssetFileA(s, filename) != 0)
+	if (OpenAssetFileA(s, filename) != 0)
 	{
 		ASSERT(!"failed to open obj file");
 		return 1;
@@ -579,31 +580,32 @@ static int LoadFileOBJ(SharedState *s, char *filename, std::vector<float*> &poin
 			// Vertex
 			
 			std::string vals_str = line.substr(2);
-			float *vals = new float[3]{};
+			Vec3 vals;
 
 			std::string val0 = vals_str.substr(0, vals_str.find(' '));
-			vals[0] = (float)atof(val0.c_str());
+			vals.elem[0] = (float)atof(val0.c_str());
 
 			std::string val1 = vals_str.substr(val0.length() + 1, vals_str.find(' ', val0.length() + 1));
-			vals[1] = (float)atof(val1.c_str());
+			vals.elem[1] = (float)atof(val1.c_str());
 			
 			std::string val2 = vals_str.substr(vals_str.find_last_of(' ') + 1);
-			vals[2] = (float)atof(val2.c_str());
+			vals.elem[2] = (float)atof(val2.c_str());
 			
-			points.push_back(vals);
+			points[points_next_free++] = vals;
 		} else if (line[0] == 'v' && line[1] == 't' && line[2] == ' ') {
 			// Texture vertex
 			
 			std::string vals_str = line.substr(3);
-			float *vals = new float[2]{};
+			Vec2 vals;
 			
 			std::string val0 = vals_str.substr(0, vals_str.find(' '));
-			vals[0] = (float)atof(val0.c_str());
+			vals.elem[0] = (float)atof(val0.c_str());
 			
 			std::string val1 = vals_str.substr(vals_str.find_last_of(' ') + 1);
-			vals[1] = (float)atof(val1.c_str());
+			vals.elem[1] = (float)atof(val1.c_str());
 			
-			texture_points.push_back(vals);
+			//texture_points.push_back(vals);
+			tex_points[tex_points_next_free++] = vals;
 		} else if (line[0] == 'v' && line[1] == 'n' && line[2] == ' ') {
 			// do nothing
 		} else if (line[0] == 'f' && line[1] == ' ') {
@@ -651,6 +653,8 @@ static int LoadFileOBJ(SharedState *s, char *filename, std::vector<float*> &poin
 	}
 	
 	CloseAssetFile(s);
-	*/
+	*points_count = points_next_free;
+	*tex_points_count = tex_points_next_free;
+	
 	return 0;
 }

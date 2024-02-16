@@ -34,11 +34,15 @@ typedef struct
 	
 	float step_x;
 	float step_y;
+	
+	float offset;
 } ProjectStateImageRender;
 
 int InitProjectImageRender(SharedState* state)
 {
 	ProjectStateImageRender *p_state = (ProjectStateImageRender *)state->project_memory;
+	p_state->offset = 0.0f;
+	
 	p_state->x_offset = 0.0f;
 	p_state->y_offset = 0.0f;
 	
@@ -100,16 +104,16 @@ int UpdateProjectImageRender(SharedState* state)
 	
 	//game_state->ent.vel = game_state->ent.vel * (1.0f - 660.99f * delta_time);
 	
-	DrawSimpleEntity(state->bitBuff, game_state->ent.dim, game_state->ent.pos, game_state->ent.color);
-	static float offset = 0.0f;
-	offset += 0.25*delta_time;
-	if (offset > 0.2f)
-		offset -= 0.2f;
+	
+	game_state->offset += 0.25*delta_time;
+	if (game_state->offset > 0.2f)
+		game_state->offset -= 0.2f;
 	for (int i = 4; i >= 0; i--)
 	{
-		DrawSimpleCirclef(state->bitBuff, 0.10f+.2f*i+offset, game_state->ent.pos, {});
-		DrawSimpleCirclef(state->bitBuff, 0.0f+.2f*i+offset, game_state->ent.pos, {0.5f, 0.5f, 1});
+		DrawSimpleCirclef(state->bitBuff, 0.10f+.2f*i+game_state->offset, {0.5f, 0.5f}, {});
+		DrawSimpleCirclef(state->bitBuff, 0.0f+.2f*i+game_state->offset, {0.5f, 0.5f}, {0.5f, 0.5f, 1});
 	}
+	DrawSimpleEntity(state->bitBuff, game_state->ent.dim, game_state->ent.pos, game_state->ent.color);
 	/*int min_x = ConvertRelToPlain(ox, 0, state->bitBuff->width);
 	int min_y = ConvertRelToPlain(oy, 0, state->bitBuff->height);
 	if (game_state->step_x > 0 && min_x >= state->bitBuff->width-game_state->image.width)
