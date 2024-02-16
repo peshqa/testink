@@ -113,9 +113,10 @@ int InitProject3DCube(SharedState* state)
 	char model_path[128];
 	char texture_path[128];
 	ConcatNT(state->asset_path, "cube.obj", model_path);
-	ConcatNT(state->asset_path, "test.bmp", texture_path);
+	//ConcatNT(state->asset_path, "test.bmp", texture_path);
+	ConcatNT(state->asset_path, "cube.ppm", texture_path);
 	LoadFileOBJ(state, model_path, p_state->verts, &p_state->verts_count, p_state->triangles, p_state->tex_verts, &p_state->tex_verts_count, p_state->tri_tex_map);
-	LoadBMPImage(state, (char*)texture_path, &p_state->image);
+	LoadPPMImage(state, (char*)texture_path, &p_state->image);
 
 	return 0;
 }

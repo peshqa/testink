@@ -87,13 +87,14 @@ Java_com_peshqa_testink_GameEngine_initData(
 	AndroidExtra *extra = (AndroidExtra*)(shared_state->extra);
 	extra->env = env;
 	extra->asset_manager = extra->env->NewGlobalRef(asset_mgr);
-	
+	shared_state->project_memory = new u8[MEGABYTES(25)]{};
 	if (InitProjectFunc(shared_state) != 0)
 	{
 		return 0;
 	}
 	shared_state->scale = 1;
 	shared_state->bitBuff = new PlatformBitBuffer{};
+	
 	return (jlong)shared_state;
 }
 

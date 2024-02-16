@@ -476,10 +476,12 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int 
 		tex_points.push_back(ntp2);
 		
 		out_tri1[1] = *points_count;
-		points[*points_count++] = np1;
+		points[*points_count] = np1;
+		*points_count = *points_count + 1;
 		//out_tri1[1] = points.size() - 1;
 		out_tri1[2] = *points_count;
-		points[*points_count++] = np2;
+		points[*points_count] = np2;
+		*points_count = *points_count + 1;
 		//out_tri1[2] = points.size() - 1;
 
 		return 1;
@@ -511,7 +513,8 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int 
 		tex_points.push_back(ntp1);
 		
 		out_tri1[2] = *points_count;
-		points[*points_count++] = np1;
+		points[*points_count] = np1;
+		*points_count = *points_count + 1;
 		//out_tri1[2] = points.size() - 1;
 
 		out_tri2[0] = inside_points[1];
@@ -526,7 +529,8 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int 
 		tex_points.push_back(ntp2);
 		
 		out_tri2[2] = *points_count;
-		points[*points_count++] = np2;
+		points[*points_count] = np2;
+		*points_count = *points_count + 1;
 		//points.push_back(np2);
 		//out_tri2[2] = points.size() - 1;
 
