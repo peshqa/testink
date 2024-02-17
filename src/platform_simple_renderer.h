@@ -557,11 +557,13 @@ static void DrawSimpleCirclef(PlatformBitBuffer *bitBuff, float radiusf, Vec2 po
 	//PlatformFillRect(bitBuff, x_min, y_min, x_max, y_max, color32);
 }
 
-static int LoadFileOBJ(SharedState *s, char *filename_, Vec3 *points, int *points_count, std::vector<int*> &triangles,
-				Vec2 *tex_points, int *tex_points_count, std::vector<int*> &texture_map)
+static int LoadFileOBJ(SharedState *s, char *filename_, Vec3 *points, int *points_count, Tri *triangles, int *triangles_count,
+				Vec2 *tex_points, int *tex_points_count, Tri *texture_map, int *texture_map_count)
 {
 	int points_next_free = *points_count;
+	int triangles_next_free = *triangles_count;
 	int tex_points_next_free = *tex_points_count;
+	int texture_map_next_free = *texture_map_count;
 	std::string filename = std::string(filename_);
 	//std::ifstream file_obj(filename);
 	
@@ -629,23 +631,25 @@ static int LoadFileOBJ(SharedState *s, char *filename_, Vec3 *points, int *point
 	
 				std::string g3 = line.substr(line.find_last_of(' ') + 1);
 				
-				int *t_vals = new int[3]{};
+				//int *t_vals = new int[3]{};
+				Tri t_vals;
 				std::string m1 = g1.substr(g1.find('/')+1, g1.find(' ') - g1.find('/') - 1);
 				std::string m2 = g2.substr(g2.find('/')+1, g2.find(' ') - g2.find('/') - 1);
 				std::string m3 = g3.substr(g3.find('/')+1, g3.find(' ') - g3.find('/') - 1);
-				t_vals[0] = (int)atoi(m1.c_str()) - 1;
-				t_vals[1] = (int)atoi(m2.c_str()) - 1;
-				t_vals[2] = (int)atoi(m3.c_str()) - 1;
-				texture_map.push_back(t_vals);
+				t_vals.elem[0] = (int)atoi(m1.c_str()) - 1;
+				t_vals.elem[1] = (int)atoi(m2.c_str()) - 1;
+				t_vals.elem[2] = (int)atoi(m3.c_str()) - 1;
+				texture_map[texture_map_next_free++] = (t_vals);
 	
 				g1 = g1.substr(0, g1.find('/'));
 				g2 = g2.substr(0, g2.find('/'));
 				g3 = g3.substr(0, g3.find('/'));
-				int *vals = new int[3]{};
-				vals[0] = (int)atoi(g1.c_str()) - 1;
-				vals[1] = (int)atoi(g2.c_str()) - 1;
-				vals[2] = (int)atoi(g3.c_str()) - 1;
-				triangles.push_back(vals);
+				//int *vals = new int[3]{};
+				Tri vals;
+				vals.elem[0] = (int)atoi(g1.c_str()) - 1;
+				vals.elem[1] = (int)atoi(g2.c_str()) - 1;
+				vals.elem[2] = (int)atoi(g3.c_str()) - 1;
+				triangles[triangles_next_free++] = (vals);
 			} else {
 				ASSERT(!"unhandled case in LoadFileOBJ - face has no textures");
 			}
@@ -654,7 +658,9 @@ static int LoadFileOBJ(SharedState *s, char *filename_, Vec3 *points, int *point
 	
 	CloseAssetFile(s);
 	*points_count = points_next_free;
+	*triangles_count = triangles_next_free;
 	*tex_points_count = tex_points_next_free;
+	*texture_map_count = texture_map_next_free;
 	
 	return 0;
 }

@@ -71,8 +71,12 @@ typedef struct
 	
 	SimpleImage image;
 	
-	std::vector<int*> triangles;
+	//std::vector<int*> triangles;
 	std::vector<int*> tri_tex_map;
+	Tri* tris;
+	int tris_count;
+	Tri* tris_tex_map;
+	int tris_tex_map_count;
 	
 	Vec3 *verts;
 	int verts_count;
@@ -110,12 +114,18 @@ int InitProject3DCube(SharedState* state)
 	p_state->tex_verts = ArenaPushArray(&p_state->arena, VEC3_STACK_COUNT, Vec2);
 	p_state->tex_verts_count = 0;
 	
+	p_state->tris = ArenaPushArray(&p_state->arena, VEC3_STACK_COUNT, Tri);
+	p_state->tris_count = 0;
+	p_state->tris_tex_map = ArenaPushArray(&p_state->arena, VEC3_STACK_COUNT, Tri);
+	p_state->tris_tex_map_count = 0;
+	
 	char model_path[128];
 	char texture_path[128];
-	ConcatNT(state->asset_path, "cube.obj", model_path);
-	//ConcatNT(state->asset_path, "test.bmp", texture_path);
-	ConcatNT(state->asset_path, "cube.ppm", texture_path);
-	LoadFileOBJ(state, model_path, p_state->verts, &p_state->verts_count, p_state->triangles, p_state->tex_verts, &p_state->tex_verts_count, p_state->tri_tex_map);
+	ConcatNT(state->asset_path, (char*)"cube.obj", model_path);
+	//ConcatNT(state->asset_path, (char*)"test.bmp", texture_path);
+	ConcatNT(state->asset_path, (char*)"cube.ppm", texture_path);
+	LoadFileOBJ(state, model_path, p_state->verts, &p_state->verts_count, p_state->tris, &p_state->tris_count,
+				p_state->tex_verts, &p_state->tex_verts_count, p_state->tris_tex_map, &p_state->tris_tex_map_count);
 	LoadPPMImage(state, (char*)texture_path, &p_state->image);
 
 	return 0;
@@ -139,6 +149,16 @@ int UpdateProject3DCube(SharedState* state)
 	Vec3 *verts_viewed = ArenaPushArray(&game_state->arena, VEC3_STACK_COUNT, Vec3);
 	int verts_projected_next_free = 0;
 	Vec3 *verts_projected = ArenaPushArray(&game_state->arena, VEC3_STACK_COUNT, Vec3);
+	
+	Tri *tris_clipped = ArenaPushArray(&game_state->arena, VEC3_STACK_COUNT, Tri);
+	int tris_clipped_next_free = 0;
+	//std::vector<float*> clipped_tex_verts;
+	Vec3 *clipped_tex_verts = ArenaPushArray(&game_state->arena, VEC3_STACK_COUNT, Vec3);
+	int clipped_tex_verts_count = 0;
+	
+	//std::vector<int*> tex_map_clipped;
+	Tri *tex_map_clipped = ArenaPushArray(&game_state->arena, VEC3_STACK_COUNT, Tri);
+	int tex_map_clipped_count = 0;
 	
 	// Mouse input -> camera rotation control
 	
@@ -283,10 +303,6 @@ int UpdateProject3DCube(SharedState* state)
 	
 	int clr = MakeColor(255,255,255,255);
 	
-	std::vector<int*> triangles_clipped;
-	std::vector<int*> tex_map_clipped;
-	
-	
 	// Apply world transformations to vertices
 	
 	for (int i = 0; i < game_state->verts_count; i++)
@@ -302,7 +318,6 @@ int UpdateProject3DCube(SharedState* state)
 	
 	// Apply view matrix
 	
-	//for (float *vx: vertices_transformed)
 	for (int i = 0; i < verts_transformed_next_free; i++)
 	{
 		float *vx = verts_transformed[i].elem;
@@ -318,18 +333,21 @@ int UpdateProject3DCube(SharedState* state)
 	
 	std::vector<int> tri_colors;
 	
-	std::vector<float*> clipped_tex_verts;
+	
 	for (int i = 0; i < game_state->tex_verts_count; i++)
 	{
 		float *vx = game_state->tex_verts[i].elem;
-		float *new_vx = new float[3]{vx[0], vx[1], 1.0f};
-		clipped_tex_verts.push_back(new_vx);
+		//float *new_vx = new float[3]{vx[0], vx[1], 1.0f};
+		//clipped_tex_verts.push_back(new_vx);
+		clipped_tex_verts[clipped_tex_verts_count++] = {vx[0], vx[1], 1.0f};
 	}
 	
 	int count = -1;
-	for (int *tri: game_state->triangles)
+	//for (int *tri: game_state->triangles)
+	for (;count < game_state->tris_count-1;)
 	{
 		count++;
+		int *tri = game_state->tris[count].elem;
 		int line_color = MakeColor(255, 120, 255, 120);
 		float norm[3];
 		float v1[3];
@@ -358,17 +376,17 @@ int UpdateProject3DCube(SharedState* state)
 			int tex_clipped[2][3];
 			float plane_normal[] = {0.0f, 0.0f, 1.0f};
 			float plane_point[] = {0.0f, 0.0f, z_near};
-			count_clipped_triangles = ClipAgainstPlane(plane_normal, plane_point, verts_viewed, &verts_viewed_next_free, clipped_tex_verts,
-					tri, game_state->tri_tex_map[count], tri_clipped[0], tex_clipped[0], tri_clipped[1], tex_clipped[1]);
+			count_clipped_triangles = ClipAgainstPlane(plane_normal, plane_point, verts_viewed, &verts_viewed_next_free, (Vec3*)&clipped_tex_verts, &clipped_tex_verts_count,
+					tri, game_state->tris_tex_map[count].elem, tri_clipped[0], tex_clipped[0], tri_clipped[1], tex_clipped[1]);
 
 			for (int i = 0; i < count_clipped_triangles; i++)
 			{
-				int* clipped_tri = new int[3]{tri_clipped[i][0], tri_clipped[i][1], tri_clipped[i][2]};
-				triangles_clipped.push_back(clipped_tri);
+				//int* clipped_tri = new int[3]{tri_clipped[i][0], tri_clipped[i][1], tri_clipped[i][2]};
+				tris_clipped[tris_clipped_next_free++] = {tri_clipped[i][0], tri_clipped[i][1], tri_clipped[i][2]};;
 				tri_colors.push_back(tri_color);
 				
-				int* clipped_tex = new int[3]{tex_clipped[i][0], tex_clipped[i][1], tex_clipped[i][2]};
-				tex_map_clipped.push_back(clipped_tex);
+				//int* clipped_tex = new int[3]{tex_clipped[i][0], tex_clipped[i][1], tex_clipped[i][2]};
+				tex_map_clipped[tex_map_clipped_count++] = {tex_clipped[i][0], tex_clipped[i][1], tex_clipped[i][2]};
 			}
 
 		}
@@ -386,18 +404,20 @@ int UpdateProject3DCube(SharedState* state)
 		
 		MultiplyVecMat4x4(v_in1, proj_mat4x4, v_out1);
 		//float *new_vx = new float[3]{v_out1[0]/v_out1[3]+0.5f, -v_out1[1]/v_out1[3]+0.5f, v_out1[2]};
-		clipped_tex_verts[yac][0] /= v_out1[3];
-		clipped_tex_verts[yac][1] /= v_out1[3];
-		clipped_tex_verts[yac][2] = 1.0f / v_out1[3];
+		clipped_tex_verts[yac].x /= v_out1[3];
+		clipped_tex_verts[yac].y /= v_out1[3];
+		clipped_tex_verts[yac].z = 1.0f / v_out1[3];
 		verts_projected[verts_projected_next_free++] = {v_out1[0]/v_out1[3]+0.5f, -v_out1[1]/v_out1[3]+0.5f, v_out1[2]};;
 		yac++;
 		//vertices_projected.push_back(new_vx);
 	}
 	
 	int color_count = 0;
-	for (int *tri: triangles_clipped)
+	//for (int *tri: triangles_clipped)
+	for (;color_count < tris_clipped_next_free;)
 	{
-		int *tex_map = tex_map_clipped[color_count];
+		int *tri = tris_clipped[color_count].elem;
+		int *tex_map = tex_map_clipped[color_count].elem;
 		int tri_color = tri_colors[color_count++];
 		int tri_clipped[2][3];
 		int tex_clipped[2][3];
@@ -432,19 +452,19 @@ int UpdateProject3DCube(SharedState* state)
 				switch (plane)
 				{
 					case 0: count_clipped_triangles = 
-						ClipAgainstPlane(plane_normal0, plane_point0, verts_projected, &verts_projected_next_free, clipped_tex_verts, test, t_test,
+						ClipAgainstPlane(plane_normal0, plane_point0, verts_projected, &verts_projected_next_free, clipped_tex_verts, &clipped_tex_verts_count, test, t_test,
 						tri_clipped[0], tex_clipped[0],                                                    
 						tri_clipped[1], tex_clipped[1]); break;                                            
 					case 1: count_clipped_triangles =                                                      
-						ClipAgainstPlane(plane_normal1, plane_point1, verts_projected, &verts_projected_next_free, clipped_tex_verts, test, t_test,
+						ClipAgainstPlane(plane_normal1, plane_point1, verts_projected, &verts_projected_next_free, clipped_tex_verts, &clipped_tex_verts_count, test, t_test,
 						tri_clipped[0], tex_clipped[0],                                                    
 						tri_clipped[1], tex_clipped[1]); break;                                            
 					case 2: count_clipped_triangles =                                                      
-						ClipAgainstPlane(plane_normal2, plane_point2, verts_projected, &verts_projected_next_free, clipped_tex_verts, test, t_test,
+						ClipAgainstPlane(plane_normal2, plane_point2, verts_projected, &verts_projected_next_free, clipped_tex_verts, &clipped_tex_verts_count, test, t_test,
 						tri_clipped[0], tex_clipped[0],                                                    
 						tri_clipped[1], tex_clipped[1]); break;                                            
 					case 3: count_clipped_triangles =                                                      
-						ClipAgainstPlane(plane_normal3, plane_point3, verts_projected, &verts_projected_next_free, clipped_tex_verts, test, t_test,
+						ClipAgainstPlane(plane_normal3, plane_point3, verts_projected, &verts_projected_next_free, clipped_tex_verts, &clipped_tex_verts_count, test, t_test,
 						tri_clipped[0], tex_clipped[0],
 						tri_clipped[1], tex_clipped[1]); break;
 				}
@@ -479,12 +499,12 @@ int UpdateProject3DCube(SharedState* state)
 			int *tt = *iter;
 
 			TextureTrianglef(state->bitBuff,
-							verts_projected[t[0]].x, verts_projected[t[0]].y,
-							clipped_tex_verts[tt[0]][0], clipped_tex_verts[tt[0]][1], clipped_tex_verts[tt[0]][2],
-							verts_projected[t[1]].x, verts_projected[t[1]].y,
-							clipped_tex_verts[tt[1]][0], clipped_tex_verts[tt[1]][1], clipped_tex_verts[tt[1]][2],
-							verts_projected[t[2]].x, verts_projected[t[2]].y,
-							clipped_tex_verts[tt[2]][0], clipped_tex_verts[tt[2]][1], clipped_tex_verts[tt[2]][2],
+							   verts_projected[t[0]].x,   verts_projected[t[0]].y,
+							clipped_tex_verts[tt[0]].x,clipped_tex_verts[tt[0]].y,clipped_tex_verts[tt[0]].z,
+							   verts_projected[t[1]].x,   verts_projected[t[1]].y,
+							clipped_tex_verts[tt[1]].x,clipped_tex_verts[tt[1]].y, clipped_tex_verts[tt[1]].z,
+							   verts_projected[t[2]].x,   verts_projected[t[2]].y,
+							clipped_tex_verts[tt[2]].x,clipped_tex_verts[tt[2]].y, clipped_tex_verts[tt[2]].z,
 							&game_state->image, depth_buffer);
 
 			std::advance(iter, 1);
@@ -493,21 +513,6 @@ int UpdateProject3DCube(SharedState* state)
 			delete [] tt;
 		}
 		
-	}
-	
-	for (int *vx: triangles_clipped)
-	{
-		delete [] vx;
-	}
-	
-	for (int *vx: tex_map_clipped)
-	{
-		delete [] vx;
-	}
-	
-	for (float *vx: clipped_tex_verts)
-	{
-		delete [] vx;
 	}
 
 	game_state->arena.used = memory_used;

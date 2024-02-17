@@ -64,6 +64,17 @@ Vec2 operator*(float f, Vec2 v)
 	return res;
 }
 
+typedef union
+{
+	struct
+	{
+		int p1;
+		int p2;
+		int p3;
+	};
+	int elem[3];
+} Tri;
+
 typedef struct
 {
 	float x;
@@ -361,7 +372,7 @@ void PlaneVectorIntersection(float *plane_normal, float *plane_point, float *lin
 }
 
 // Returns the number of newly formed triangles
-int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int *points_count, std::vector<float*> &tex_points,
+int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int *points_count, Vec3 *tex_points, int *tex_points_count,
 						int *in_tri, int *in_tex,
 						int *out_tri1, int *out_tex1,
 						int *out_tri2, int *out_tex2)
@@ -451,29 +462,29 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int 
 		// Newly generated Points
 		/*np1 = new float[3];
 		np2 = new float[3];
-		*/
+		
 		ntp1 = new float[3];
-		ntp2 = new float[3];
+		ntp2 = new float[3];*/
 		Vec3 np1;
 		Vec3 np2;
-		//Vec3 ntp1;
-		//Vec3 ntp2;
-		
-		
+		Vec3 ntp1;
+		Vec3 ntp2;
 		
 		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]].elem, points[outside_points[0]].elem, np1.elem, t);
-		ntp1[0] = t * (tex_points[outside_tex_points[0]][0] - tex_points[inside_tex_points[0]][0]) + tex_points[inside_tex_points[0]][0];
-		ntp1[1] = t * (tex_points[outside_tex_points[0]][1] - tex_points[inside_tex_points[0]][1]) + tex_points[inside_tex_points[0]][1];
-		ntp1[2] = t * (tex_points[outside_tex_points[0]][2] - tex_points[inside_tex_points[0]][2]) + tex_points[inside_tex_points[0]][2];
-		out_tex1[1] = tex_points.size();
-		tex_points.push_back(ntp1);
+		ntp1.x = t * (tex_points[outside_tex_points[0]].x - tex_points[inside_tex_points[0]].x) + tex_points[inside_tex_points[0]].x;
+		ntp1.y = t * (tex_points[outside_tex_points[0]].y - tex_points[inside_tex_points[0]].y) + tex_points[inside_tex_points[0]].y;
+		ntp1.z = t * (tex_points[outside_tex_points[0]].z - tex_points[inside_tex_points[0]].z) + tex_points[inside_tex_points[0]].z;
+		out_tex1[1] = *tex_points_count;
+		tex_points[*tex_points_count] = (ntp1);
+		*tex_points_count = *tex_points_count + 1;
 		
 		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]].elem, points[outside_points[1]].elem, np2.elem, t);
-		ntp2[0] = t * (tex_points[outside_tex_points[1]][0] - tex_points[inside_tex_points[0]][0]) + tex_points[inside_tex_points[0]][0];
-		ntp2[1] = t * (tex_points[outside_tex_points[1]][1] - tex_points[inside_tex_points[0]][1]) + tex_points[inside_tex_points[0]][1];
-		ntp2[2] = t * (tex_points[outside_tex_points[1]][2] - tex_points[inside_tex_points[0]][2]) + tex_points[inside_tex_points[0]][2];
-		out_tex1[2] = tex_points.size();
-		tex_points.push_back(ntp2);
+		ntp2.x = t * (tex_points[outside_tex_points[1]].x - tex_points[inside_tex_points[0]].x) + tex_points[inside_tex_points[0]].x;
+		ntp2.y = t * (tex_points[outside_tex_points[1]].y - tex_points[inside_tex_points[0]].y) + tex_points[inside_tex_points[0]].y;
+		ntp2.z = t * (tex_points[outside_tex_points[1]].z - tex_points[inside_tex_points[0]].z) + tex_points[inside_tex_points[0]].z;
+		out_tex1[2] = *tex_points_count;
+		tex_points[*tex_points_count] = (ntp2);
+		*tex_points_count = *tex_points_count + 1;
 		
 		out_tri1[1] = *points_count;
 		points[*points_count] = np1;
@@ -496,9 +507,10 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int 
 		np2 = new float[3];*/
 		Vec3 np1;
 		Vec3 np2;
-		
-		ntp1 = new float[3];
-		ntp2 = new float[3];
+		Vec3 ntp1;
+		Vec3 ntp2;
+		//ntp1 = new float[3];
+		//ntp2 = new float[3];
 	
 		out_tri1[0] = inside_points[0];
 		out_tri1[1] = inside_points[1];
@@ -506,11 +518,12 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int 
 		out_tex1[1] = inside_tex_points[1];
 		
 		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]].elem, points[outside_points[0]].elem, np1.elem, t);
-		ntp1[0] = t * (tex_points[outside_tex_points[0]][0] - tex_points[inside_tex_points[0]][0]) + tex_points[inside_tex_points[0]][0];
-		ntp1[1] = t * (tex_points[outside_tex_points[0]][1] - tex_points[inside_tex_points[0]][1]) + tex_points[inside_tex_points[0]][1];
-		ntp1[2] = t * (tex_points[outside_tex_points[0]][2] - tex_points[inside_tex_points[0]][2]) + tex_points[inside_tex_points[0]][2];
-		out_tex1[2] = tex_points.size();
-		tex_points.push_back(ntp1);
+		ntp1.x = t * (tex_points[outside_tex_points[0]].x - tex_points[inside_tex_points[0]].x) + tex_points[inside_tex_points[0]].x;
+		ntp1.y = t * (tex_points[outside_tex_points[0]].y - tex_points[inside_tex_points[0]].y) + tex_points[inside_tex_points[0]].y;
+		ntp1.z = t * (tex_points[outside_tex_points[0]].z - tex_points[inside_tex_points[0]].z) + tex_points[inside_tex_points[0]].z;
+		out_tex1[2] = *tex_points_count;
+		tex_points[*tex_points_count] = (ntp1);
+		*tex_points_count = *tex_points_count + 1;
 		
 		out_tri1[2] = *points_count;
 		points[*points_count] = np1;
@@ -522,11 +535,12 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int 
 		out_tri2[1] = out_tri1[2];
 		out_tex2[1] = out_tex1[2];
 		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[1]].elem, points[outside_points[0]].elem, np2.elem, t);
-		ntp2[0] = t * (tex_points[outside_tex_points[0]][0] - tex_points[inside_tex_points[1]][0]) + tex_points[inside_tex_points[1]][0];
-		ntp2[1] = t * (tex_points[outside_tex_points[0]][1] - tex_points[inside_tex_points[1]][1]) + tex_points[inside_tex_points[1]][1];
-		ntp2[2] = t * (tex_points[outside_tex_points[0]][2] - tex_points[inside_tex_points[1]][2]) + tex_points[inside_tex_points[1]][2];
-		out_tex2[2] = tex_points.size();
-		tex_points.push_back(ntp2);
+		ntp2.x = t * (tex_points[outside_tex_points[0]].x - tex_points[inside_tex_points[1]].x) + tex_points[inside_tex_points[1]].x;
+		ntp2.y = t * (tex_points[outside_tex_points[0]].y - tex_points[inside_tex_points[1]].y) + tex_points[inside_tex_points[1]].y;
+		ntp2.z = t * (tex_points[outside_tex_points[0]].z - tex_points[inside_tex_points[1]].z) + tex_points[inside_tex_points[1]].z;
+		out_tex2[2] = *tex_points_count;
+		tex_points[*tex_points_count] = (ntp2);
+		*tex_points_count = *tex_points_count + 1;
 		
 		out_tri2[2] = *points_count;
 		points[*points_count] = np2;

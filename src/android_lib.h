@@ -78,7 +78,7 @@ Java_com_peshqa_testink_GameEngine_initData(
 	
 	shared_state->is_running = 1;
 	
-	shared_state->asset_path = "";
+	shared_state->asset_path = (char*)"";
 	
 	shared_state->is_accelerometer_active = 0; // for now these are inactive
 	shared_state->is_gyroscope_active = 0; // in case the device doesn't support them
