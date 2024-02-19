@@ -48,6 +48,30 @@ Vec2 operator+(Vec2 a, Vec2 b)
 	res.y = a.y + b.y;
 	return res;
 }
+Vec3 operator+(Vec3 a, Vec3 b)
+{
+	Vec3 res;
+	res.x = a.x + b.x;
+	res.y = a.y + b.y;
+	res.z = a.z + b.z;
+	return res;
+}
+
+Vec2 operator-(Vec2 a, Vec2 b)
+{
+	Vec2 res;
+	res.x = a.x - b.x;
+	res.y = a.y - b.y;
+	return res;
+}
+Vec3 operator-(Vec3 a, Vec3 b)
+{
+	Vec3 res;
+	res.x = a.x - b.x;
+	res.y = a.y - b.y;
+	res.z = a.z - b.z;
+	return res;
+}
 
 Vec2 operator*(Vec2 v, float f)
 {
@@ -61,6 +85,22 @@ Vec2 operator*(float f, Vec2 v)
 	Vec2 res;
 	res.x = v.x *f;
 	res.y = v.y *f;
+	return res;
+}
+Vec3 operator*(Vec3 v, float f)
+{
+	Vec3 res;
+	res.x = v.x * f;
+	res.y = v.y * f;
+	res.z = v.z * f;
+	return res;
+}
+Vec3 operator*(float f, Vec3 v)
+{
+	Vec3 res;
+	res.x = v.x *f;
+	res.y = v.y *f;
+	res.z = v.z *f;
 	return res;
 }
 
@@ -272,25 +312,28 @@ void VecRaw3fMulByFloat(float *v1, float f, float *out)
 	out[1] = v1[1] * f;
 	out[2] = v1[2] * f;
 }
-void InitPointAtMat4x4(float *m, Vec3f &pos, Vec3f &target, Vec3f &up)
+void InitPointAtMat4x4(float *m, Vec3 &pos, Vec3 &target, Vec3 &up)
 {
 	for (int i = 0; i < 16; i++)
 	{
 		m[i] = 0;
 	}
-	Vec3f new_forward;
-	Vec3f a;
-	Vec3f new_up;
-	Vec3f new_right;
+	Vec3 new_forward;
+	Vec3 a;
+	Vec3 new_up;
+	Vec3 new_right;
 	
-	Vec3fSub(target, pos, new_forward);
-	Vec3fNormalize(new_forward);
+	new_forward = target - pos;
+	//Vec3fSub(target, pos, new_forward);
+	Vec3fNormalize((Vec3f&)new_forward);
 	
-	Vec3fMulByF(new_forward, DotProductVec3f(up, new_forward), a);
-	Vec3fSub(up, a, new_up);
-	Vec3fNormalize(new_up);
+	a = new_forward * DotProductVec3f((Vec3f&)up, (Vec3f&)new_forward);
+	//Vec3fMulByF(new_forward, DotProductVec3f(up, new_forward), a);
+	new_up = up - a;
+	//Vec3fSub(up, a, new_up);
+	Vec3fNormalize((Vec3f&)new_up);
 	
-	CrossProductVec3f(new_up, new_forward, new_right);
+	CrossProductVec3f((Vec3f&)new_up, (Vec3f&)new_forward, (Vec3f&)new_right);
 	
 	m[0] = new_right.x;
 	m[1] = new_right.y;
@@ -356,11 +399,11 @@ void InitProjectionMat4x4(float *m, float fov, int is_fov_vertical, int screen_w
 	m[14] = -q*z_near;
 }
 
-void PlaneVectorIntersection(float *plane_normal, float *plane_point, float *line_start, float *line_end, float* output, float &t)
+void PlaneVectorIntersection(Vec3 *plane_normal, Vec3 *plane_point, float *line_start, float *line_end, float* output, float &t)
 {
 	float normalized_plane_normal[3];
-	VecRaw3fNormalize(plane_normal, normalized_plane_normal);
-	float plane_d = -DotProductVecRaw3f(normalized_plane_normal, plane_point);
+	VecRaw3fNormalize((float*)plane_normal, normalized_plane_normal);
+	float plane_d = -DotProductVecRaw3f(normalized_plane_normal, (float*)plane_point);
 	float ad = DotProductVecRaw3f(line_start, normalized_plane_normal);
 	float bd = DotProductVecRaw3f(line_end, normalized_plane_normal);
 	t = (-plane_d - ad) / (bd - ad);
@@ -372,12 +415,12 @@ void PlaneVectorIntersection(float *plane_normal, float *plane_point, float *lin
 }
 
 // Returns the number of newly formed triangles
-int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int *points_count, Vec3 *tex_points, int *tex_points_count,
+int ClipAgainstPlane(Vec3 *plane_normal, Vec3 *plane_point, Vec3 *points, int *points_count, Vec3 *tex_points, int *tex_points_count,
 						int *in_tri, int *in_tex,
 						int *out_tri1, int *out_tex1,
 						int *out_tri2, int *out_tex2)
 {
-	VecRaw3fNormalize(plane_normal, plane_normal);
+	VecRaw3fNormalize((float*)plane_normal, (float*)plane_normal);
 
 	// Return signed shortest distance from point to plane, plane normal must NOT be normalised
 	auto dist = [&](float *p)
@@ -385,7 +428,7 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int 
 		//float n[3];
 		//VecRaw3fNormalize(p, n);
 		//return (plane_normal[0] * n[0] + plane_normal[1] * n[1] + plane_normal[2] * n[2] - DotProductVecRaw3f(plane_normal, plane_point));
-		return (plane_normal[0] * p[0] + plane_normal[1] * p[1] + plane_normal[2] * p[2] - DotProductVecRaw3f(plane_normal, plane_point));
+		return (plane_normal->x * p[0] + plane_normal->y * p[1] + plane_normal->z * p[2] - DotProductVecRaw3f((float*)plane_normal, (float*)plane_point));
 	};
 
 	// Create two temporary storage arrays to classify points either side of plane
@@ -419,10 +462,6 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int 
 		outside_points[nOutsidePointCount++] = in_tri[2]; outside_tex_points[nOutsideTexPointCount++] = in_tex[2];
 	}
 	
-	float *np1;
-	float *np2;
-	float *ntp1;
-	float *ntp2;
 	float t;
 
 	if (nInsidePointCount == 0)
@@ -460,11 +499,6 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int 
 		// original sides of the triangle (lines) intersect with the plane
 		
 		// Newly generated Points
-		/*np1 = new float[3];
-		np2 = new float[3];
-		
-		ntp1 = new float[3];
-		ntp2 = new float[3];*/
 		Vec3 np1;
 		Vec3 np2;
 		Vec3 ntp1;
@@ -489,11 +523,9 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int 
 		out_tri1[1] = *points_count;
 		points[*points_count] = np1;
 		*points_count = *points_count + 1;
-		//out_tri1[1] = points.size() - 1;
 		out_tri1[2] = *points_count;
 		points[*points_count] = np2;
 		*points_count = *points_count + 1;
-		//out_tri1[2] = points.size() - 1;
 
 		return 1;
 	}
@@ -502,16 +534,11 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int 
 	{
 		// Triangle should be clipped. As two points lie inside the plane,
 		// the clipped triangle becomes a "quad".
-		/*
-		np1 = new float[3];
-		np2 = new float[3];*/
 		Vec3 np1;
 		Vec3 np2;
 		Vec3 ntp1;
 		Vec3 ntp2;
-		//ntp1 = new float[3];
-		//ntp2 = new float[3];
-	
+
 		out_tri1[0] = inside_points[0];
 		out_tri1[1] = inside_points[1];
 		out_tex1[0] = inside_tex_points[0];
@@ -528,7 +555,6 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int 
 		out_tri1[2] = *points_count;
 		points[*points_count] = np1;
 		*points_count = *points_count + 1;
-		//out_tri1[2] = points.size() - 1;
 
 		out_tri2[0] = inside_points[1];
 		out_tex2[0] = inside_tex_points[1];
@@ -545,8 +571,6 @@ int ClipAgainstPlane(float *plane_normal, float *plane_point, Vec3 *points, int 
 		out_tri2[2] = *points_count;
 		points[*points_count] = np2;
 		*points_count = *points_count + 1;
-		//points.push_back(np2);
-		//out_tri2[2] = points.size() - 1;
 
 		return 2;
 	}
