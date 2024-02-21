@@ -24,7 +24,7 @@ typedef struct
 	size_t used;
 } MemoryArena;
 
-#define VEC3_STACK_COUNT 1024
+#define VEC3_STACK_COUNT 4096
 typedef struct
 {
 	
@@ -59,6 +59,14 @@ static void *ArenaPush(MemoryArena *arena, size_t size_to_push)
 
 #define ArenaPushArray(arena, elem_count, type) (type*)ArenaPush((arena), (elem_count)*sizeof(type))
 #define ArenaPushType(arena, type) (type*)ArenaPush((arena), sizeof(type))
+
+static void ZeroMemory(u8 *p, size_t size_to_clear)
+{
+	for (size_t i = 0; i < size_to_clear; i++)
+	{
+		p[i] = 0;
+	}
+}
 
 void InitFreeList(FreeList *list)
 {
@@ -103,6 +111,7 @@ void FreeListPushBack(MemoryArena *arena, FreeList *list, Tri data)
 		list->first_free = node->next;
 	} else {
 		node = ArenaPushType(arena, FreeListNode);
+		//ZeroMemory((u8*)node, 32);
 	}
 	node->data = data;
 	node->prev = list->last;
@@ -193,13 +202,7 @@ void CheckFreeList(FreeList *list)
 	ASSERT(len == list->size);
 }
 
-static void ZeroMemory(u8 *p, size_t size_to_clear)
-{
-	for (size_t i = 0; i < size_to_clear; i++)
-	{
-		p[i] = 0;
-	}
-}
+
 
 typedef struct
 {
@@ -281,13 +284,13 @@ int UpdateProject3DCube(SharedState* state)
 {
 	ProjectState3DCube *game_state = (ProjectState3DCube*)(state->project_memory);
 	float delta_time = state->delta_time;
-	static float cam_rot = 0.0f;
 	
 	size_t memory_used = game_state->arena.used;
 	
 	float *depth_buffer;
 	depth_buffer = ArenaPushArray(&game_state->arena, state->client_width*state->client_height, float);
 	ZeroMemory((u8*)depth_buffer, state->client_width*state->client_height*sizeof(float));
+	//ZeroMemory((u8*)game_state->arena.base+game_state->arena.used, game_state->arena.size-game_state->arena.used);
 	
 	int verts_transformed_next_free = 0;
 	Vec3 *verts_transformed = ArenaPushArray(&game_state->arena, VEC3_STACK_COUNT, Vec3);
@@ -360,7 +363,7 @@ int UpdateProject3DCube(SharedState* state)
 	float combined_mat4x4[16]{};
 	float combined2_mat4x4[16]{};
 	
-	float target[3] = {0.0f, 0.0f, 1.0f};
+	Vec3 target = {0.0f, 0.0f, 1.0f};
 	Vec3 target_rot_y;
 	Vec3 target_rot_yx;
 	Vec3 target_final;
@@ -368,7 +371,7 @@ int UpdateProject3DCube(SharedState* state)
 	float t_x_rot_mat4x4[16]{};
 	InitXRotMat4x4(t_y_rot_mat4x4, -game_state->pitch);
 	//InitXRotMat4x4(t_y_rot_mat4x4, 0);
-	MultiplyVecMat4x4(target, t_y_rot_mat4x4, (float*)&target_rot_y);
+	MultiplyVecMat4x4(target.elem, t_y_rot_mat4x4, (float*)&target_rot_y);
 	InitYRotMat4x4(t_x_rot_mat4x4, game_state->yaw);
 	MultiplyVecMat4x4((float*)&target_rot_y, t_x_rot_mat4x4, (float*)&target_rot_yx);
 	
@@ -479,7 +482,6 @@ int UpdateProject3DCube(SharedState* state)
 	
 	std::vector<int> tri_colors;
 	
-	
 	for (int i = 0; i < game_state->tex_verts_count; i++)
 	{
 		float *vx = game_state->tex_verts[i].elem;
@@ -493,49 +495,52 @@ int UpdateProject3DCube(SharedState* state)
 		count++;
 		int *tri = game_state->tris[count].elem;
 		int line_color = MakeColor(255, 120, 255, 120);
-		float norm[3];
-		float v1[3];
-		float v2[3];
-		VecRaw3fSub(verts_transformed[tri[1]].elem, (float*)verts_transformed[tri[0]].elem, v1);
-		VecRaw3fSub(verts_transformed[tri[2]].elem, (float*)verts_transformed[tri[0]].elem, v2);
-		CrossProductVecRaw3f(v1, v2, norm);
-		VecRaw3fNormalize(norm, norm);
+		Vec3 norm;
+		Vec3 v1;
+		Vec3 v2;
+		//VecRaw3fSub(verts_transformed[tri[1]].elem, (float*)verts_transformed[tri[0]].elem, v1);
+		v1 = verts_transformed[tri[1]] - verts_transformed[tri[0]];
+		//VecRaw3fSub(verts_transformed[tri[2]].elem, (float*)verts_transformed[tri[0]].elem, v2);
+		v2 = verts_transformed[tri[2]] - verts_transformed[tri[0]];
+		//CrossProductVecRaw3f(v1.elem, v2.elem, norm.elem);
+		norm = Vec3Normalize(Vec3CrossProd(v1, v2));
+		//norm = Vec3Normalize(norm);
 
-		if (
-			norm[0]*(verts_transformed[tri[0]].elem[0]-pos.x)+
-			norm[1]*(verts_transformed[tri[0]].elem[1]-pos.y)+
-			norm[2]*(verts_transformed[tri[0]].elem[2]-pos.z) <= 0)
+		//if (
+		//	norm.x*(verts_transformed[tri[0]].elem[0]-pos.x)+
+		//	norm.y*(verts_transformed[tri[0]].elem[1]-pos.y)+
+		//	norm.z*(verts_transformed[tri[0]].elem[2]-pos.z) <= 0)
+		if (Vec3DotProd(norm, verts_transformed[tri[0]] - pos) <= 0)
 		{
 			// Simple directional lighting
-			float light_dir[3] = {0.0f, 0.0f, -1.0f};
-			VecRaw3fNormalize(light_dir, light_dir);
-			float koef = abs(norm[0]*light_dir[0]+norm[1]*light_dir[1]+norm[2]*light_dir[2]);
+			Vec3 light_dir = {0.0f, 0.0f, -1.0f};
+			light_dir = Vec3Normalize(light_dir);
+			float koef = abs(Vec3DotProd(norm, light_dir));
 			if (koef < 0.01f)
 				koef = 0.01f;
 			int tri_color = MakeColor(255,255*koef,255*koef,255*koef);
 			
 			// Clipping
 			int count_clipped_triangles = 0;
-			int tri_clipped[2][3];
-			int tex_clipped[2][3];
-			Vec3 plane_normal[] = {0.0f, 0.0f, 1.0f};
-			Vec3 plane_point[] = {0.0f, 0.0f, z_near};
-			count_clipped_triangles = ClipAgainstPlane(plane_normal, plane_point, verts_viewed, &verts_viewed_next_free, (Vec3*)&clipped_tex_verts, &clipped_tex_verts_count,
-					tri, game_state->tris_tex_map[count].elem, tri_clipped[0], tex_clipped[0], tri_clipped[1], tex_clipped[1]);
+			Tri tri_clipped[2];
+			Tri tex_clipped[2];
+			Vec3 plane_normal = {0.0f, 0.0f, 1.0f};
+			Vec3 plane_point = {0.0f, 0.0f, z_near};
+			
+			count_clipped_triangles = ClipAgainstPlane(plane_normal, plane_point, verts_viewed, &verts_viewed_next_free, clipped_tex_verts, &clipped_tex_verts_count,
+					tri, game_state->tris_tex_map[count].elem, tri_clipped[0].elem, tex_clipped[0].elem, tri_clipped[1].elem, tex_clipped[1].elem);
 
 			for (int i = 0; i < count_clipped_triangles; i++)
 			{
-				tris_clipped[tris_clipped_next_free++] = {tri_clipped[i][0], tri_clipped[i][1], tri_clipped[i][2]};;
+				tris_clipped[tris_clipped_next_free++] = tri_clipped[i]; //{tri_clipped[i][0], tri_clipped[i][1], tri_clipped[i][2]};;
 				tri_colors.push_back(tri_color);
-				tex_map_clipped[tex_map_clipped_count++] = {tex_clipped[i][0], tex_clipped[i][1], tex_clipped[i][2]};
+				tex_map_clipped[tex_map_clipped_count++] = tex_clipped[i]; //{tex_clipped[i][0], tex_clipped[i][1], tex_clipped[i][2]};
 			}
 
 		}
 		
 	}
 	
-	FreeList *tri_batch = ArenaPushType(&game_state->arena, FreeList);
-	FreeList *tex_batch = ArenaPushType(&game_state->arena, FreeList);
 	// Project 3D vertices onto 2D screen
 	int yac = 0;
 	while (yac < verts_viewed_next_free)
@@ -552,14 +557,18 @@ int UpdateProject3DCube(SharedState* state)
 		yac++;
 	}
 	
+	FreeList *tri_batch = ArenaPushType(&game_state->arena, FreeList);
+	FreeList *tex_batch = ArenaPushType(&game_state->arena, FreeList);
+	InitFreeList(tri_batch);
+	InitFreeList(tex_batch);
 	int color_count = 0;
 	for (;color_count < tris_clipped_next_free;)
 	{
 		int *tri = tris_clipped[color_count].elem;
 		int *tex_map = tex_map_clipped[color_count].elem;
 		int tri_color = tri_colors[color_count++];
-		int tri_clipped[2][3];
-		int tex_clipped[2][3];
+		Tri tri_clipped[2];
+		Tri tex_clipped[2];
 		Vec3 plane_normal0 = {0.0f, 1.0f, 0.0f};
 		Vec3  plane_point0 = {0.0f, 0.0f, 0.0f};
 		Vec3 plane_normal1 = {0.0f, -1.0f, 0.0f};
@@ -599,33 +608,37 @@ int UpdateProject3DCube(SharedState* state)
 				switch (plane)
 				{
 					case 0: count_clipped_triangles = 
-						ClipAgainstPlane(&plane_normal0, &plane_point0, verts_projected, &verts_projected_next_free, clipped_tex_verts, &clipped_tex_verts_count, test.elem, t_test.elem,
-						tri_clipped[0], tex_clipped[0],                                                    
-						tri_clipped[1], tex_clipped[1]); break;                                            
+						ClipAgainstPlane(plane_normal0, plane_point0, verts_projected, &verts_projected_next_free, clipped_tex_verts, &clipped_tex_verts_count, test.elem, t_test.elem,
+						tri_clipped[0].elem, tex_clipped[0].elem,                                                    
+						tri_clipped[1].elem, tex_clipped[1].elem); break;                                            
 					case 1: count_clipped_triangles =                                                      
-						ClipAgainstPlane(&plane_normal1, &plane_point1, verts_projected, &verts_projected_next_free, clipped_tex_verts, &clipped_tex_verts_count, test.elem, t_test.elem,
-						tri_clipped[0], tex_clipped[0],                                                    
-						tri_clipped[1], tex_clipped[1]); break;                                            
+						ClipAgainstPlane(plane_normal1, plane_point1, verts_projected, &verts_projected_next_free, clipped_tex_verts, &clipped_tex_verts_count, test.elem, t_test.elem,
+						tri_clipped[0].elem, tex_clipped[0].elem,                                                    
+						tri_clipped[1].elem, tex_clipped[1].elem); break;                                            
 					case 2: count_clipped_triangles =                                                      
-						ClipAgainstPlane(&plane_normal2, &plane_point2, verts_projected, &verts_projected_next_free, clipped_tex_verts, &clipped_tex_verts_count, test.elem, t_test.elem,
-						tri_clipped[0], tex_clipped[0],                                                    
-						tri_clipped[1], tex_clipped[1]); break;                                            
+						ClipAgainstPlane(plane_normal2, plane_point2, verts_projected, &verts_projected_next_free, clipped_tex_verts, &clipped_tex_verts_count, test.elem, t_test.elem,
+						tri_clipped[0].elem, tex_clipped[0].elem,                                                    
+						tri_clipped[1].elem, tex_clipped[1].elem); break;                                            
 					case 3: count_clipped_triangles =                                                      
-						ClipAgainstPlane(&plane_normal3, &plane_point3, verts_projected, &verts_projected_next_free, clipped_tex_verts, &clipped_tex_verts_count, test.elem, t_test.elem,
-						tri_clipped[0], tex_clipped[0],
-						tri_clipped[1], tex_clipped[1]); break;
+						ClipAgainstPlane(plane_normal3, plane_point3, verts_projected, &verts_projected_next_free, clipped_tex_verts, &clipped_tex_verts_count, test.elem, t_test.elem,
+						tri_clipped[0].elem, tex_clipped[0].elem,
+						tri_clipped[1].elem, tex_clipped[1].elem); break;
 				}
 				//delete [] test;
 				//delete [] t_test;
+				if (count_clipped_triangles >= 2)
+				{
+					int o = 0;
+				}
 				for (int i = 0; i < count_clipped_triangles; i++)
 				{
 					//int* clipped_tri = new int[3]{tri_clipped[i][0], tri_clipped[i][1], tri_clipped[i][2]};
 					//tri_batch.push_back(clipped_tri);
-					FreeListPushBack(&game_state->arena, tri_batch, {tri_clipped[i][0], tri_clipped[i][1], tri_clipped[i][2]});
+					FreeListPushBack(&game_state->arena, tri_batch, tri_clipped[i]);
 					
 					//int* clipped_tex = new int[3]{tex_clipped[i][0], tex_clipped[i][1], tex_clipped[i][2]};
 					//tex_batch.push_back(clipped_tex);
-					FreeListPushBack(&game_state->arena, tex_batch, {tex_clipped[i][0], tex_clipped[i][1], tex_clipped[i][2]});
+					FreeListPushBack(&game_state->arena, tex_batch, tex_clipped[i]);
 					
 				}
 			}
@@ -640,8 +653,8 @@ int UpdateProject3DCube(SharedState* state)
 		//for (int i = 0; i < tri_batch->size; i++)
 		FreeListNode *node = tri_batch->first;
 		FreeListNode *t_node = tex_batch->first;
-		CheckFreeList(tri_batch);
-		CheckFreeList(tex_batch);
+		//CheckFreeList(tri_batch);
+		//CheckFreeList(tex_batch);
 		while (node)
 		{
 			/*FillTrianglef(state->bitBuff,

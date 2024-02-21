@@ -115,75 +115,25 @@ typedef union
 	int elem[3];
 } Tri;
 
-typedef struct
+Vec3 Vec3CrossProd(Vec3 v1, Vec3 v2)
 {
-	float x;
-	float y;
-	float z;
-} Vec3f;
-
-typedef struct
-{
-	Vec3f p[3];
-} Tri3f;
-
-void Vec3fSub(Vec3f &v1, Vec3f &v2, Vec3f &out)
-{
-	out.x = v1.x - v2.x;
-	out.y = v1.y - v2.y;
-	out.z = v1.z - v2.z;
+	Vec3 res;
+	res.x = v1.y*v2.z - v1.z*v2.y;
+	res.y = v1.z*v2.x - v1.x*v2.z;
+	res.z = v1.x*v2.y - v1.y*v2.x;
+	return res;
 }
-void VecRaw3fSub(float *v1, float *v2, float *out)
+float Vec3DotProd(Vec3 v1, Vec3 v2)
 {
-	out[0] = v1[0] - v2[0];
-	out[1] = v1[1] - v2[1];
-	out[2] = v1[2] - v2[2];
+	return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z;
 }
-void Vec3fAdd(Vec3f &v1, Vec3f &v2, Vec3f &out)
+Vec3 Vec3Normalize(Vec3 v)
 {
-	out.x = v1.x + v2.x;
-	out.y = v1.y + v2.y;
-	out.z = v1.z + v2.z;
-}
-void VecRaw3fAdd(float *v1, float *v2, float *out)
-{
-	out[0] = v1[0] + v2[0];
-	out[1] = v1[1] + v2[1];
-	out[2] = v1[2] + v2[2];
-}
-void Vec3fMul(Vec3f &v1, Vec3f &v2, Vec3f &out)
-{
-	out.x = v1.x * v2.x;
-	out.y = v1.y * v2.y;
-	out.z = v1.z * v2.z;
-}
-void VecRaw3fMul(float *v1, float *v2, float *out)
-{
-	out[0] = v1[0] * v2[0];
-	out[1] = v1[1] * v2[1];
-	out[2] = v1[2] * v2[2];
+	float len = sqrtf(v.x*v.x + v.y*v.y + v.z*v.z);
+	Vec3 res = v * (1.0f / len);
+	return res;
 }
 
-int Vec3fDiv(Vec3f &v1, Vec3f &v2, Vec3f &out)
-{
-	// TODO: add divide by zero check?
-	out.x = v1.x / v2.x;
-	out.y = v1.y / v2.y;
-	out.z = v1.z / v2.z;
-	return 0;
-}
-int Vec3fNormalize(Vec3f &v)
-{
-	float len = sqrtf(v.x*v.x+v.y*v.y+v.z*v.z);
-	v.x /= len; v.y /= len; v.z /= len;
-	return 0;
-}
-int VecRaw3fNormalize(float *v, float *output)
-{
-	float len = sqrtf(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
-	output[0] = v[0] / len; output[1] = v[1] / len; output[2] = v[2] / len;
-	return 0;
-}
 
 void MultiplyVecMat4x4(float *v_in, float *mat, float *v_out)
 {
@@ -209,26 +159,6 @@ void MultiplyMats4x4(float *m1, float *m2, float *out)
 			}
 		}
 	}
-}
-void CrossProductVec3f(Vec3f &v1, Vec3f &v2, Vec3f &out)
-{
-	out.x = v1.y*v2.z - v1.z*v2.y;
-	out.y = v1.z*v2.x - v1.x*v2.z;
-	out.z = v1.x*v2.y - v1.y*v2.x;
-}
-void CrossProductVecRaw3f(float *v1, float *v2, float *out)
-{
-	out[0] = v1[1]*v2[2] - v1[2]*v2[1];
-	out[1] = v1[2]*v2[0] - v1[0]*v2[2];
-	out[2] = v1[0]*v2[1] - v1[1]*v2[0];
-}
-float DotProductVec3f(Vec3f &v1, Vec3f &v2)
-{
-	return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z;
-}
-float DotProductVecRaw3f(float *v1, float *v2)
-{
-	return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
 }
 
 void InitXRotMat4x4(float *m, float angle_rad/*roll*/)
@@ -300,18 +230,6 @@ void InitScaleMat4x4(float *m, float x, float y, float z)
 	m[15] = 1;
 }
 
-void Vec3fMulByF(Vec3f &v1, float f, Vec3f &out)
-{
-	out.x = v1.x * f;
-	out.y = v1.y * f;
-	out.z = v1.z * f;
-}
-void VecRaw3fMulByFloat(float *v1, float f, float *out)
-{
-	out[0] = v1[0] * f;
-	out[1] = v1[1] * f;
-	out[2] = v1[2] * f;
-}
 void InitPointAtMat4x4(float *m, Vec3 &pos, Vec3 &target, Vec3 &up)
 {
 	for (int i = 0; i < 16; i++)
@@ -325,15 +243,16 @@ void InitPointAtMat4x4(float *m, Vec3 &pos, Vec3 &target, Vec3 &up)
 	
 	new_forward = target - pos;
 	//Vec3fSub(target, pos, new_forward);
-	Vec3fNormalize((Vec3f&)new_forward);
+	Vec3Normalize(new_forward);
 	
-	a = new_forward * DotProductVec3f((Vec3f&)up, (Vec3f&)new_forward);
+	a = new_forward * Vec3DotProd(up, new_forward);
 	//Vec3fMulByF(new_forward, DotProductVec3f(up, new_forward), a);
 	new_up = up - a;
 	//Vec3fSub(up, a, new_up);
-	Vec3fNormalize((Vec3f&)new_up);
+	Vec3Normalize(new_up);
 	
-	CrossProductVec3f((Vec3f&)new_up, (Vec3f&)new_forward, (Vec3f&)new_right);
+	//CrossProductVec3f((Vec3f&)new_up, (Vec3f&)new_forward, (Vec3f&)new_right);
+	new_right = Vec3CrossProd(new_up, new_forward);
 	
 	m[0] = new_right.x;
 	m[1] = new_right.y;
@@ -399,37 +318,36 @@ void InitProjectionMat4x4(float *m, float fov, int is_fov_vertical, int screen_w
 	m[14] = -q*z_near;
 }
 
-void PlaneVectorIntersection(Vec3 *plane_normal, Vec3 *plane_point, float *line_start, float *line_end, float* output, float &t)
+void PlaneVectorIntersection(Vec3 plane_normal, Vec3 plane_point, Vec3 line_start, Vec3 line_end, Vec3* output, float &t)
 {
-	float normalized_plane_normal[3];
-	VecRaw3fNormalize((float*)plane_normal, normalized_plane_normal);
-	float plane_d = -DotProductVecRaw3f(normalized_plane_normal, (float*)plane_point);
-	float ad = DotProductVecRaw3f(line_start, normalized_plane_normal);
-	float bd = DotProductVecRaw3f(line_end, normalized_plane_normal);
+	Vec3 normalized_plane_normal;
+	normalized_plane_normal = Vec3Normalize(plane_normal);
+	float plane_d = -Vec3DotProd(normalized_plane_normal, plane_point);
+	float ad = Vec3DotProd(line_start, normalized_plane_normal);
+	float bd = Vec3DotProd(line_end, normalized_plane_normal);
 	t = (-plane_d - ad) / (bd - ad);
-	float start_to_end[3];
-	float line_to_intersect[3];
-	VecRaw3fSub(line_end, line_start, start_to_end);
-	VecRaw3fMulByFloat(start_to_end, t, line_to_intersect);
-	VecRaw3fAdd(line_start, line_to_intersect, output);
+	Vec3 start_to_end;
+	Vec3 line_to_intersect;
+	//VecRaw3fSub(line_end, line_start, start_to_end);
+	start_to_end = line_end - line_start;
+	//VecRaw3fMulByFloat(start_to_end, t, line_to_intersect);
+	line_to_intersect = start_to_end * t;
+	//VecRaw3fAdd(line_start.elem, line_to_intersect.elem, output);
+	*output = line_start + line_to_intersect;
 }
-
+float dist(Vec3 plane_normal, Vec3 plane_point, Vec3 v)
+{
+	return (plane_normal.x * v.x + plane_normal.y * v.y + plane_normal.z * v.z - Vec3DotProd(plane_normal, plane_point));
+}
 // Returns the number of newly formed triangles
-int ClipAgainstPlane(Vec3 *plane_normal, Vec3 *plane_point, Vec3 *points, int *points_count, Vec3 *tex_points, int *tex_points_count,
+int ClipAgainstPlane(Vec3 plane_normal, Vec3 plane_point, Vec3 *points, int *points_count, Vec3 *tex_points, int *tex_points_count,
 						int *in_tri, int *in_tex,
 						int *out_tri1, int *out_tex1,
 						int *out_tri2, int *out_tex2)
 {
-	VecRaw3fNormalize((float*)plane_normal, (float*)plane_normal);
+	plane_normal = Vec3Normalize(plane_normal);
 
-	// Return signed shortest distance from point to plane, plane normal must NOT be normalised
-	auto dist = [&](float *p)
-	{
-		//float n[3];
-		//VecRaw3fNormalize(p, n);
-		//return (plane_normal[0] * n[0] + plane_normal[1] * n[1] + plane_normal[2] * n[2] - DotProductVecRaw3f(plane_normal, plane_point));
-		return (plane_normal->x * p[0] + plane_normal->y * p[1] + plane_normal->z * p[2] - DotProductVecRaw3f((float*)plane_normal, (float*)plane_point));
-	};
+	
 
 	// Create two temporary storage arrays to classify points either side of plane
 	// If distance sign is positive, point lies on "inside" of plane
@@ -439,9 +357,9 @@ int ClipAgainstPlane(Vec3 *plane_normal, Vec3 *plane_point, Vec3 *points, int *p
 	int outside_tex_points[3]; int nOutsideTexPointCount = 0;
 
 	// Get signed distance of each point in triangle to plane
-	float d0 = dist(points[in_tri[0]].elem);
-	float d1 = dist(points[in_tri[1]].elem);
-	float d2 = dist(points[in_tri[2]].elem);
+	float d0 = dist(plane_normal, plane_point, points[in_tri[0]]);
+	float d1 = dist(plane_normal, plane_point, points[in_tri[1]]);
+	float d2 = dist(plane_normal, plane_point, points[in_tri[2]]);
 
 	if (d0 >= 0)
 	{
@@ -466,9 +384,7 @@ int ClipAgainstPlane(Vec3 *plane_normal, Vec3 *plane_point, Vec3 *points, int *p
 
 	if (nInsidePointCount == 0)
 	{
-		// All points lie on the outside of plane, so clip whole triangle
-
-		return 0; // No returned triangles are valid
+		return 0;
 	}
 
 	if (nInsidePointCount == 3)
@@ -488,23 +404,16 @@ int ClipAgainstPlane(Vec3 *plane_normal, Vec3 *plane_point, Vec3 *points, int *p
 
 	if (nInsidePointCount == 1 && nOutsidePointCount == 2)
 	{
-		// Triangle should be clipped. As two points lie outside
-		// the plane, the triangle simply becomes a smaller triangle
-
-		// The inside point is valid, so keep that...
+		// form a triangle
 		out_tri1[0] = inside_points[0];
 		out_tex1[0] = inside_tex_points[0];
 
-		// but the two new points are at the locations where the 
-		// original sides of the triangle (lines) intersect with the plane
-		
-		// Newly generated Points
 		Vec3 np1;
 		Vec3 np2;
 		Vec3 ntp1;
 		Vec3 ntp2;
 		
-		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]].elem, points[outside_points[0]].elem, np1.elem, t);
+		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]], points[outside_points[0]], &np1, t);
 		ntp1.x = t * (tex_points[outside_tex_points[0]].x - tex_points[inside_tex_points[0]].x) + tex_points[inside_tex_points[0]].x;
 		ntp1.y = t * (tex_points[outside_tex_points[0]].y - tex_points[inside_tex_points[0]].y) + tex_points[inside_tex_points[0]].y;
 		ntp1.z = t * (tex_points[outside_tex_points[0]].z - tex_points[inside_tex_points[0]].z) + tex_points[inside_tex_points[0]].z;
@@ -512,7 +421,7 @@ int ClipAgainstPlane(Vec3 *plane_normal, Vec3 *plane_point, Vec3 *points, int *p
 		tex_points[*tex_points_count] = (ntp1);
 		*tex_points_count = *tex_points_count + 1;
 		
-		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]].elem, points[outside_points[1]].elem, np2.elem, t);
+		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]], points[outside_points[1]], &np2, t);
 		ntp2.x = t * (tex_points[outside_tex_points[1]].x - tex_points[inside_tex_points[0]].x) + tex_points[inside_tex_points[0]].x;
 		ntp2.y = t * (tex_points[outside_tex_points[1]].y - tex_points[inside_tex_points[0]].y) + tex_points[inside_tex_points[0]].y;
 		ntp2.z = t * (tex_points[outside_tex_points[1]].z - tex_points[inside_tex_points[0]].z) + tex_points[inside_tex_points[0]].z;
@@ -532,8 +441,7 @@ int ClipAgainstPlane(Vec3 *plane_normal, Vec3 *plane_point, Vec3 *points, int *p
 
 	if (nInsidePointCount == 2 && nOutsidePointCount == 1)
 	{
-		// Triangle should be clipped. As two points lie inside the plane,
-		// the clipped triangle becomes a "quad".
+		// form a quad
 		Vec3 np1;
 		Vec3 np2;
 		Vec3 ntp1;
@@ -544,7 +452,7 @@ int ClipAgainstPlane(Vec3 *plane_normal, Vec3 *plane_point, Vec3 *points, int *p
 		out_tex1[0] = inside_tex_points[0];
 		out_tex1[1] = inside_tex_points[1];
 		
-		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]].elem, points[outside_points[0]].elem, np1.elem, t);
+		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]], points[outside_points[0]], &np1, t);
 		ntp1.x = t * (tex_points[outside_tex_points[0]].x - tex_points[inside_tex_points[0]].x) + tex_points[inside_tex_points[0]].x;
 		ntp1.y = t * (tex_points[outside_tex_points[0]].y - tex_points[inside_tex_points[0]].y) + tex_points[inside_tex_points[0]].y;
 		ntp1.z = t * (tex_points[outside_tex_points[0]].z - tex_points[inside_tex_points[0]].z) + tex_points[inside_tex_points[0]].z;
@@ -560,7 +468,7 @@ int ClipAgainstPlane(Vec3 *plane_normal, Vec3 *plane_point, Vec3 *points, int *p
 		out_tex2[0] = inside_tex_points[1];
 		out_tri2[1] = out_tri1[2];
 		out_tex2[1] = out_tex1[2];
-		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[1]].elem, points[outside_points[0]].elem, np2.elem, t);
+		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[1]], points[outside_points[0]], &np2, t);
 		ntp2.x = t * (tex_points[outside_tex_points[0]].x - tex_points[inside_tex_points[1]].x) + tex_points[inside_tex_points[1]].x;
 		ntp2.y = t * (tex_points[outside_tex_points[0]].y - tex_points[inside_tex_points[1]].y) + tex_points[inside_tex_points[1]].y;
 		ntp2.z = t * (tex_points[outside_tex_points[0]].z - tex_points[inside_tex_points[1]].z) + tex_points[inside_tex_points[1]].z;
