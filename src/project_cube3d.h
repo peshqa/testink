@@ -287,6 +287,8 @@ int UpdateProject3DCube(SharedState* state)
 	
 	size_t memory_used = game_state->arena.used;
 	
+	
+	
 	float *depth_buffer;
 	depth_buffer = ArenaPushArray(&game_state->arena, state->client_width*state->client_height, float);
 	ZeroMemory((u8*)depth_buffer, state->client_width*state->client_height*sizeof(float));
@@ -308,6 +310,9 @@ int UpdateProject3DCube(SharedState* state)
 	Tri *tex_map_clipped = ArenaPushArray(&game_state->arena, VEC3_STACK_COUNT, Tri);
 	int tex_map_clipped_count = 0;
 	
+	Vec3 *tri_colors = ArenaPushArray(&game_state->arena, VEC3_STACK_COUNT, Vec3);
+	int tri_colors_count = 0;
+	
 	// Mouse input -> camera rotation control
 	
 	if (state->is_lmb_down & 1)
@@ -324,7 +329,7 @@ int UpdateProject3DCube(SharedState* state)
 			
 			// Model rotation by mouse
 			game_state->cube_pitch -= 0.005f*(-state->mouse_x+game_state->last_mouse_x);
-			game_state->cube_yaw += 0.005f*(-state->mouse_y+game_state->last_mouse_y);
+			game_state->cube_yaw -= 0.005f*(-state->mouse_y+game_state->last_mouse_y);
 			
 			game_state->last_mouse_x = state->mouse_x;
 			game_state->last_mouse_y = state->mouse_y;
@@ -353,27 +358,17 @@ int UpdateProject3DCube(SharedState* state)
 
 	float z_near = 0.01f;
 	float z_far = 1000.0f;
-	float proj_mat4x4[16];
-	InitProjectionMat4x4(proj_mat4x4, 90.0f, 1, state->bitBuff->width, state->bitBuff->height, z_near, z_far);
+	Mat4 proj_mat4 = MakeProjectionMat4(90.0f, 1, state->bitBuff->width, state->bitBuff->height, z_near, z_far);
+	Mat4 scale_mat4 = MakeScaleMat4({1, 1, 1});
 	
-	float scale_mat4x4[16];
-	//InitScaleMat4x4(scale_mat4x4, 0.3f, 0.3f, 0.3f);
-	InitScaleMat4x4(scale_mat4x4, 1, 1, 1);
+	Mat4 combined_mat4;
+	Mat4 combined2_mat4;
 	
-	float combined_mat4x4[16]{};
-	float combined2_mat4x4[16]{};
-	
-	Vec3 target = {0.0f, 0.0f, 1.0f};
-	Vec3 target_rot_y;
-	Vec3 target_rot_yx;
+	Vec4 target = {0.0f, 0.0f, 1.0f};
+	Vec4 target_rot_yx;
 	Vec3 target_final;
-	float t_y_rot_mat4x4[16]{};
-	float t_x_rot_mat4x4[16]{};
-	InitXRotMat4x4(t_y_rot_mat4x4, -game_state->pitch);
-	//InitXRotMat4x4(t_y_rot_mat4x4, 0);
-	MultiplyVecMat4x4(target.elem, t_y_rot_mat4x4, (float*)&target_rot_y);
-	InitYRotMat4x4(t_x_rot_mat4x4, game_state->yaw);
-	MultiplyVecMat4x4((float*)&target_rot_y, t_x_rot_mat4x4, (float*)&target_rot_yx);
+
+	target_rot_yx = target * MakeXRotMat4(-game_state->pitch) * MakeYRotMat4(game_state->yaw);
 	
 	float move_scale = 1.0f;
 	if (state->input_state['W'] & 1)
@@ -413,19 +408,14 @@ int UpdateProject3DCube(SharedState* state)
 	float oy = game_state->y_offset;
 	float oz = game_state->z_offset;
 	Vec3 pos = {ox, oy, oz};
-	target_final = pos + target_rot_yx;
-	//Vec3fAdd(pos, target_rot_yx, target_final);
+	target_final = pos + target_rot_yx.xyz;
 	
 	Vec3 up = {0, 1, 0};
-	float look_at_mat4x4[16];
-	float point_at_mat4x4[16];
-	InitPointAtMat4x4(point_at_mat4x4, pos, target_final, up);
-	Mat4x4QuickInverse(point_at_mat4x4, look_at_mat4x4);
-	
+	Mat4 look_at_mat4 = QuickInverseMat4(MakePointAtMat4(pos, target_final, up));
+	/*
 	float x_rot_mat4x4[16];
 	float y_rot_mat4x4[16]{};
 	float z_rot_mat4x4[16]{};
-	float translate_mat4x4[16];
 	
 	// https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
 	InitYRotMat4x4(x_rot_mat4x4, game_state->cube_pitch+
@@ -439,13 +429,10 @@ int UpdateProject3DCube(SharedState* state)
 	InitXRotMat4x4(z_rot_mat4x4, 
 		atan2(2*(state->rot_vec_values[3]*state->rot_vec_values[0]+state->rot_vec_values[1]*state->rot_vec_values[2]),
 		1-2*(state->rot_vec_values[0]*state->rot_vec_values[0]+state->rot_vec_values[1]*state->rot_vec_values[1]))
-	);
-	InitTranslationMat4x4(translate_mat4x4, 0.0f, 0.0f, 4.0f);
+	);*/
+	Mat4 translate_mat4 = MakeTranslationMat4({0.0f, 0.0f, 4.0f});
 	
-	MultiplyMats4x4(scale_mat4x4, y_rot_mat4x4, combined_mat4x4);
-	MultiplyMats4x4(combined_mat4x4, x_rot_mat4x4, combined2_mat4x4);
-	MultiplyMats4x4(combined2_mat4x4, z_rot_mat4x4, combined_mat4x4);
-	MultiplyMats4x4(combined_mat4x4, translate_mat4x4, combined2_mat4x4);
+	combined_mat4 = scale_mat4 * MakeYRotMat4(game_state->cube_pitch) * MakeXRotMat4(game_state->cube_yaw) * translate_mat4;
 	
 	//FillPlatformBitBuffer(state->bitBuff, MakeColor(255,25,12,6)); // solid color
 	DrawGradientScreen(state->bitBuff, 106, 104, 203, 255, 255, 255); // fancy vertical gradient
@@ -453,34 +440,23 @@ int UpdateProject3DCube(SharedState* state)
 	int clr = MakeColor(255,255,255,255);
 	
 	// Apply world transformations to vertices
-	
 	for (int i = 0; i < game_state->verts_count; i++)
 	{
 		float *vx = game_state->verts[i].elem;
-		float v_in1[4] = {vx[0], vx[1], vx[2], 1};
-		float v_out1[4];
-		
-		MultiplyVecMat4x4(v_in1, combined2_mat4x4, v_out1);
-		
-		verts_transformed[verts_transformed_next_free++] = {v_out1[0], v_out1[1], v_out1[2]};
+		Vec4 vec = {vx[0], vx[1], vx[2], 1};
+		vec = vec * combined_mat4;
+		verts_transformed[verts_transformed_next_free++] = vec.xyz;
 	}
 	
 	// Apply view matrix
-	
 	for (int i = 0; i < verts_transformed_next_free; i++)
 	{
 		float *vx = verts_transformed[i].elem;
-		float v_in1[4] = {vx[0], vx[1], vx[2], 1};
-		float v_out1[4];
+		Vec4 vec = {vx[0], vx[1], vx[2], 1};
+		vec = vec * look_at_mat4;
 		
-		MultiplyVecMat4x4(v_in1, look_at_mat4x4, v_out1);
-		
-		//float *new_vx = new float[3]{v_out1[0], v_out1[1], v_out1[2]};
-		//vertices_viewed.push_back(new_vx);
-		verts_viewed[verts_viewed_next_free++] = {v_out1[0], v_out1[1], v_out1[2]};
+		verts_viewed[verts_viewed_next_free++] = vec.xyz;
 	}
-	
-	std::vector<int> tri_colors;
 	
 	for (int i = 0; i < game_state->tex_verts_count; i++)
 	{
@@ -489,7 +465,6 @@ int UpdateProject3DCube(SharedState* state)
 	}
 	
 	int count = -1;
-	//for (int *tri: game_state->triangles)
 	for (;count < game_state->tris_count-1;)
 	{
 		count++;
@@ -498,18 +473,10 @@ int UpdateProject3DCube(SharedState* state)
 		Vec3 norm;
 		Vec3 v1;
 		Vec3 v2;
-		//VecRaw3fSub(verts_transformed[tri[1]].elem, (float*)verts_transformed[tri[0]].elem, v1);
 		v1 = verts_transformed[tri[1]] - verts_transformed[tri[0]];
-		//VecRaw3fSub(verts_transformed[tri[2]].elem, (float*)verts_transformed[tri[0]].elem, v2);
 		v2 = verts_transformed[tri[2]] - verts_transformed[tri[0]];
-		//CrossProductVecRaw3f(v1.elem, v2.elem, norm.elem);
 		norm = Vec3Normalize(Vec3CrossProd(v1, v2));
-		//norm = Vec3Normalize(norm);
 
-		//if (
-		//	norm.x*(verts_transformed[tri[0]].elem[0]-pos.x)+
-		//	norm.y*(verts_transformed[tri[0]].elem[1]-pos.y)+
-		//	norm.z*(verts_transformed[tri[0]].elem[2]-pos.z) <= 0)
 		if (Vec3DotProd(norm, verts_transformed[tri[0]] - pos) <= 0)
 		{
 			// Simple directional lighting
@@ -518,7 +485,7 @@ int UpdateProject3DCube(SharedState* state)
 			float koef = abs(Vec3DotProd(norm, light_dir));
 			if (koef < 0.01f)
 				koef = 0.01f;
-			int tri_color = MakeColor(255,255*koef,255*koef,255*koef);
+			Vec3 tri_color = {koef, koef, koef};
 			
 			// Clipping
 			int count_clipped_triangles = 0;
@@ -532,9 +499,10 @@ int UpdateProject3DCube(SharedState* state)
 
 			for (int i = 0; i < count_clipped_triangles; i++)
 			{
-				tris_clipped[tris_clipped_next_free++] = tri_clipped[i]; //{tri_clipped[i][0], tri_clipped[i][1], tri_clipped[i][2]};;
-				tri_colors.push_back(tri_color);
-				tex_map_clipped[tex_map_clipped_count++] = tex_clipped[i]; //{tex_clipped[i][0], tex_clipped[i][1], tex_clipped[i][2]};
+				tris_clipped[tris_clipped_next_free++] = tri_clipped[i];
+				//tri_colors.push_back(tri_color);
+				tri_colors[tri_colors_count++] = tri_color;
+				tex_map_clipped[tex_map_clipped_count++] = tex_clipped[i];
 			}
 
 		}
@@ -546,14 +514,13 @@ int UpdateProject3DCube(SharedState* state)
 	while (yac < verts_viewed_next_free)
 	{
 		float *vx = verts_viewed[yac].elem;
-		float v_in1[4] = {vx[0], vx[1], vx[2], 1};
-		float v_out1[4];
+		Vec4 vec = {vx[0], vx[1], vx[2], 1};
+		vec =  vec * proj_mat4;
 		
-		MultiplyVecMat4x4(v_in1, proj_mat4x4, v_out1);
-		clipped_tex_verts[yac].x /= v_out1[3];
-		clipped_tex_verts[yac].y /= v_out1[3];
-		clipped_tex_verts[yac].z = 1.0f / v_out1[3];
-		verts_projected[verts_projected_next_free++] = {v_out1[0]/v_out1[3]+0.5f, -v_out1[1]/v_out1[3]+0.5f, v_out1[2]};;
+		clipped_tex_verts[yac].x /= vec.w;
+		clipped_tex_verts[yac].y /= vec.w;
+		clipped_tex_verts[yac].z = 1.0f / vec.w;
+		verts_projected[verts_projected_next_free++] = {vec.x/vec.w+0.5f, vec.y/vec.w+0.5f, vec.z};
 		yac++;
 	}
 	
@@ -566,7 +533,7 @@ int UpdateProject3DCube(SharedState* state)
 	{
 		int *tri = tris_clipped[color_count].elem;
 		int *tex_map = tex_map_clipped[color_count].elem;
-		int tri_color = tri_colors[color_count++];
+		Vec3 tri_color = tri_colors[color_count++];
 		Tri tri_clipped[2];
 		Tri tex_clipped[2];
 		Vec3 plane_normal0 = {0.0f, 1.0f, 0.0f};
@@ -578,16 +545,11 @@ int UpdateProject3DCube(SharedState* state)
 		Vec3 plane_normal3 = {-1.0f, 0.0f, 0.0f};
 		Vec3  plane_point3 = {1.0f, 0.0f, 0.0f};
 		
-		//std::list<int*> tri_batch;
 		FreeListClear(tri_batch);
 		FreeListClear(tex_batch);
-		//std::list<int*> tex_batch;
-		//int* init_tri = new int[3]{tri[0], tri[1], tri[2]};
-		//int* init_tex = new int[3]{tex_map[0], tex_map[1], tex_map[2]};
-		//tri_batch.push_back(init_tri);
+
 		FreeListPushBack(&game_state->arena, tri_batch, {tri[0], tri[1], tri[2]});
 		FreeListPushBack(&game_state->arena, tex_batch, {tex_map[0], tex_map[1], tex_map[2]});
-		//tex_batch.push_back(init_tex);
 		
 		int new_triangles = 1;
 		
@@ -596,14 +558,12 @@ int UpdateProject3DCube(SharedState* state)
 			int count_clipped_triangles;
 			while (new_triangles > 0)
 			{
-				//int *test = tri_batch.front();
 				Tri test = tri_batch->first->data;
 				Tri t_test = tex_batch->first->data;
-				//int *t_test = tex_batch.front();
-				//tri_batch.pop_front();
+				
 				FreeListPopFront(tri_batch);
 				FreeListPopFront(tex_batch);
-				//tex_batch.pop_front();
+
 				new_triangles--;
 				switch (plane)
 				{
@@ -624,37 +584,19 @@ int UpdateProject3DCube(SharedState* state)
 						tri_clipped[0].elem, tex_clipped[0].elem,
 						tri_clipped[1].elem, tex_clipped[1].elem); break;
 				}
-				//delete [] test;
-				//delete [] t_test;
-				if (count_clipped_triangles >= 2)
-				{
-					int o = 0;
-				}
+
 				for (int i = 0; i < count_clipped_triangles; i++)
 				{
-					//int* clipped_tri = new int[3]{tri_clipped[i][0], tri_clipped[i][1], tri_clipped[i][2]};
-					//tri_batch.push_back(clipped_tri);
 					FreeListPushBack(&game_state->arena, tri_batch, tri_clipped[i]);
-					
-					//int* clipped_tex = new int[3]{tex_clipped[i][0], tex_clipped[i][1], tex_clipped[i][2]};
-					//tex_batch.push_back(clipped_tex);
 					FreeListPushBack(&game_state->arena, tex_batch, tex_clipped[i]);
-					
 				}
 			}
-			//new_triangles = tri_batch.size();
 			new_triangles = tri_batch->size;
 			ASSERT(tri_batch->size == tex_batch->size);
 		}
 		
-		//auto iter = tex_batch.begin();
-		
-		//for (int *t: tri_batch)
-		//for (int i = 0; i < tri_batch->size; i++)
 		FreeListNode *node = tri_batch->first;
 		FreeListNode *t_node = tex_batch->first;
-		//CheckFreeList(tri_batch);
-		//CheckFreeList(tex_batch);
 		while (node)
 		{
 			/*FillTrianglef(state->bitBuff,
@@ -667,7 +609,6 @@ int UpdateProject3DCube(SharedState* state)
 							vertices_projected[t[1]][0], vertices_projected[t[1]][1],
 							vertices_projected[t[2]][0], vertices_projected[t[2]][1],
 							clr);*/
-			//int *tt = *iter;
 			int *tt = t_node->data.elem;
 			int *t = node->data.elem;
 
@@ -680,12 +621,8 @@ int UpdateProject3DCube(SharedState* state)
 							clipped_tex_verts[tt[2]].x,clipped_tex_verts[tt[2]].y, clipped_tex_verts[tt[2]].z,
 							&game_state->image, depth_buffer);
 
-			//std::advance(iter, 1);
-			
-			//delete [] t;
 			node = node->next;
 			t_node = t_node->next;
-			//delete [] tt;
 		}
 		
 	}

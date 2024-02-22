@@ -13,6 +13,17 @@ typedef union
 {
 	struct
 	{
+		int p1;
+		int p2;
+		int p3;
+	};
+	int elem[3];
+} Tri;
+
+typedef union
+{
+	struct
+	{
 		float x;
 		float y;
 	};
@@ -40,6 +51,40 @@ typedef union
 	};
 	float elem[3];
 } Vec3;
+
+typedef union
+{
+	struct
+	{
+		float x;
+		float y;
+		float z;
+		float w;
+	};
+	struct
+	{
+		float r;
+		float g;
+		float b;
+		float a;
+	};
+	struct
+	{
+		Vec3 xyz;
+		float _pad;
+	};
+	float elem[4];
+} Vec4;
+
+// NOTE: matrices use column major order
+typedef union
+{
+	struct
+	{
+		Vec4 col[4];
+	};
+	float elem[4][4];
+} Mat4;
 
 Vec2 operator+(Vec2 a, Vec2 b)
 {
@@ -104,17 +149,6 @@ Vec3 operator*(float f, Vec3 v)
 	return res;
 }
 
-typedef union
-{
-	struct
-	{
-		int p1;
-		int p2;
-		int p3;
-	};
-	int elem[3];
-} Tri;
-
 Vec3 Vec3CrossProd(Vec3 v1, Vec3 v2)
 {
 	Vec3 res;
@@ -134,7 +168,6 @@ Vec3 Vec3Normalize(Vec3 v)
 	return res;
 }
 
-
 void MultiplyVecMat4x4(float *v_in, float *mat, float *v_out)
 {
 	for (int col = 0; col < 4; col++)
@@ -145,6 +178,23 @@ void MultiplyVecMat4x4(float *v_in, float *mat, float *v_out)
 			v_out[col] += mat[row*4+col]*v_in[row];
 		}
 	}
+}
+Vec4 operator*(Vec4 vec, Mat4 mat)
+{
+	Vec4 res = {};
+	for (int col = 0; col < 4; col++)
+	{
+		res.elem[col] = 0;
+		for (int row = 0; row < 4; row++)
+		{
+			res.elem[col] += mat.elem[col][row]*vec.elem[row];
+		}
+	}
+	return res;
+}
+Vec4 operator*(Mat4 mat, Vec4 vec)
+{
+	return vec * mat;
 }
 void MultiplyMats4x4(float *m1, float *m2, float *out)
 {
@@ -160,6 +210,22 @@ void MultiplyMats4x4(float *m1, float *m2, float *out)
 		}
 	}
 }
+Mat4 operator*(Mat4 left, Mat4 right)
+{
+	Mat4 res = {};
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			res.elem[j][i] = 0;
+			for (int k = 0; k < 4; k++)
+			{
+				res.elem[j][i] += left.elem[k][i]*right.elem[j][k];
+			}
+		}
+	}
+	return res;
+}
 
 void InitXRotMat4x4(float *m, float angle_rad/*roll*/)
 {
@@ -173,6 +239,18 @@ void InitXRotMat4x4(float *m, float angle_rad/*roll*/)
 	m[9] =  sinf(angle_rad);
 	m[10] = cosf(angle_rad);
 	m[15] = 1;
+}
+Mat4 MakeXRotMat4(float angle_rad)
+{
+	Mat4 res = {};
+	res.elem[1][1] =  cosf(angle_rad);
+	res.elem[2][1] = -sinf(angle_rad);
+	res.elem[1][2] =  sinf(angle_rad);
+	res.elem[2][2] =  cosf(angle_rad);
+
+	res.elem[0][0] = 1.0f;
+	res.elem[3][3] = 1.0f;
+	return res;
 }
 
 void InitYRotMat4x4(float *m, float angle_rad/*pitch*/)
@@ -188,6 +266,18 @@ void InitYRotMat4x4(float *m, float angle_rad/*pitch*/)
 	m[10] = cosf(angle_rad);
 	m[15] = 1;
 }
+Mat4 MakeYRotMat4(float angle_rad)
+{
+	Mat4 res = {};
+	res.elem[0][0] =  cosf(angle_rad);
+	res.elem[2][0] =  sinf(angle_rad);
+	res.elem[0][2] = -sinf(angle_rad);
+	res.elem[2][2] =  cosf(angle_rad);
+
+	res.elem[1][1] = 1.0f;
+	res.elem[3][3] = 1.0f;
+	return res;
+}
 
 void InitZRotMat4x4(float *m, float angle_rad/*yaw*/)
 {
@@ -198,9 +288,21 @@ void InitZRotMat4x4(float *m, float angle_rad/*yaw*/)
 	m[0] =  cosf(angle_rad);
 	m[1] = -sinf(angle_rad);
 	m[4] =  sinf(angle_rad);
-	m[5] = cosf(angle_rad);
+	m[5] =  cosf(angle_rad);
 	m[10] = 1;
 	m[15] = 1;
+}
+Mat4 MakeZRotMat4(float angle_rad)
+{
+	Mat4 res = {};
+	res.elem[0][0] =  cosf(angle_rad);
+	res.elem[1][0] = -sinf(angle_rad);
+	res.elem[0][1] =  sinf(angle_rad);
+	res.elem[1][1] =  cosf(angle_rad);
+
+	res.elem[2][2] = 1.0f;
+	res.elem[3][3] = 1.0f;
+	return res;
 }
 
 void InitTranslationMat4x4(float *m, float x, float y, float z)
@@ -217,6 +319,18 @@ void InitTranslationMat4x4(float *m, float x, float y, float z)
 	m[14] = z;
 	m[15] = 1;
 }
+Mat4 MakeTranslationMat4(Vec3 v)
+{
+	Mat4 res = {};
+	res.elem[0][0] = 1.0f;
+	res.elem[1][1] = 1.0f;
+	res.elem[2][2] = 1.0f;
+	res.elem[0][3] = v.x;
+	res.elem[1][3] = v.y;
+	res.elem[2][3] = v.z;
+	res.elem[3][3] = 1.0f;
+	return res;
+}
 
 void InitScaleMat4x4(float *m, float x, float y, float z)
 {
@@ -228,6 +342,15 @@ void InitScaleMat4x4(float *m, float x, float y, float z)
 	m[5] = y;
 	m[10] = z;
 	m[15] = 1;
+}
+Mat4 MakeScaleMat4(Vec3 v)
+{
+	Mat4 res = {};
+	res.elem[0][0] = v.x;
+	res.elem[1][1] = v.y;
+	res.elem[2][2] = v.z;
+	res.elem[3][3] = 1.0f;
+	return res;
 }
 
 void InitPointAtMat4x4(float *m, Vec3 &pos, Vec3 &target, Vec3 &up)
@@ -242,16 +365,12 @@ void InitPointAtMat4x4(float *m, Vec3 &pos, Vec3 &target, Vec3 &up)
 	Vec3 new_right;
 	
 	new_forward = target - pos;
-	//Vec3fSub(target, pos, new_forward);
 	Vec3Normalize(new_forward);
 	
 	a = new_forward * Vec3DotProd(up, new_forward);
-	//Vec3fMulByF(new_forward, DotProductVec3f(up, new_forward), a);
 	new_up = up - a;
-	//Vec3fSub(up, a, new_up);
 	Vec3Normalize(new_up);
 	
-	//CrossProductVec3f((Vec3f&)new_up, (Vec3f&)new_forward, (Vec3f&)new_right);
 	new_right = Vec3CrossProd(new_up, new_forward);
 	
 	m[0] = new_right.x;
@@ -267,6 +386,36 @@ void InitPointAtMat4x4(float *m, Vec3 &pos, Vec3 &target, Vec3 &up)
 	m[13] = pos.y;
 	m[14] = pos.z;
 	m[15] = 1;
+}
+Mat4 MakePointAtMat4(Vec3 pos, Vec3 target, Vec3 up)
+{
+	Mat4 res = {};
+	Vec3 new_forward;
+	Vec3 a;
+	Vec3 new_up;
+	Vec3 new_right;
+	
+	new_forward = Vec3Normalize(target - pos);
+	
+	a = new_forward * Vec3DotProd(up, new_forward);
+	new_up = Vec3Normalize(up - a);
+	
+	new_right = Vec3CrossProd(new_up, new_forward);
+	
+	res.elem[0][0] = new_right.x;
+	res.elem[1][0] = new_right.y;
+	res.elem[2][0] = new_right.z;
+	res.elem[0][1] = new_up.x;
+	res.elem[1][1] = new_up.y;
+	res.elem[2][1] = new_up.z;
+	res.elem[0][2] = new_forward.x;
+	res.elem[1][2] = new_forward.y;
+	res.elem[2][2] = new_forward.z;
+	res.elem[0][3] = pos.x;
+	res.elem[1][3] = pos.y;
+	res.elem[2][3] = pos.z;
+	res.elem[3][3] = 1;
+	return res;
 }
 
 // NOTE: only works for rotation or translation matrices
@@ -288,6 +437,27 @@ void Mat4x4QuickInverse(float *m, float *out)
 	out[13] = -(m[12]*out[1] + m[13]*out[5] + m[14]*out[9]);
 	out[14] = -(m[12]*out[2] + m[13]*out[6] + m[14]*out[10]);
 	out[15] = 1.0f;
+}
+Mat4 QuickInverseMat4(Mat4 m)
+{
+	Mat4 res = {};
+	res.elem[0][0] = m.elem[0][0];
+	res.elem[1][0] = m.elem[1][0];
+	res.elem[2][0] = m.elem[2][0];
+	res.elem[3][0] = 0.0f;
+	res.elem[0][1] = m.elem[0][1];
+	res.elem[1][1] = m.elem[1][1];
+	res.elem[2][1] = m.elem[2][1];
+	res.elem[3][1] = 0.0f;
+	res.elem[0][2] = m.elem[0][2];
+	res.elem[1][2] = m.elem[1][2];
+	res.elem[2][2] = m.elem[2][2];
+	res.elem[3][2] = 0.0f;
+	res.elem[0][3] = -(m.elem[0][3]*res.elem[0][0] + m.elem[1][3]*res.elem[0][1] + m.elem[2][3]*res.elem[0][2]);
+	res.elem[1][3] = -(m.elem[0][3]*res.elem[1][0] + m.elem[1][3]*res.elem[1][1] + m.elem[2][3]*res.elem[1][2]);
+	res.elem[2][3] = -(m.elem[0][3]*res.elem[2][0] + m.elem[1][3]*res.elem[2][1] + m.elem[2][3]*res.elem[2][2]);
+	res.elem[3][3] = 1.0f;
+	return res;
 }
 
 void InitProjectionMat4x4(float *m, float fov, int is_fov_vertical, int screen_width, int screen_height, float z_near, float z_far)
@@ -316,6 +486,29 @@ void InitProjectionMat4x4(float *m, float fov, int is_fov_vertical, int screen_w
 	m[10] = q;
 	m[11] = 1;
 	m[14] = -q*z_near;
+}
+Mat4 MakeProjectionMat4(float fov, int is_fov_vertical, int screen_width, int screen_height, float z_near, float z_far)
+{
+	Mat4 res = {};
+	float f = 1/tanf(fov*PI32/180*0.5f);
+	float q = z_far/(z_far-z_near);
+	float aspect_ratio;
+
+	if (is_fov_vertical != 0)
+	{
+		aspect_ratio = (float)screen_height / screen_width;
+		res.elem[0][0] = aspect_ratio*f;
+		res.elem[1][1] = f;
+	} else {
+		aspect_ratio = (float)screen_width / screen_height;
+		res.elem[0][0] = f;
+		res.elem[1][1] = aspect_ratio*f;
+	}
+	
+	res.elem[2][2] = q;
+	res.elem[3][2] = 1.0f;
+	res.elem[2][3] = -q*z_near;
+	return res;
 }
 
 void PlaneVectorIntersection(Vec3 plane_normal, Vec3 plane_point, Vec3 line_start, Vec3 line_end, Vec3* output, float &t)
