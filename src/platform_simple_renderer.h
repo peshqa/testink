@@ -169,6 +169,22 @@ static int DrawGradientScreen(PlatformBitBuffer *bitBuff, int s_red, int s_green
 	}
 	return 0;
 }
+static void DrawGradientScreenv(PlatformBitBuffer *bitBuff, Vec3 start_rgb, Vec3 end_rgb)
+{
+	Vec3 delta_rgb = (end_rgb - start_rgb) / bitBuff->height;
+	for (int i = 0; i < bitBuff->width; i++)
+	{
+		for (int j = 0; j < bitBuff->height; j++)
+		{
+			
+			int color = MakeColor(255,
+				(start_rgb.r+delta_rgb.r*j)*255,
+				(start_rgb.g+delta_rgb.g*j)*255,
+				(start_rgb.b+delta_rgb.b*j)*255);
+			PlatformDrawPixel(bitBuff, i, j, color);
+		}
+	}
+}
 static int FillTriangle(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2, int x3, int y3, int color)
 {
 	// Sort the points so that y1 <= y2 <= y3

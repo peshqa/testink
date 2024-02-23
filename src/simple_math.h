@@ -5,7 +5,9 @@ simple_math.h - self explanatory header name
 #pragma once
 
 #include <math.h>
-#include <vector>
+//#include <vector>
+
+#include <xmmintrin.h>
 
 #define PI32 3.14159265359f
 
@@ -74,6 +76,8 @@ typedef union
 		float _pad;
 	};
 	float elem[4];
+	
+	__m128 simd;
 } Vec4;
 
 // NOTE: matrices use column major order
@@ -142,10 +146,15 @@ Vec3 operator*(Vec3 v, float f)
 }
 Vec3 operator*(float f, Vec3 v)
 {
+	return v * f;
+}
+
+Vec3 operator/(Vec3 v, float f)
+{
 	Vec3 res;
-	res.x = v.x *f;
-	res.y = v.y *f;
-	res.z = v.z *f;
+	res.x = v.x / f;
+	res.y = v.y / f;
+	res.z = v.z / f;
 	return res;
 }
 
@@ -157,10 +166,7 @@ Vec3 Vec3CrossProd(Vec3 v1, Vec3 v2)
 	res.z = v1.x*v2.y - v1.y*v2.x;
 	return res;
 }
-float Vec3DotProd(Vec3 v1, Vec3 v2)
-{
-	return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z;
-}
+
 Vec3 Vec3Normalize(Vec3 v)
 {
 	float len = sqrtf(v.x*v.x + v.y*v.y + v.z*v.z);
@@ -168,51 +174,44 @@ Vec3 Vec3Normalize(Vec3 v)
 	return res;
 }
 
-void MultiplyVecMat4x4(float *v_in, float *mat, float *v_out)
+float Vec3DotProd(Vec3 v1, Vec3 v2)
 {
-	for (int col = 0; col < 4; col++)
-	{
-		v_out[col] = 0;
-		for (int row = 0; row < 4; row++)
-		{
-			v_out[col] += mat[row*4+col]*v_in[row];
-		}
-	}
+	return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z;
 }
+
 Vec4 operator*(Vec4 vec, Mat4 mat)
 {
 	Vec4 res = {};
+#if 1
 	for (int col = 0; col < 4; col++)
 	{
-		res.elem[col] = 0;
 		for (int row = 0; row < 4; row++)
 		{
 			res.elem[col] += mat.elem[col][row]*vec.elem[row];
 		}
 	}
+#else
+	res.simd = _mm_mul_ps(_mm_shuffle_ps(vec.simd, vec.simd, 0x00), mat.col[0].simd);
+    res.simd = _mm_add_ps(res.simd, _mm_mul_ps(_mm_shuffle_ps(vec.simd, vec.simd, 0x55), mat.col[1].simd));
+    res.simd = _mm_add_ps(res.simd, _mm_mul_ps(_mm_shuffle_ps(vec.simd, vec.simd, 0xaa), mat.col[2].simd));
+    res.simd = _mm_add_ps(res.simd, _mm_mul_ps(_mm_shuffle_ps(vec.simd, vec.simd, 0xff), mat.col[3].simd));
+#endif
 	return res;
 }
 Vec4 operator*(Mat4 mat, Vec4 vec)
 {
+	Vec4 res; // TODO: verify the calculations are correct?
+	res.simd = _mm_mul_ps(_mm_shuffle_ps(vec.simd, vec.simd, 0x00), mat.col[0].simd);
+    res.simd = _mm_add_ps(res.simd, _mm_mul_ps(_mm_shuffle_ps(vec.simd, vec.simd, 0x55), mat.col[1].simd));
+    res.simd = _mm_add_ps(res.simd, _mm_mul_ps(_mm_shuffle_ps(vec.simd, vec.simd, 0xaa), mat.col[2].simd));
+    res.simd = _mm_add_ps(res.simd, _mm_mul_ps(_mm_shuffle_ps(vec.simd, vec.simd, 0xff), mat.col[3].simd));
 	return vec * mat;
 }
-void MultiplyMats4x4(float *m1, float *m2, float *out)
-{
-	for (int i = 0; i < 4; i++)
-	{
-		for (int j = 0; j < 4; j++)
-		{
-			out[i*4+j] = 0;
-			for (int k = 0; k < 4; k++)
-			{
-				out[i*4+j] += m1[i*4+k]*m2[k*4+j];
-			}
-		}
-	}
-}
+
 Mat4 operator*(Mat4 left, Mat4 right)
 {
-	Mat4 res = {};
+	Mat4 res;
+#if 0
 	for (int i = 0; i < 4; i++)
 	{
 		for (int j = 0; j < 4; j++)
@@ -224,22 +223,15 @@ Mat4 operator*(Mat4 left, Mat4 right)
 			}
 		}
 	}
+#else
+	res.col[0] = left * right.col[0];
+    res.col[1] = left * right.col[1];
+    res.col[2] = left * right.col[2];
+    res.col[3] = left * right.col[3];
+#endif
 	return res;
 }
 
-void InitXRotMat4x4(float *m, float angle_rad/*roll*/)
-{
-	for (int i = 0; i < 16; i++)
-	{
-		m[i] = 0;
-	}
-	m[0] = 1;
-	m[5] =  cosf(angle_rad);
-	m[6] = -sinf(angle_rad);
-	m[9] =  sinf(angle_rad);
-	m[10] = cosf(angle_rad);
-	m[15] = 1;
-}
 Mat4 MakeXRotMat4(float angle_rad)
 {
 	Mat4 res = {};
@@ -253,19 +245,7 @@ Mat4 MakeXRotMat4(float angle_rad)
 	return res;
 }
 
-void InitYRotMat4x4(float *m, float angle_rad/*pitch*/)
-{
-	for (int i = 0; i < 16; i++)
-	{
-		m[i] = 0;
-	}
-	m[0] =  cosf(angle_rad);
-	m[2] =  sinf(angle_rad);
-	m[5] =  1;
-	m[8] = -sinf(angle_rad);
-	m[10] = cosf(angle_rad);
-	m[15] = 1;
-}
+
 Mat4 MakeYRotMat4(float angle_rad)
 {
 	Mat4 res = {};
@@ -279,19 +259,6 @@ Mat4 MakeYRotMat4(float angle_rad)
 	return res;
 }
 
-void InitZRotMat4x4(float *m, float angle_rad/*yaw*/)
-{
-	for (int i = 0; i < 16; i++)
-	{
-		m[i] = 0;
-	}
-	m[0] =  cosf(angle_rad);
-	m[1] = -sinf(angle_rad);
-	m[4] =  sinf(angle_rad);
-	m[5] =  cosf(angle_rad);
-	m[10] = 1;
-	m[15] = 1;
-}
 Mat4 MakeZRotMat4(float angle_rad)
 {
 	Mat4 res = {};
@@ -305,20 +272,6 @@ Mat4 MakeZRotMat4(float angle_rad)
 	return res;
 }
 
-void InitTranslationMat4x4(float *m, float x, float y, float z)
-{
-	for (int i = 0; i < 16; i++)
-	{
-		m[i] = 0;
-	}
-	m[0] = 1;
-	m[5] = 1;
-	m[10] = 1;
-	m[12] = x;
-	m[13] = y;
-	m[14] = z;
-	m[15] = 1;
-}
 Mat4 MakeTranslationMat4(Vec3 v)
 {
 	Mat4 res = {};
@@ -332,17 +285,7 @@ Mat4 MakeTranslationMat4(Vec3 v)
 	return res;
 }
 
-void InitScaleMat4x4(float *m, float x, float y, float z)
-{
-	for (int i = 0; i < 16; i++)
-	{
-		m[i] = 0;
-	}
-	m[0] = x;
-	m[5] = y;
-	m[10] = z;
-	m[15] = 1;
-}
+
 Mat4 MakeScaleMat4(Vec3 v)
 {
 	Mat4 res = {};
@@ -353,40 +296,7 @@ Mat4 MakeScaleMat4(Vec3 v)
 	return res;
 }
 
-void InitPointAtMat4x4(float *m, Vec3 &pos, Vec3 &target, Vec3 &up)
-{
-	for (int i = 0; i < 16; i++)
-	{
-		m[i] = 0;
-	}
-	Vec3 new_forward;
-	Vec3 a;
-	Vec3 new_up;
-	Vec3 new_right;
-	
-	new_forward = target - pos;
-	Vec3Normalize(new_forward);
-	
-	a = new_forward * Vec3DotProd(up, new_forward);
-	new_up = up - a;
-	Vec3Normalize(new_up);
-	
-	new_right = Vec3CrossProd(new_up, new_forward);
-	
-	m[0] = new_right.x;
-	m[1] = new_right.y;
-	m[2] = new_right.z;
-	m[4] = new_up.x;
-	m[5] = new_up.y;
-	m[6] = new_up.z;
-	m[8] = new_forward.x;
-	m[9] = new_forward.y;
-	m[10] = new_forward.z;
-	m[12] = pos.x;
-	m[13] = pos.y;
-	m[14] = pos.z;
-	m[15] = 1;
-}
+
 Mat4 MakePointAtMat4(Vec3 pos, Vec3 target, Vec3 up)
 {
 	Mat4 res = {};
@@ -419,25 +329,6 @@ Mat4 MakePointAtMat4(Vec3 pos, Vec3 target, Vec3 up)
 }
 
 // NOTE: only works for rotation or translation matrices
-void Mat4x4QuickInverse(float *m, float *out)
-{
-	out[0] = m[0];
-	out[1] = m[4];
-	out[2] = m[8];
-	out[3] = 0.0f;
-	out[4] = m[1];
-	out[5] = m[5];
-	out[6] = m[9];
-	out[7] = 0.0f;
-	out[8] = m[2];
-	out[9] = m[6];
-	out[10] = m[10];
-	out[11] = 0.0f;
-	out[12] = -(m[12]*out[0] + m[13]*out[4] + m[14]*out[8]);
-	out[13] = -(m[12]*out[1] + m[13]*out[5] + m[14]*out[9]);
-	out[14] = -(m[12]*out[2] + m[13]*out[6] + m[14]*out[10]);
-	out[15] = 1.0f;
-}
 Mat4 QuickInverseMat4(Mat4 m)
 {
 	Mat4 res = {};
@@ -460,33 +351,7 @@ Mat4 QuickInverseMat4(Mat4 m)
 	return res;
 }
 
-void InitProjectionMat4x4(float *m, float fov, int is_fov_vertical, int screen_width, int screen_height, float z_near, float z_far)
-{
-	double pi = 3.1415926535;
-	float f = 1/tanf(fov*pi/180*0.5f);
-	float q = z_far/(z_far-z_near);
-	float aspect_ratio;
-	
-	for (int i = 0; i < 16; i++)
-	{
-		m[i] = 0;
-	}
-	
-	if (is_fov_vertical != 0)
-	{
-		aspect_ratio = (float)screen_height/screen_width;
-		m[0] = aspect_ratio*f;
-		m[5] = f;
-	} else {
-		aspect_ratio = (float)screen_width/screen_height;
-		m[0] = f;
-		m[5] = aspect_ratio*f;
-	}
-	
-	m[10] = q;
-	m[11] = 1;
-	m[14] = -q*z_near;
-}
+
 Mat4 MakeProjectionMat4(float fov, int is_fov_vertical, int screen_width, int screen_height, float z_near, float z_far)
 {
 	Mat4 res = {};
@@ -678,3 +543,175 @@ int ClipAgainstPlane(Vec3 plane_normal, Vec3 plane_point, Vec3 *points, int *poi
 	return -1;
 }
 
+/* UNUSED CODE
+// some row major matrix operations
+void MultiplyVecMat4x4(float *v_in, float *mat, float *v_out)
+{
+	for (int col = 0; col < 4; col++)
+	{
+		v_out[col] = 0;
+		for (int row = 0; row < 4; row++)
+		{
+			v_out[col] += mat[row*4+col]*v_in[row];
+		}
+	}
+}
+void InitPointAtMat4x4(float *m, Vec3 &pos, Vec3 &target, Vec3 &up)
+{
+	for (int i = 0; i < 16; i++)
+	{
+		m[i] = 0;
+	}
+	Vec3 new_forward;
+	Vec3 a;
+	Vec3 new_up;
+	Vec3 new_right;
+	
+	new_forward = target - pos;
+	Vec3Normalize(new_forward);
+	
+	a = new_forward * Vec3DotProd(up, new_forward);
+	new_up = up - a;
+	Vec3Normalize(new_up);
+	
+	new_right = Vec3CrossProd(new_up, new_forward);
+	
+	m[0] = new_right.x;
+	m[1] = new_right.y;
+	m[2] = new_right.z;
+	m[4] = new_up.x;
+	m[5] = new_up.y;
+	m[6] = new_up.z;
+	m[8] = new_forward.x;
+	m[9] = new_forward.y;
+	m[10] = new_forward.z;
+	m[12] = pos.x;
+	m[13] = pos.y;
+	m[14] = pos.z;
+	m[15] = 1;
+}
+void MultiplyMats4x4(float *m1, float *m2, float *out)
+{
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			out[i*4+j] = 0;
+			for (int k = 0; k < 4; k++)
+			{
+				out[i*4+j] += m1[i*4+k]*m2[k*4+j];
+			}
+		}
+	}
+}
+void InitXRotMat4x4(float *m, float angle_rad)
+{
+	for (int i = 0; i < 16; i++)
+	{
+		m[i] = 0;
+	}
+	m[0] = 1;
+	m[5] =  cosf(angle_rad);
+	m[6] = -sinf(angle_rad);
+	m[9] =  sinf(angle_rad);
+	m[10] = cosf(angle_rad);
+	m[15] = 1;
+}
+void InitYRotMat4x4(float *m, float angle_rad)
+{
+	for (int i = 0; i < 16; i++)
+	{
+		m[i] = 0;
+	}
+	m[0] =  cosf(angle_rad);
+	m[2] =  sinf(angle_rad);
+	m[5] =  1;
+	m[8] = -sinf(angle_rad);
+	m[10] = cosf(angle_rad);
+	m[15] = 1;
+}
+void InitZRotMat4x4(float *m, float angle_rad)
+{
+	for (int i = 0; i < 16; i++)
+	{
+		m[i] = 0;
+	}
+	m[0] =  cosf(angle_rad);
+	m[1] = -sinf(angle_rad);
+	m[4] =  sinf(angle_rad);
+	m[5] =  cosf(angle_rad);
+	m[10] = 1;
+	m[15] = 1;
+}
+void InitTranslationMat4x4(float *m, float x, float y, float z)
+{
+	for (int i = 0; i < 16; i++)
+	{
+		m[i] = 0;
+	}
+	m[0] = 1;
+	m[5] = 1;
+	m[10] = 1;
+	m[12] = x;
+	m[13] = y;
+	m[14] = z;
+	m[15] = 1;
+}
+void Mat4x4QuickInverse(float *m, float *out)
+{
+	out[0] = m[0];
+	out[1] = m[4];
+	out[2] = m[8];
+	out[3] = 0.0f;
+	out[4] = m[1];
+	out[5] = m[5];
+	out[6] = m[9];
+	out[7] = 0.0f;
+	out[8] = m[2];
+	out[9] = m[6];
+	out[10] = m[10];
+	out[11] = 0.0f;
+	out[12] = -(m[12]*out[0] + m[13]*out[4] + m[14]*out[8]);
+	out[13] = -(m[12]*out[1] + m[13]*out[5] + m[14]*out[9]);
+	out[14] = -(m[12]*out[2] + m[13]*out[6] + m[14]*out[10]);
+	out[15] = 1.0f;
+}
+void InitScaleMat4x4(float *m, float x, float y, float z)
+{
+	for (int i = 0; i < 16; i++)
+	{
+		m[i] = 0;
+	}
+	m[0] = x;
+	m[5] = y;
+	m[10] = z;
+	m[15] = 1;
+}
+void InitProjectionMat4x4(float *m, float fov, int is_fov_vertical, int screen_width, int screen_height, float z_near, float z_far)
+{
+	double pi = 3.1415926535;
+	float f = 1/tanf(fov*pi/180*0.5f);
+	float q = z_far/(z_far-z_near);
+	float aspect_ratio;
+	
+	for (int i = 0; i < 16; i++)
+	{
+		m[i] = 0;
+	}
+	
+	if (is_fov_vertical != 0)
+	{
+		aspect_ratio = (float)screen_height/screen_width;
+		m[0] = aspect_ratio*f;
+		m[5] = f;
+	} else {
+		aspect_ratio = (float)screen_width/screen_height;
+		m[0] = f;
+		m[5] = aspect_ratio*f;
+	}
+	
+	m[10] = q;
+	m[11] = 1;
+	m[14] = -q*z_near;
+}
+*/

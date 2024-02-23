@@ -79,8 +79,8 @@ int UpdateProjectImageRender(SharedState* state)
 	float ox = game_state->x_offset;
 	float oy = game_state->y_offset;
 	
-	FillPlatformBitBuffer(state->bitBuff, MakeColor(255,50,24,6)); // solid color
-	//DrawGradientScreen(state->bitBuff, 106, 104, 203, 255, 255, 255); // fancy vertical gradient
+	//FillPlatformBitBuffer(state->bitBuff, MakeColor(255,50,24,6)); // solid color
+	DrawGradientScreenv(state->bitBuff, {.45f, .45f, 0.9f}, {1.0f, 1.0f, 1.0f}); // fancy vertical gradient
 	
 	game_state->ent.accel = {};
 	if (((state->input_state['W'] & 0b1) == 0b1))

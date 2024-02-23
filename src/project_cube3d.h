@@ -24,7 +24,7 @@ typedef struct
 	size_t used;
 } MemoryArena;
 
-#define VEC3_STACK_COUNT 4096
+#define VEC3_STACK_COUNT 100000
 typedef struct
 {
 	
@@ -270,16 +270,16 @@ int InitProject3DCube(SharedState* state)
 	
 	char model_path[128];
 	char texture_path[128];
-	ConcatNT(state->asset_path, (char*)"cube.obj", model_path);
+	ConcatNT(state->asset_path, (char*)"model.obj", model_path);
 	//ConcatNT(state->asset_path, (char*)"test.bmp", texture_path);
-	ConcatNT(state->asset_path, (char*)"cube.ppm", texture_path);
+	ConcatNT(state->asset_path, (char*)"model.ppm", texture_path);
 	LoadFileOBJ(state, model_path, p_state->verts, &p_state->verts_count, p_state->tris, &p_state->tris_count,
 				p_state->tex_verts, &p_state->tex_verts_count, p_state->tris_tex_map, &p_state->tris_tex_map_count);
 	LoadPPMImage(state, (char*)texture_path, &p_state->image);
 
 	return 0;
 }
-
+//#include <intrin.h>
 int UpdateProject3DCube(SharedState* state)
 {
 	ProjectState3DCube *game_state = (ProjectState3DCube*)(state->project_memory);
@@ -287,7 +287,7 @@ int UpdateProject3DCube(SharedState* state)
 	
 	size_t memory_used = game_state->arena.used;
 	
-	
+	//u64 time_begin_frame = __rdtsc();
 	
 	float *depth_buffer;
 	depth_buffer = ArenaPushArray(&game_state->arena, state->client_width*state->client_height, float);
@@ -361,9 +361,6 @@ int UpdateProject3DCube(SharedState* state)
 	Mat4 proj_mat4 = MakeProjectionMat4(90.0f, 1, state->bitBuff->width, state->bitBuff->height, z_near, z_far);
 	Mat4 scale_mat4 = MakeScaleMat4({1, 1, 1});
 	
-	Mat4 combined_mat4;
-	Mat4 combined2_mat4;
-	
 	Vec4 target = {0.0f, 0.0f, 1.0f};
 	Vec4 target_rot_yx;
 	Vec3 target_final;
@@ -432,14 +429,16 @@ int UpdateProject3DCube(SharedState* state)
 	);*/
 	Mat4 translate_mat4 = MakeTranslationMat4({0.0f, 0.0f, 4.0f});
 	
-	combined_mat4 = scale_mat4 * MakeYRotMat4(game_state->cube_pitch) * MakeXRotMat4(game_state->cube_yaw) * translate_mat4;
+	Mat4 combined_mat4 = scale_mat4 * MakeYRotMat4(game_state->cube_pitch) * MakeXRotMat4(game_state->cube_yaw) * translate_mat4;
 	
+	//u64 time_begin_raster = __rdtsc();
 	//FillPlatformBitBuffer(state->bitBuff, MakeColor(255,25,12,6)); // solid color
-	DrawGradientScreen(state->bitBuff, 106, 104, 203, 255, 255, 255); // fancy vertical gradient
+	DrawGradientScreenv(state->bitBuff, {.45f, .45f, 0.9f}, {1.0f, 1.0f, 1.0f}); // fancy vertical gradient
 	
 	int clr = MakeColor(255,255,255,255);
 	
 	// Apply world transformations to vertices
+	//u64 time_begin_transform = __rdtsc();
 	for (int i = 0; i < game_state->verts_count; i++)
 	{
 		float *vx = game_state->verts[i].elem;
@@ -449,6 +448,7 @@ int UpdateProject3DCube(SharedState* state)
 	}
 	
 	// Apply view matrix
+	//u64 time_begin_view = __rdtsc();
 	for (int i = 0; i < verts_transformed_next_free; i++)
 	{
 		float *vx = verts_transformed[i].elem;
@@ -464,6 +464,7 @@ int UpdateProject3DCube(SharedState* state)
 		clipped_tex_verts[clipped_tex_verts_count++] = {vx[0], vx[1], 1.0f};
 	}
 	
+	//u64 time_begin_clip = __rdtsc();
 	int count = -1;
 	for (;count < game_state->tris_count-1;)
 	{
@@ -509,6 +510,7 @@ int UpdateProject3DCube(SharedState* state)
 		
 	}
 	
+	//u64 time_begin_proj = __rdtsc();
 	// Project 3D vertices onto 2D screen
 	int yac = 0;
 	while (yac < verts_viewed_next_free)
@@ -626,7 +628,14 @@ int UpdateProject3DCube(SharedState* state)
 		}
 		
 	}
-
+	/*u64 time_end = __rdtsc();
+	u64 time1 = -time_begin_frame + time_begin_raster;
+	u64 time12 = -time_begin_raster + time_begin_transform;
+	u64 time2 = -time_begin_transform + time_begin_view;
+	u64 time3 = -time_begin_view + time_begin_clip;
+	u64 time4 = -time_begin_clip + time_begin_proj;
+	u64 time5 = -time_begin_proj + time_end;
+	u64 time_frame = -time_begin_frame + time_end;*/
 	game_state->arena.used = memory_used;
 	
 	// Sound
