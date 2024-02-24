@@ -7,7 +7,6 @@ This project features:
 - back face culling
 - texturing
 - triangle edge clipping
-Order if triangle vertices is clockwise
 Project is single threaded and struggles to render high amount of triangles (~10 FPS while rendering ~50k triangles)
 2023/12/24, peshqa
 */
@@ -15,7 +14,7 @@ Project is single threaded and struggles to render high amount of triangles (~10
 
 #include "platform_simple_renderer.h"
 
-#include <list>
+//#include <list>
 
 typedef struct
 {
@@ -27,7 +26,7 @@ typedef struct
 #define VEC3_STACK_COUNT 100000
 typedef struct
 {
-	
+	// TODO: do something about this
 } Vec3Stack;
 
 typedef struct FreeListNode
@@ -202,13 +201,12 @@ void CheckFreeList(FreeList *list)
 	ASSERT(len == list->size);
 }
 
-
-
 typedef struct
 {
-	float x_offset;
-	float y_offset;
-	float z_offset;
+	//float x_offset;
+	//float y_offset;
+	//float z_offset;
+	Vec3 offset;
 	
 	int last_mouse_x;
 	int last_mouse_y;
@@ -240,9 +238,10 @@ typedef struct
 int InitProject3DCube(SharedState* state)
 {
 	ProjectState3DCube *p_state = (ProjectState3DCube *)state->project_memory;
-	p_state->x_offset = 0;
-	p_state->y_offset = 0;
-	p_state->z_offset = 0;
+	p_state->offset = {0, 0, 0};
+	//p_state->x_offset = 0;
+	//p_state->y_offset = 0;
+	//p_state->z_offset = 0;
 	
 	p_state->last_mouse_x = 0;
 	p_state->last_mouse_y = 0;
@@ -275,7 +274,9 @@ int InitProject3DCube(SharedState* state)
 	ConcatNT(state->asset_path, (char*)"model.ppm", texture_path);
 	LoadFileOBJ(state, model_path, p_state->verts, &p_state->verts_count, p_state->tris, &p_state->tris_count,
 				p_state->tex_verts, &p_state->tex_verts_count, p_state->tris_tex_map, &p_state->tris_tex_map_count);
-	LoadPPMImage(state, (char*)texture_path, &p_state->image);
+	/*oldLoadFileOBJ(state, model_path, p_state->verts, &p_state->verts_count, p_state->tris, &p_state->tris_count,
+				p_state->tex_verts, &p_state->tex_verts_count, p_state->tris_tex_map, &p_state->tris_tex_map_count);*/
+	LoadPPMImage(state, texture_path, &p_state->image);
 
 	return 0;
 }
@@ -370,41 +371,40 @@ int UpdateProject3DCube(SharedState* state)
 	float move_scale = 1.0f;
 	if (state->input_state['W'] & 1)
 	{
-		game_state->x_offset += target_rot_yx.x*delta_time*move_scale;
-		game_state->y_offset += target_rot_yx.y*delta_time*move_scale;
-		game_state->z_offset += target_rot_yx.z*delta_time*move_scale;
+		//game_state->x_offset += target_rot_yx.x*delta_time*move_scale;
+		//game_state->y_offset += target_rot_yx.y*delta_time*move_scale;
+		//game_state->z_offset += target_rot_yx.z*delta_time*move_scale;
+		game_state->offset += target_rot_yx.xyz*delta_time*move_scale;
 	}
 	if (state->input_state['A'] & 1)
 	{
-		game_state->z_offset += target_rot_yx.x*delta_time*move_scale;
+		game_state->offset.z += target_rot_yx.x*delta_time*move_scale;
 		//game_state->y_offset += target_rot_yx.y*delta_time*move_scale;
-		game_state->x_offset -= target_rot_yx.z*delta_time*move_scale;
+		game_state->offset.x -= target_rot_yx.z*delta_time*move_scale;
 	}
 	if (state->input_state['S'] & 1)
 	{
-		game_state->x_offset -= target_rot_yx.x*delta_time*move_scale;
-		game_state->y_offset -= target_rot_yx.y*delta_time*move_scale;
-		game_state->z_offset -= target_rot_yx.z*delta_time*move_scale;
+		game_state->offset -= target_rot_yx.xyz*delta_time*move_scale;
 	}
 	if (state->input_state['D'] & 1)
 	{
-		game_state->z_offset -= target_rot_yx.x*delta_time*move_scale;
+		game_state->offset.z -= target_rot_yx.x*delta_time*move_scale;
 		//game_state->y_offset -= target_rot_yx.y*delta_time*move_scale;
-		game_state->x_offset += target_rot_yx.z*delta_time*move_scale;
+		game_state->offset.x += target_rot_yx.z*delta_time*move_scale;
 	}
 	if (state->input_state[' '] & 1)
 	{
-		game_state->y_offset += delta_time*2*move_scale;
+		game_state->offset.y += delta_time*2*move_scale;
 	}
 	if (state->input_state[INPUT_LSHIFT] & 1)
 	{
-		game_state->y_offset -= delta_time*2*move_scale;
+		game_state->offset.y -= delta_time*2*move_scale;
 	}
 	
-	float ox = game_state->x_offset;
-	float oy = game_state->y_offset;
-	float oz = game_state->z_offset;
-	Vec3 pos = {ox, oy, oz};
+	//float ox = game_state->offset.x;
+	//float oy = game_state->offset.y;
+	//float oz = game_state->offset.z;
+	Vec3 pos = game_state->offset;
 	target_final = pos + target_rot_yx.xyz;
 	
 	Vec3 up = {0, 1, 0};

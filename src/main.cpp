@@ -69,7 +69,7 @@ static u32 PlatformWriteWholeFile(SharedState *s, char *filename, void *&p, size
 
 static int PlatformFreeFileMemory(SharedState *s, void *p)
 {
-	VirtualFree(p, 0, MEM_RELEASE);
+	return VirtualFree(p, 0, MEM_RELEASE);
 }
 
 static int InitDirectSound(HWND hwnd, int samples_per_size, int buffer_size, LPDIRECTSOUNDBUFFER  &secondary_buffer)

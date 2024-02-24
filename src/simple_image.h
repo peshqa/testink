@@ -44,6 +44,7 @@ static int TerminateImage(SimpleImage *image)
 	delete [] image->pixels;
 	return 0;
 }*/
+
 static char *FindNextToken(u32 str_size, char *str, u32 *leftover_size)
 {
 	for (u32 i = 0; i < str_size; i++)
@@ -64,7 +65,7 @@ static char *FindNextLine(u32 str_size, char *str, u32 *leftover_size)
 	{
 		if (str[i] == '\n' && i < str_size-1)
 		{
-			*leftover_size = str_size - i;
+			*leftover_size = str_size - i - 1;
 			return &str[i]+1;
 		}
 	}

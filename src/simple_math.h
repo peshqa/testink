@@ -7,9 +7,11 @@ simple_math.h - self explanatory header name
 #include <math.h>
 //#include <vector>
 
-#include <xmmintrin.h>
+#include <xmmintrin.h> // SIMD
 
 #define PI32 3.14159265359f
+
+#define ABS(a) ((a) > 0 ? (a) : -(a))
 
 typedef union
 {
@@ -31,6 +33,11 @@ typedef union
 	};
 	struct
 	{
+		float u;
+		float v;
+	};
+	struct
+	{
 		float width;
 		float height;
 	};
@@ -44,6 +51,12 @@ typedef union
 		float x;
 		float y;
 		float z;
+	};
+	struct
+	{
+		float u;
+		float v;
+		float w;
 	};
 	struct
 	{
@@ -106,6 +119,12 @@ Vec3 operator+(Vec3 a, Vec3 b)
 	return res;
 }
 
+Vec3 &operator+=(Vec3 &a, Vec3 b)
+{
+	a = a + b;
+	return a;
+}
+
 Vec2 operator-(Vec2 a, Vec2 b)
 {
 	Vec2 res;
@@ -120,6 +139,12 @@ Vec3 operator-(Vec3 a, Vec3 b)
 	res.y = a.y - b.y;
 	res.z = a.z - b.z;
 	return res;
+}
+
+Vec3 &operator-=(Vec3 &a, Vec3 b)
+{
+	a = a - b;
+	return a;
 }
 
 Vec2 operator*(Vec2 v, float f)

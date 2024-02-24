@@ -573,7 +573,7 @@ static void DrawSimpleCirclef(PlatformBitBuffer *bitBuff, float radiusf, Vec2 po
 	//PlatformFillRect(bitBuff, x_min, y_min, x_max, y_max, color32);
 }
 
-static int LoadFileOBJ(SharedState *s, char *filename_, Vec3 *points, int *points_count, Tri *triangles, int *triangles_count,
+static int oldLoadFileOBJ(SharedState *s, char *filename_, Vec3 *points, int *points_count, Tri *triangles, int *triangles_count,
 				Vec2 *tex_points, int *tex_points_count, Tri *texture_map, int *texture_map_count)
 {
 	int points_next_free = *points_count;
@@ -679,4 +679,211 @@ static int LoadFileOBJ(SharedState *s, char *filename_, Vec3 *points, int *point
 	*texture_map_count = texture_map_next_free;
 	
 	return 0;
+}
+static char *ParserAdvance(u32 str_size, char *str, u32 *leftover_size, u32 forward)
+{
+	u32 i = 0;
+	for (; i < str_size; i++)
+	{
+		if (forward == 0)
+		{
+			break;
+		}
+		forward--;
+	}
+	*leftover_size = str_size - i;
+	return &str[i];
+}
+static char *ParseFloat(u32 str_size, char *str, u32 *leftover_size, float *out)
+{
+	float result = 0.0f;
+	//double result = 0.0f;
+	u32 i = 0;
+	u32 exponent = 0;
+	u32 is_expo_neg = 0;
+	u32 digits_before_point = 0;
+	int before_point = 1;
+	int last_i;
+	int special_notation = 0;
+	int is_negative = 0;
+	if (str[0] == '-')
+	{
+		digits_before_point++;
+		is_negative = 1;
+		//str++;
+		i++;
+	}
+	for (; i < str_size; i++)
+	{
+		if ((str[i] == 'e' || str[i] == 'E') && (!special_notation))
+		{
+			// TODO: add a check for '+' ?
+			special_notation = 1;
+			last_i = i;
+			if (i < str_size - 1 && str[i+1] == '-')
+			{
+				i++;
+				is_expo_neg = 1;
+			}
+			
+			continue;
+		}
+		if (special_notation)
+		{
+			if (str[i] < '0' || str[i] > '9')
+			{
+				break;
+			}
+			exponent = exponent*10 + str[i] - '0';
+		}
+		else
+		{
+			if (str[i] == '.' && before_point)
+			{
+				before_point = 0;
+				continue;
+			}
+			if (str[i] < '0' || str[i] > '9')
+			{
+				last_i = i;
+				break;
+			}
+			if (before_point)
+			{
+				digits_before_point++;
+			}
+			result = result*10.0f + str[i] - '0';
+		}
+	}
+	if (digits_before_point != last_i)
+	{
+		float f = 1;
+		for (; digits_before_point < last_i-1; digits_before_point++)
+		{
+			f *= 10;
+		}
+		float e = 1.0f;
+		for (int a = 0; a < exponent; a++)
+		{
+			e *= 10;
+		}
+		if (is_expo_neg)
+		{
+			result /= e;
+		} else {
+			result *= e;
+		}
+		result /= f;
+	}
+	if (is_negative)
+	{
+		result = -result;
+	}
+	*out = (float)result;
+	*leftover_size = str_size - i;
+	return &str[i];
+}
+static int LoadFileOBJ(SharedState *s, char *filename, Vec3 *points, int *points_count, Tri *triangles, int *triangles_count,
+				Vec2 *tex_points, int *tex_points_count, Tri *texture_map, int *texture_map_count)
+{
+	int points_next_free = *points_count;
+	int triangles_next_free = *triangles_count;
+	int tex_points_next_free = *tex_points_count;
+	int texture_map_next_free = *texture_map_count;
+	
+	void *memory;
+	u32 memory_size = PlatformReadWholeFile(s, filename, memory);
+	u32 leftover_size = memory_size;
+	
+	if (memory_size == 0)
+	{
+		ASSERT(!"failed to open obj file");
+		return 0;
+	}
+	
+	char *line = (char*)memory;
+
+	while (leftover_size > 0)
+	{
+		if (line[0] == 'v' && line[1] == ' ')
+		{
+			// Vertex
+			line = ParserAdvance(leftover_size, line, &leftover_size, 2);
+			Vec3 vals;
+			//float test = (float)atof(line);
+			line = ParseFloat(leftover_size, line, &leftover_size, &vals.x);
+			line = FindNextToken(leftover_size, line, &leftover_size);
+			//float test2 = (float)atof(line);
+			line = ParseFloat(leftover_size, line, &leftover_size, &vals.y);
+			line = FindNextToken(leftover_size, line, &leftover_size);
+			//float test3 = (float)atof(line);
+			line = ParseFloat(leftover_size, line, &leftover_size, &vals.z);
+			//ASSERT(ABS( test - vals.x) < 0.000001f);
+			//ASSERT(ABS(test2 - vals.y) < 0.000001f);
+			//ASSERT(ABS(test3 - vals.z) < 0.000001f);
+			
+			points[points_next_free++] = vals;
+			//points[points_next_free++] = {test, test2, test3};
+		} else if (line[0] == 'v' && line[1] == 't' && line[2] == ' ') {
+			// Texture vertex
+			line = ParserAdvance(leftover_size, line, &leftover_size, 3);
+			Vec2 vals;
+			//float test = (float)atof(line);
+			line = ParseFloat(leftover_size, line, &leftover_size, &vals.u);
+			line = FindNextToken(leftover_size, line, &leftover_size);
+			//float test2 = (float)atof(line);
+			line = ParseFloat(leftover_size, line, &leftover_size, &vals.v);
+			//ASSERT(ABS( test - vals.u) < 0.000001f);
+			//ASSERT(ABS(test2 - vals.v) < 0.000001f);
+			
+			tex_points[tex_points_next_free++] = vals;
+			//tex_points[tex_points_next_free++] = {test, test2};
+		} else if (line[0] == 'v' && line[1] == 'n' && line[2] == ' ') {
+			// do nothing
+		} else if (line[0] == 'f' && line[1] == ' ') {
+			// Face
+			line = ParserAdvance(leftover_size, line, &leftover_size, 2);
+			Tri tri;
+			Tri tri_tex;
+			
+			for (int i = 0; i < 3; i++)
+			{
+				line = FindNextToken(leftover_size, line, &leftover_size);
+				//int test = atoi(line);
+				line = ParseInteger(leftover_size, line, &leftover_size, (u32*)&tri.elem[i]);
+				tri.elem[i]--;
+				//ASSERT(test == tri.elem[i]);
+				if (line[0] == '/')
+				{
+					line = ParserAdvance(leftover_size, line, &leftover_size, 1);
+					//int test = atoi(line);
+					line = ParseInteger(leftover_size, line, &leftover_size, (u32*)&tri_tex.elem[i]);
+					tri_tex.elem[i]--;
+					//ASSERT(test == tri_tex.elem[i]);
+					if (line[0] == '/')
+					{
+						// Normal information, ingore for now
+						u32 xD;
+						line = ParserAdvance(leftover_size, line, &leftover_size, 1);
+						line = ParseInteger(leftover_size, line, &leftover_size, &xD);
+					}
+				}
+			}
+			
+			triangles[triangles_next_free++] = tri;
+			texture_map[texture_map_next_free++] = tri_tex;
+		}
+		
+		line = FindNextLine(leftover_size, line, &leftover_size);
+	}
+	
+	//ASSERT(line < (char*)memory+memory_size);
+	//CloseAssetFile(s);
+	PlatformFreeFileMemory(s, memory);
+	*points_count = points_next_free;
+	*triangles_count = triangles_next_free;
+	*tex_points_count = tex_points_next_free;
+	*texture_map_count = texture_map_next_free;
+	
+	return 1;
 }
