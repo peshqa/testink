@@ -29,15 +29,29 @@ static int Concat(int src1_count, char* src1, int src2_count, char* src2, int de
 // NOTE: for null terminated strings
 static void ConcatNT(char* src1, char* src2, char* dest)
 {
-	while (*dest++ = *src1++);
+	while ((*dest++ = *src1++));
 	dest--;
-	while (*dest++ = *src2++);
+	while ((*dest++ = *src2++));
 }
 
 static int ConvertRelToPlain(float rel, int start, int end)
 {
 	int length = end - start;
 	return (int)(length)*rel + start;
+}
+
+static int PlatformDrawPixel(PlatformBitBuffer *bitBuff, int x, int y, int color)
+{
+	if (x < 0 || x >= bitBuff->width || y < 0 || y >= bitBuff->height)
+	{
+		return -1;
+	}
+	if (bitBuff->is_top_to_bottom)
+	{
+		y = bitBuff->height - y - 1;
+	}
+	((int*)(bitBuff->bits))[y*bitBuff->stride+x] = color;
+	return 0;
 }
 
 static int PlatformDrawLine(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2, int color)
@@ -886,4 +900,98 @@ static int LoadFileOBJ(SharedState *s, char *filename, Vec3 *points, int *points
 	*texture_map_count = texture_map_next_free;
 	
 	return 1;
+}
+
+static void DrawImage(PlatformBitBuffer *bitBuff, SimpleImage *image, int min_x, int min_y)
+{
+	for (int j = 0; j < image->height; j++)
+	{
+		for (int i = 0; i < image->width; i++)
+		{
+			PlatformDrawPixel(bitBuff, min_x+i, min_y+j, image->pixels[image->width*(image->height-j-1)+i]);
+		}
+	}
+}
+
+static void DrawImageExceptColor(PlatformBitBuffer *bitBuff, SimpleImage *image, int min_x, int min_y, int vanish_color)
+{
+	for (int j = 0; j < image->height; j++)
+	{
+		for (int i = 0; i < image->width; i++)
+		{
+			if ((image->pixels[image->width*(image->height-j-1)+i] & vanish_color) != vanish_color)
+				PlatformDrawPixel(bitBuff, min_x+i, min_y+j, image->pixels[image->width*(image->height-j-1)+i]);
+		}
+	}
+}
+
+static void DrawImageOnlyColor(PlatformBitBuffer *bitBuff, SimpleImage *image, int min_x, int min_y, int single_color)
+{
+	for (int j = 0; j < image->height; j++)
+	{
+		for (int i = 0; i < image->width; i++)
+		{
+			if (image->pixels[image->width*j+i] == single_color)
+				PlatformDrawPixel(bitBuff, min_x+i, min_y+j, single_color);
+		}
+	}
+}
+
+static int CharToBMPFontCharIndex(char c)
+{
+	if (c >= 'A' && c <= 'Z')
+	{
+		return c - 'A';
+	}
+	if (c >= 'a' && c <= 'z')
+	{
+		return c - 'a';
+	}
+	if (c >= '0' && c <= '9')
+	{
+		return c - '0' + 26;
+	}
+	if (c == ',' || c == '.')
+	{
+		return 37;
+	}
+	if (c == ':')
+	{
+		return 38;
+	}
+	if (c == '-')
+	{
+		return 39;
+	}
+	if (c == ' ')
+	{
+		return 36;
+	}
+	return -1;
+}
+
+static void DrawBMPFontChar(PlatformBitBuffer *bitBuff, SimpleImage *font, int min_x, int min_y, char c)
+{
+	int font_color = MakeColor(0, 0, 0, 0);
+	int index = CharToBMPFontCharIndex(c);
+	if (index < 0)
+	{
+		return;
+	}
+	for (int j = 0; j < font->height; j++)
+	{
+		for (int i = 0; i < 16; i++)
+		{
+			if (font->pixels[font->width*j+i+index*16] == font_color)
+				PlatformDrawPixel(bitBuff, min_x+i, min_y+j, font_color);
+		}
+	}
+}
+
+static void DrawBMPFontString(PlatformBitBuffer *bitBuff, SimpleImage *font, int min_x, int min_y, std::string &str)
+{
+	for (int i = 0; i < str.length(); i++)
+	{
+		DrawBMPFontChar(bitBuff, font, min_x + i*16, min_y, str[i]);
+	}
 }

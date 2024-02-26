@@ -62,8 +62,8 @@ int InitProjectImageRender(SharedState* state)
 	
 	char image_path[128];
 	char font_path[128];
-	ConcatNT(state->asset_path, "test.bmp", image_path);
-	ConcatNT(state->asset_path, "efortless_font_threshold.bmp", font_path);
+	ConcatNT(state->asset_path, (char*)"test.bmp", image_path);
+	ConcatNT(state->asset_path, (char*)"efortless_font_threshold.bmp", font_path);
 	
 	LoadBMPImage(state, image_path, &p_state->image);
 	LoadBMPImage(state, font_path, &p_state->font);
@@ -142,13 +142,14 @@ int UpdateProjectImageRender(SharedState* state)
 	game_state->x_offset += game_state->step_x * delta_time;
 	game_state->y_offset += game_state->step_y * delta_time;*/
 	
-	std::string test_string = std::to_string(delta_time);
+	//std::string test_string = std::to_string(delta_time);
+	/*std::string test_string = "";
 	test_string = "ft: " + test_string;
 	DrawBMPFontString(state->bitBuff, &game_state->font, 100, 170, test_string);
 	
-	test_string = std::to_string((int)(1.0f / delta_time));
+	//test_string = std::to_string((int)(1.0f / delta_time));
 	test_string = "FPS: " + test_string;
-	DrawBMPFontString(state->bitBuff, &game_state->font, 100, 190, test_string);
+	DrawBMPFontString(state->bitBuff, &game_state->font, 100, 190, test_string);*/
 	
 	
 	if (((state->input_state['W'] & 0b11) == 0b01))

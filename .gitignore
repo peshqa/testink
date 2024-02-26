@@ -1,6 +1,10 @@
 android/.gradle
 android/app/build
 android/app/.cxx
+android-native/.*
+android-native/build
+android-native/jniLibs
+android-native/obj
 build/.vs
 *.obj
 *.mtl

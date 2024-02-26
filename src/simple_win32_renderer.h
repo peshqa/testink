@@ -44,6 +44,7 @@ static int ResizePlatformBitBuffer(PlatformBitBuffer *p, int screenWidth, int sc
 {
 	p->width = screenWidth;
 	p->height = screenHeight;
+	p->stride = screenWidth;
 	
 	if (p->info != 0)
 	{
@@ -65,52 +66,9 @@ static int ResizePlatformBitBuffer(PlatformBitBuffer *p, int screenWidth, int sc
 	return 0;
 }
 
-static int PlatformDrawPixel(PlatformBitBuffer *bB, int x, int y, int color)
-{
-	W32BitBuffer *bitBuff = (W32BitBuffer*)bB;
-	if (x < 0 || x >= bitBuff->width || y < 0 || y >= bitBuff->height)
-	{
-		return -1;
-	}
-	((int*)(bitBuff->bits))[y*bitBuff->width+x] = color;
-	return 0;
-}
-
 static int MakeColor(int a, int r, int g, int b)
 {
 	return (a<<24) + (r<<16) + (g<<8) + b;
-}
-
-static int FillW32BitBuffer(W32BitBuffer *bitBuff, int color)
-{
-	for (int i = 0; i < bitBuff->width*bitBuff->height; i++)
-	{
-		((int*)bitBuff->bits)[i] = color;
-	}
-	
-	return 0;
-}
-
-static int GrayscaleW32BitBuffer(W32BitBuffer *bitBuff)
-{
-	for (int i = 0; i < bitBuff->width*bitBuff->height; i++)
-	{
-		int color = ((int*)(bitBuff->bits))[i];
-		color = (((color & 0x00FF0000) >> 16) + ((color & 0x0000FF00) >> 8) + (color & 0x000000FF)) / 3;
-		((int*)bitBuff->bits)[i] = color + (color << 8) + (color << 16);
-	}
-	
-	return 0;
-}
-static int RedW32BitBuffer(W32BitBuffer *bitBuff)
-{
-	for (int i = 0; i < bitBuff->width*bitBuff->height; i++)
-	{
-		int color = ((int*)(bitBuff->bits))[i];
-		((int*)bitBuff->bits)[i] = color & 0x00FF0000;
-	}
-	
-	return 0;
 }
 
 static int W32UpdateDisplay(HDC hdc, int screenWidth, int screenHeight, W32BitBuffer *bitBuff)

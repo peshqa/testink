@@ -427,7 +427,7 @@ int UpdateProject3DCube(SharedState* state)
 		atan2(2*(state->rot_vec_values[3]*state->rot_vec_values[0]+state->rot_vec_values[1]*state->rot_vec_values[2]),
 		1-2*(state->rot_vec_values[0]*state->rot_vec_values[0]+state->rot_vec_values[1]*state->rot_vec_values[1]))
 	);*/
-	Mat4 translate_mat4 = MakeTranslationMat4({0.0f, 0.0f, 4.0f});
+	Mat4 translate_mat4 = MakeTranslationMat4({0.0f, 0.0f, 1.0f});
 	
 	Mat4 combined_mat4 = scale_mat4 * MakeYRotMat4(game_state->cube_pitch) * MakeXRotMat4(game_state->cube_yaw) * translate_mat4;
 	

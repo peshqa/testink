@@ -6,8 +6,9 @@ simple_math.h - self explanatory header name
 
 #include <math.h>
 //#include <vector>
-
-#include <xmmintrin.h> // SIMD
+#if 0
+#include <xmmintrin.h> // SIMD / Intel Intrinsics
+#endif
 
 #define PI32 3.14159265359f
 
@@ -90,7 +91,9 @@ typedef union
 	};
 	float elem[4];
 	
+#if 0
 	__m128 simd;
+#endif
 } Vec4;
 
 // NOTE: matrices use column major order
@@ -223,6 +226,7 @@ Vec4 operator*(Vec4 vec, Mat4 mat)
 #endif
 	return res;
 }
+#if 0
 Vec4 operator*(Mat4 mat, Vec4 vec)
 {
 	Vec4 res; // TODO: verify the calculations are correct?
@@ -232,11 +236,12 @@ Vec4 operator*(Mat4 mat, Vec4 vec)
     res.simd = _mm_add_ps(res.simd, _mm_mul_ps(_mm_shuffle_ps(vec.simd, vec.simd, 0xff), mat.col[3].simd));
 	return vec * mat;
 }
+#endif
 
 Mat4 operator*(Mat4 left, Mat4 right)
 {
 	Mat4 res;
-#if 0
+#if 1
 	for (int i = 0; i < 4; i++)
 	{
 		for (int j = 0; j < 4; j++)

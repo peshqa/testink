@@ -15,6 +15,7 @@ typedef int64_t i64;
 typedef int32_t i32;
 typedef int16_t i16;
 typedef int8_t  i8;
+typedef int32_t b32;
 
 #ifdef ASSERT_ENABLE
 #define ASSERT(e) if(!(e)) { *(int*)0 = 0; }
@@ -63,8 +64,10 @@ struct PlatformBitBuffer
 {
 	int width;
 	int height;
+	int stride;
 	void *bits;
 	void *info;
+	b32 is_top_to_bottom;
 };
 
 struct PlatformSoundBuffer
@@ -124,7 +127,7 @@ int ReadAssetUntilSpaceA(SharedState *s, std::string &line);
 int CloseAssetFile(SharedState *s);
 
 int MakeColor(int a, int r, int g, int b);
-int PlatformDrawPixel(PlatformBitBuffer *bitBuff, int x, int y, int color);
+//int PlatformDrawPixel(PlatformBitBuffer *bitBuff, int x, int y, int color);
 int ResizePlatformBitBuffer(PlatformBitBuffer *p, int screenWidth, int screenHeight);
 int GrayscalePlatformBitBuffer(PlatformBitBuffer *bitBuff);
 int RedPlatformBitBuffer(PlatformBitBuffer *bitBuff);
