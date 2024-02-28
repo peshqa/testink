@@ -7,9 +7,7 @@ platform_simple_renderer.h - (platform independent) core of all smaller projects
 #include "simple_math.h"
 #include "platform_interface.h"
 
-#include <vector>
-#include <string>
-#include <algorithm>
+//#include <vector>
 
 #include "simple_image.h"
 
@@ -106,6 +104,7 @@ static int PlatformDrawLinef(PlatformBitBuffer *bitBuff, float x1, float y1, flo
 			color);
 }
 // util function to draw filled triangle
+/*
 static int PlatformGetLineXValues(int x1, int y1, int x2, int y2, std::vector<int> &v)
 {
 	int dx = abs(x2 - x1);
@@ -144,6 +143,7 @@ static int PlatformGetLineXValues(int x1, int y1, int x2, int y2, std::vector<in
 	v.push_back(last_x);
 	return 0;
 }
+*/
 static int DrawHorizontalLine(PlatformBitBuffer *bitBuff, int x1, int x2, int y, int color)
 {
 	int tmp;
@@ -199,6 +199,7 @@ static void DrawGradientScreenv(PlatformBitBuffer *bitBuff, Vec3 start_rgb, Vec3
 		}
 	}
 }
+/*
 static int FillTriangle(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2, int x3, int y3, int color)
 {
 	// Sort the points so that y1 <= y2 <= y3
@@ -248,6 +249,19 @@ static int FillTriangle(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int 
 	
 	return 0;
 }
+*/
+static void Swap(int *one, int *two)
+{
+	int temp = *one;
+	*one = *two;
+	*two = temp;
+}
+static void Swap(float *one, float *two)
+{
+	float temp = *one;
+	*one = *two;
+	*two = temp;
+}
 static int TextureTriangle(PlatformBitBuffer *bitBuff,
 					int x1, int y1, float u1, float v1, float w1,
 					int x2, int y2, float u2, float v2, float w2,
@@ -256,30 +270,30 @@ static int TextureTriangle(PlatformBitBuffer *bitBuff,
 {
 	if (y2 < y1)
 	{
-		std::swap(x1, x2);
-		std::swap(y1, y2);
+		Swap(&x1, &x2);
+		Swap(&y1, &y2);
 		
-		std::swap(u1, u2);
-		std::swap(v1, v2);
-		std::swap(w1, w2);
+		Swap(&u1, &u2);
+		Swap(&v1, &v2);
+		Swap(&w1, &w2);
 	}
 	if (y3 < y1)
 	{
-		std::swap(x1, x3);
-		std::swap(y1, y3);
+		Swap(&x1, &x3);
+		Swap(&y1, &y3);
 		
-		std::swap(u1, u3);
-		std::swap(v1, v3);
-		std::swap(w1, w3);
+		Swap(&u1, &u3);
+		Swap(&v1, &v3);
+		Swap(&w1, &w3);
 	}
 	if (y3 < y2)
 	{
-		std::swap(x2, x3);
-		std::swap(y2, y3);
-		
-		std::swap(u2, u3);
-		std::swap(v2, v3);
-		std::swap(w2, w3);
+		Swap(&x2, &x3);
+		Swap(&y2, &y3);
+
+		Swap(&u2, &u3);
+		Swap(&v2, &v3);
+		Swap(&w2, &w3);
 	}
 
 	int dy1 = y2 - y1;
@@ -334,10 +348,10 @@ static int TextureTriangle(PlatformBitBuffer *bitBuff,
 
 			if (ax > bx)
 			{
-				std::swap(ax, bx);
-				std::swap(tex_su, tex_eu);
-				std::swap(tex_sv, tex_ev);
-				std::swap(tex_sw, tex_ew);
+				Swap(&ax, &bx);
+				Swap(&tex_su, &tex_eu);
+				Swap(&tex_sv, &tex_ev);
+				Swap(&tex_sw, &tex_ew);
 			}
 
 			tex_u = tex_su;
@@ -398,10 +412,10 @@ static int TextureTriangle(PlatformBitBuffer *bitBuff,
 
 			if (ax > bx)
 			{
-				std::swap(ax, bx);
-				std::swap(tex_su, tex_eu);
-				std::swap(tex_sv, tex_ev);
-				std::swap(tex_sw, tex_ew);
+				Swap(&ax, &bx);
+				Swap(&tex_su, &tex_eu);
+				Swap(&tex_sv, &tex_ev);
+				Swap(&tex_sw, &tex_ew);
 			}
 
 			tex_u = tex_su;
@@ -430,6 +444,7 @@ static int TextureTriangle(PlatformBitBuffer *bitBuff,
 	}	
 	return 0;
 }
+/*
 static int FillTrianglef(PlatformBitBuffer *bitBuff, float x1, float y1, float x2, float y2, float x3, float y3, int color)
 {
 	int end_x = bitBuff->width;
@@ -443,6 +458,7 @@ static int FillTrianglef(PlatformBitBuffer *bitBuff, float x1, float y1, float x
 			ConvertRelToPlain(y3, 0, end_y),
 			color);
 }
+*/
 static int TextureTrianglef(PlatformBitBuffer *bitBuff,
 					float x1, float y1, float u1, float v1, float w1,
 					float x2, float y2, float u2, float v2, float w2,
@@ -586,7 +602,7 @@ static void DrawSimpleCirclef(PlatformBitBuffer *bitBuff, float radiusf, Vec2 po
 	}
 	//PlatformFillRect(bitBuff, x_min, y_min, x_max, y_max, color32);
 }
-
+/*
 static int oldLoadFileOBJ(SharedState *s, char *filename_, Vec3 *points, int *points_count, Tri *triangles, int *triangles_count,
 				Vec2 *tex_points, int *tex_points_count, Tri *texture_map, int *texture_map_count)
 {
@@ -693,7 +709,7 @@ static int oldLoadFileOBJ(SharedState *s, char *filename_, Vec3 *points, int *po
 	*texture_map_count = texture_map_next_free;
 	
 	return 0;
-}
+}*/
 static char *ParserAdvance(u32 str_size, char *str, u32 *leftover_size, u32 forward)
 {
 	u32 i = 0;
@@ -988,9 +1004,9 @@ static void DrawBMPFontChar(PlatformBitBuffer *bitBuff, SimpleImage *font, int m
 	}
 }
 
-static void DrawBMPFontString(PlatformBitBuffer *bitBuff, SimpleImage *font, int min_x, int min_y, std::string &str)
+static void DrawBMPFontString(PlatformBitBuffer *bitBuff, SimpleImage *font, int min_x, int min_y, char *str, int str_count)
 {
-	for (int i = 0; i < str.length(); i++)
+	for (int i = 0; i < str_count; i++)
 	{
 		DrawBMPFontChar(bitBuff, font, min_x + i*16, min_y, str[i]);
 	}

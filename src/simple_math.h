@@ -5,9 +5,13 @@ simple_math.h - self explanatory header name
 #pragma once
 
 #include <math.h>
-//#include <vector>
-#if 0
+
+#ifdef USING_SIMD_SSE
 #include <xmmintrin.h> // SIMD / Intel Intrinsics
+#endif
+
+#ifdef USING_SIMD_NEON
+#include <arm_neon.h>
 #endif
 
 #define PI32 3.14159265359f
@@ -183,6 +187,24 @@ Vec3 operator/(Vec3 v, float f)
 	res.x = v.x / f;
 	res.y = v.y / f;
 	res.z = v.z / f;
+	return res;
+}
+
+Vec3 MakeVec3(float x, float y, float z)
+{
+	Vec3 res;
+	res.x = x;
+	res.y = y;
+	res.z = z;
+	return res;
+}
+Vec4 MakeVec4(float x, float y, float z, float w)
+{
+	Vec4 res;
+	res.x = x;
+	res.y = y;
+	res.z = z;
+	res.w = w;
 	return res;
 }
 

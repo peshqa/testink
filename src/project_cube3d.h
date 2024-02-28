@@ -221,7 +221,6 @@ typedef struct
 	
 	SimpleImage image;
 	
-	std::vector<int*> tri_tex_map;
 	Tri* tris;
 	int tris_count;
 	Tri* tris_tex_map;
@@ -239,9 +238,6 @@ int InitProject3DCube(SharedState* state)
 {
 	ProjectState3DCube *p_state = (ProjectState3DCube *)state->project_memory;
 	p_state->offset = {0, 0, 0};
-	//p_state->x_offset = 0;
-	//p_state->y_offset = 0;
-	//p_state->z_offset = 0;
 	
 	p_state->last_mouse_x = 0;
 	p_state->last_mouse_y = 0;
@@ -360,7 +356,7 @@ int UpdateProject3DCube(SharedState* state)
 	float z_near = 0.01f;
 	float z_far = 1000.0f;
 	Mat4 proj_mat4 = MakeProjectionMat4(90.0f, 1, state->bitBuff->width, state->bitBuff->height, z_near, z_far);
-	Mat4 scale_mat4 = MakeScaleMat4({1, 1, 1});
+	//Mat4 scale_mat4 = MakeScaleMat4({1, 1, 1});
 	
 	Vec4 target = {0.0f, 0.0f, 1.0f};
 	Vec4 target_rot_yx;
@@ -427,9 +423,8 @@ int UpdateProject3DCube(SharedState* state)
 		atan2(2*(state->rot_vec_values[3]*state->rot_vec_values[0]+state->rot_vec_values[1]*state->rot_vec_values[2]),
 		1-2*(state->rot_vec_values[0]*state->rot_vec_values[0]+state->rot_vec_values[1]*state->rot_vec_values[1]))
 	);*/
-	Mat4 translate_mat4 = MakeTranslationMat4({0.0f, 0.0f, 1.0f});
-	
-	Mat4 combined_mat4 = scale_mat4 * MakeYRotMat4(game_state->cube_pitch) * MakeXRotMat4(game_state->cube_yaw) * translate_mat4;
+	//Mat4 translate_mat4 = MakeTranslationMat4({0.0f, 0.0f, 1.0f});
+	Mat4 combined_mat4 = MakeScaleMat4({1, 1, 1}) * MakeYRotMat4(game_state->cube_pitch) * MakeXRotMat4(game_state->cube_yaw) * MakeTranslationMat4({0.0f, 0.0f, 1.0f});
 	
 	//u64 time_begin_raster = __rdtsc();
 	//FillPlatformBitBuffer(state->bitBuff, MakeColor(255,25,12,6)); // solid color
@@ -442,8 +437,7 @@ int UpdateProject3DCube(SharedState* state)
 	for (int i = 0; i < game_state->verts_count; i++)
 	{
 		float *vx = game_state->verts[i].elem;
-		Vec4 vec = {vx[0], vx[1], vx[2], 1};
-		vec = vec * combined_mat4;
+		Vec4 vec = MakeVec4(vx[0], vx[1], vx[2], 1) * combined_mat4;
 		verts_transformed[verts_transformed_next_free++] = vec.xyz;
 	}
 	
@@ -452,7 +446,7 @@ int UpdateProject3DCube(SharedState* state)
 	for (int i = 0; i < verts_transformed_next_free; i++)
 	{
 		float *vx = verts_transformed[i].elem;
-		Vec4 vec = {vx[0], vx[1], vx[2], 1};
+		Vec4 vec = MakeVec4(vx[0], vx[1], vx[2], 1);
 		vec = vec * look_at_mat4;
 		
 		verts_viewed[verts_viewed_next_free++] = vec.xyz;
@@ -461,7 +455,7 @@ int UpdateProject3DCube(SharedState* state)
 	for (int i = 0; i < game_state->tex_verts_count; i++)
 	{
 		float *vx = game_state->tex_verts[i].elem;
-		clipped_tex_verts[clipped_tex_verts_count++] = {vx[0], vx[1], 1.0f};
+		clipped_tex_verts[clipped_tex_verts_count++] = MakeVec3(vx[0], vx[1], 1.0f);
 	}
 	
 	//u64 time_begin_clip = __rdtsc();
@@ -471,19 +465,15 @@ int UpdateProject3DCube(SharedState* state)
 		count++;
 		int *tri = game_state->tris[count].elem;
 		int line_color = MakeColor(255, 120, 255, 120);
-		Vec3 norm;
-		Vec3 v1;
-		Vec3 v2;
-		v1 = verts_transformed[tri[1]] - verts_transformed[tri[0]];
-		v2 = verts_transformed[tri[2]] - verts_transformed[tri[0]];
-		norm = Vec3Normalize(Vec3CrossProd(v1, v2));
+		Vec3 v1 = verts_transformed[tri[1]] - verts_transformed[tri[0]];
+		Vec3 v2 = verts_transformed[tri[2]] - verts_transformed[tri[0]];
+		Vec3 norm = Vec3Normalize(Vec3CrossProd(v1, v2));
 
 		if (Vec3DotProd(norm, verts_transformed[tri[0]] - pos) <= 0)
 		{
 			// Simple directional lighting
-			Vec3 light_dir = {0.0f, 0.0f, -1.0f};
-			light_dir = Vec3Normalize(light_dir);
-			float koef = abs(Vec3DotProd(norm, light_dir));
+			Vec3 light_dir = Vec3Normalize(MakeVec3(0.0f, 0.0f, -1.0f));
+			float koef = fabs(Vec3DotProd(norm, light_dir));
 			if (koef < 0.01f)
 				koef = 0.01f;
 			Vec3 tri_color = {koef, koef, koef};

@@ -5,7 +5,8 @@ also defines some enums and macros
 */
 #pragma once
 
-#include <string>
+//#include <string>
+#include <stdint.h>
 
 typedef uint64_t u64;
 typedef uint32_t u32;
@@ -16,6 +17,15 @@ typedef int32_t i32;
 typedef int16_t i16;
 typedef int8_t  i8;
 typedef int32_t b32;
+
+// figure out if SIMD is supported
+#ifdef _MSC_VER // ms compiler is being used
+#define USING_SIMD_SSE 1
+#else // assume it's clang
+#ifdef __ARM_NEON
+#define USING_SIMD_NEON 1
+#endif //__ARM_NEON
+#endif //_MSC_VER
 
 #ifdef ASSERT_ENABLE
 #define ASSERT(e) if(!(e)) { *(int*)0 = 0; }
@@ -120,11 +130,11 @@ u32 PlatformReadWholeFile(SharedState *s, char *filename, void *&p);
 int PlatformFreeFileMemory(SharedState *s, void *p);
 
 // TODO: to be removed/reimplemented
-int OpenAssetFileA(SharedState *s, std::string &filename);
+/*int OpenAssetFileA(SharedState *s, std::string &filename);
 int ReadAssetLineA(SharedState *s, std::string &line);
 int ReadAssetBytesA(SharedState *s, char *buf, unsigned int bytes);
 int ReadAssetUntilSpaceA(SharedState *s, std::string &line);
-int CloseAssetFile(SharedState *s);
+int CloseAssetFile(SharedState *s);*/
 
 int MakeColor(int a, int r, int g, int b);
 //int PlatformDrawPixel(PlatformBitBuffer *bitBuff, int x, int y, int color);

@@ -5,6 +5,8 @@ snake_game.h - good old snake game made for coding practice
 #pragma once
 #include "double_linked_list.h"
 
+#include <stdlib.h> // to use rand()
+
 typedef struct
 {
 	int x;
