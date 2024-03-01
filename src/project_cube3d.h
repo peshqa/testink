@@ -265,9 +265,9 @@ int InitProject3DCube(SharedState* state)
 	
 	char model_path[128];
 	char texture_path[128];
-	ConcatNT(state->asset_path, (char*)"model.obj", model_path);
+	ConcatNT(state->asset_path, (char*)"cube.obj", model_path);
 	//ConcatNT(state->asset_path, (char*)"test.bmp", texture_path);
-	ConcatNT(state->asset_path, (char*)"model.ppm", texture_path);
+	ConcatNT(state->asset_path, (char*)"cube.ppm", texture_path);
 	LoadFileOBJ(state, model_path, p_state->verts, &p_state->verts_count, p_state->tris, &p_state->tris_count,
 				p_state->tex_verts, &p_state->tex_verts_count, p_state->tris_tex_map, &p_state->tris_tex_map_count);
 	/*oldLoadFileOBJ(state, model_path, p_state->verts, &p_state->verts_count, p_state->tris, &p_state->tris_count,
@@ -424,7 +424,7 @@ int UpdateProject3DCube(SharedState* state)
 		1-2*(state->rot_vec_values[0]*state->rot_vec_values[0]+state->rot_vec_values[1]*state->rot_vec_values[1]))
 	);*/
 	//Mat4 translate_mat4 = MakeTranslationMat4({0.0f, 0.0f, 1.0f});
-	Mat4 combined_mat4 = MakeScaleMat4({1, 1, 1}) * MakeYRotMat4(game_state->cube_pitch) * MakeXRotMat4(game_state->cube_yaw) * MakeTranslationMat4({0.0f, 0.0f, 1.0f});
+	Mat4 combined_mat4 = MakeScaleMat4({1, 1, 1}) * MakeYRotMat4(game_state->cube_pitch) * MakeXRotMat4(game_state->cube_yaw) * MakeTranslationMat4({0.0f, 0.0f, 4.0f});
 	
 	//u64 time_begin_raster = __rdtsc();
 	//FillPlatformBitBuffer(state->bitBuff, MakeColor(255,25,12,6)); // solid color

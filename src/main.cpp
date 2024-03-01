@@ -16,6 +16,34 @@ Console isn't used by the app (initially), so 'wWinMain' is the main function.
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter);
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
+static void InitOpenGL(HWND hwnd)
+{
+	HDC hdc = GetDC(hwnd);
+	PIXELFORMATDESCRIPTOR desire = {};
+	desire.nSize = sizeof(desire);
+	desire.nVersion = 1;
+	desire.iPixelType = PFD_TYPE_RGBA;
+	desire.dwFlags = PFD_SUPPORT_OPENGL|PFD_DRAW_TO_WINDOW|PFD_DOUBLEBUFFER;
+	desire.cColorBits = 32;
+	desire.cAlphaBits = 8;
+	//desire.cDepthBits = 24;
+	desire.iLayerType = PFD_MAIN_PLANE;
+	
+	int suggestion_index = ChoosePixelFormat(hdc, &desire);
+	
+	PIXELFORMATDESCRIPTOR suggestion;
+    DescribePixelFormat(hdc, suggestion_index, sizeof(suggestion), &suggestion);
+    SetPixelFormat(hdc, suggestion_index, &suggestion);
+
+	HGLRC opengl_context = wglCreateContext(hdc);
+	if (!wglMakeCurrent(hdc, opengl_context))
+	{
+		//DWORD error = GetLastError();
+		ASSERT(0);
+	}
+	ReleaseDC(hwnd, hdc);
+}
+
 // NOTE: not made for files bigger than 4GB (ReadFilee uses DWORD)
 // returns 0 if failed (no memory commited)
 static u32 PlatformReadWholeFile(SharedState *s, char *filename, void *&p)
@@ -285,12 +313,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     // Register the window class.
     const wchar_t CLASS_NAME[]  = L"Main Window Class";
     
-    WNDCLASS wc = { };
+    WNDCLASS wc = {};
 
     wc.lpfnWndProc   = WindowProc;
     wc.hInstance     = hInstance;
     wc.lpszClassName = CLASS_NAME;
-	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wc.style = CS_OWNDC;
+	wc.hCursor = LoadCursor(0, IDC_ARROW);
 
     RegisterClass(&wc);
 
@@ -305,16 +334,17 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         // position and size
         100, 100, window_rect.right - window_rect.left, window_rect.bottom - window_rect.top,
 
-        NULL,       // Parent window    
-        NULL,       // Menu
+        0,       // Parent window    
+        0,       // Menu
         hInstance,  // Instance handle
-        NULL        // Additional application data
-        );
+        0);        // Additional application data
 
     if (!hwnd)
     {
         return -2;
     }
+	
+	InitOpenGL(hwnd);
 
 	((W32Extra*)(shared_state.extra))->main_window = hwnd;
 	SetWindowLongPtrW(
@@ -323,7 +353,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		(LONG_PTR)&shared_state
 	);
 
-	PlatformGoBorderlessFullscreen(&shared_state);
+	//PlatformGoBorderlessFullscreen(&shared_state);
 	
 	// Sound stuff
 	LPDIRECTSOUNDBUFFER sound_buffer;

@@ -13,22 +13,11 @@ simple_win32_renderer.h - (Windows specific) core of all smaller projects that d
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <Windowsx.h>
-#include <stdlib.h>
-#include <string>
-#include <vector>
+//#include <stdlib.h>
+//#include <string>
+//#include <vector>
 
-//#include "project.h"
-
-//#pragma comment (lib, "Gdi32.lib")
-//#pragma comment (lib, "User32.lib")
-
-typedef struct
-{
-	int width;
-	int height;
-	void *bits;
-	BITMAPINFO info;
-} W32BitBuffer;
+#include <gl/gl.h>
 
 typedef struct
 {
@@ -71,31 +60,13 @@ static int MakeColor(int a, int r, int g, int b)
 	return (a<<24) + (r<<16) + (g<<8) + b;
 }
 
-static int W32UpdateDisplay(HDC hdc, int screenWidth, int screenHeight, W32BitBuffer *bitBuff)
-{
-	int res = StretchDIBits(
-	  hdc,
-	  0,
-	  0,
-	  screenWidth,
-	  screenHeight,
-	  0,
-	  0,
-	  bitBuff->width,
-	  bitBuff->height,
-	  bitBuff->bits,
-	  &bitBuff->info,
-	  DIB_RGB_COLORS,
-	  SRCCOPY
-	);
-	
-	return res;
-}
 static int PlatformUpdateDisplay(SharedState* state, int screenWidth, int screenHeight)
 {
 	PlatformBitBuffer *bitBuff = state->bitBuff;
 	W32Extra *extra = (W32Extra*)(state->extra);
 	HDC hdc = extra->hdc;
+	
+#if 0
 	int res = StretchDIBits(
 	  hdc,
 	  0,
@@ -111,8 +82,64 @@ static int PlatformUpdateDisplay(SharedState* state, int screenWidth, int screen
 	  DIB_RGB_COLORS,
 	  SRCCOPY
 	);
+#else
+	glViewport(0, 0, screenWidth, screenHeight);
+
+	GLuint tex = 0;
+	static int init = 0;
+	if (!init)
+	{
+		glGenTextures(1, &tex);
+		init = 1;
+	}
 	
-	return res;
+	glBindTexture(GL_TEXTURE_2D, tex);
+	
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, bitBuff->width, bitBuff->height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, bitBuff->bits);
+	
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_PRIORITY, 0);
+	
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+	
+	glEnable(GL_TEXTURE_2D);
+
+	glClearColor(1.0f, 1.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+	
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	
+	glBegin(GL_TRIANGLES);
+	
+	glColor3f(1.0f, 1.0f, 1.0f);
+	glTexCoord2f(0.0f, 0.0f);
+	glVertex2i(-1, -1);
+	glTexCoord2f(1.0f, 0.0f);
+	glVertex2i(1, -1);
+	glTexCoord2f(1.0f, 1.0f);
+	glVertex2i(1, 1);
+	
+	glTexCoord2f(0.0f, 0.0f);
+	glVertex2i(-1, -1);
+	glTexCoord2f(1.0f, 1.0f);
+	glVertex2i(1, 1);
+	glTexCoord2f(0.0f, 1.0f);
+	glVertex2i(-1, 1);
+	
+	glEnd();
+	
+	SwapBuffers(hdc);
+#endif
+	
+	return 0;
 }
 
 static int Win32GoBorderlessFullscreen(HWND hwnd)
@@ -362,7 +389,7 @@ int InitSharedState(SharedState *shared_state)
 	// TODO: implement uninitializer TerminateSharedState
 }
 
-
+/*
 static int OpenAssetFileA(SharedState *s, std::string &filename)
 {
 	W32Extra *extra = (W32Extra*)(s->extra);
@@ -391,4 +418,4 @@ static int CloseAssetFile(SharedState *s)
 	W32Extra *extra = (W32Extra*)(s->extra);
 	extra->file.close();
 	return 0;
-}
+}*/
