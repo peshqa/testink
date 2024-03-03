@@ -367,12 +367,14 @@ static int TextureTriangle(PlatformBitBuffer *bitBuff,
 				tex_v = (1.0f - t) * tex_sv + t * tex_ev;
 				tex_w = (1.0f - t) * tex_sw + t * tex_ew;
 				
-				if (tex_w > depth_buffer[i*bitBuff->width + j])
+				if (depth_buffer && tex_w > depth_buffer[i*bitBuff->width + j])
 				{
 					int color = SampleTexture(img, tex_u / tex_w, tex_v / tex_w);
 					//color = 0xFFFFFFFF;
 					PlatformDrawPixel(bitBuff, j, i, color);
 					depth_buffer[i*bitBuff->width + j] = tex_w;
+				} else {
+					PlatformDrawPixel(bitBuff, j, i, 0xFFFFFFFF);
 				}
 				
 				t += tstep;
@@ -431,12 +433,14 @@ static int TextureTriangle(PlatformBitBuffer *bitBuff,
 				tex_v = (1.0f - t) * tex_sv + t * tex_ev;
 				tex_w = (1.0f - t) * tex_sw + t * tex_ew;
 				
-				if (tex_w > depth_buffer[i*bitBuff->width + j])
+				if (depth_buffer && tex_w > depth_buffer[i*bitBuff->width + j])
 				{
 					int color = SampleTexture(img, tex_u / tex_w, tex_v / tex_w);
 					//color = 0;
 					PlatformDrawPixel(bitBuff, j, i, color);
 					depth_buffer[i*bitBuff->width + j] = tex_w;
+				} else {
+					PlatformDrawPixel(bitBuff, j, i, 0xFFFFFFFF);
 				}
 				t += tstep;
 			}
@@ -1010,4 +1014,78 @@ static void DrawBMPFontString(PlatformBitBuffer *bitBuff, SimpleImage *font, int
 	{
 		DrawBMPFontChar(bitBuff, font, min_x + i*16, min_y, str[i]);
 	}
+}
+
+/**********************************************************************/
+// Command buffer stuff
+/**********************************************************************/
+typedef struct
+{
+	u32 command_type;
+} CommandHeader;
+
+typedef struct
+{
+	Vec4 color;
+} Command_Clear;
+
+typedef struct
+{
+	Vec4 color;
+	Vec3 points[3];
+	Vec3 tex_points[3];
+} Command_Triangle;
+
+void ClearCommandBuffer(CommandBuffer *cmdBuff)
+{
+	cmdBuff->used = 0;
+	cmdBuff->cmd_count = 0;
+}
+
+// returns a pointer to a command struct
+u8* PushCommand(CommandBuffer *cmdBuff, u32 command_type)
+{
+	CommandHeader *header = (CommandHeader*)(cmdBuff->base_memory + cmdBuff->used);
+	header->command_type = command_type;
+	cmdBuff->used += sizeof(*header);
+	
+	u8 *cmd = cmdBuff->base_memory + cmdBuff->used;
+	
+	switch (command_type)
+	{
+		case COMMAND_TYPE_CLEAR:
+		{
+			cmdBuff->used += sizeof(Command_Clear);
+		} break;
+		
+		case COMMAND_TYPE_TRIANGLE:
+		{
+			cmdBuff->used += sizeof(Command_Triangle);
+		} break;
+		
+		default: ASSERT(0); break;
+	}
+	
+	ASSERT(cmdBuff->used <= cmdBuff->max_size);
+	cmdBuff->cmd_count++;
+	return cmd;
+}
+
+void ClearCommand(CommandBuffer *cmdBuff, Vec4 color)
+{
+	Command_Clear *cmd = (Command_Clear*)PushCommand(cmdBuff, COMMAND_TYPE_CLEAR);
+	cmd->color = color;
+}
+
+// TODO: Vec3* tex_pts or Vec2* tex_pts?
+void TriangleCommand(CommandBuffer *cmdBuff, Vec4 color, Vec3* pts, Tri tri, Vec3* tex_pts, Tri tex_tri)
+{
+	Command_Triangle *cmd = (Command_Triangle*)PushCommand(cmdBuff, COMMAND_TYPE_TRIANGLE);
+	cmd->color = color;
+	cmd->points[0] = pts[tri.p1];
+	cmd->points[1] = pts[tri.p2];
+	cmd->points[2] = pts[tri.p3];
+	cmd->tex_points[0] = tex_pts[tex_tri.p1];
+	cmd->tex_points[1] = tex_pts[tex_tri.p2];
+	cmd->tex_points[2] = tex_pts[tex_tri.p3];
 }

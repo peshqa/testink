@@ -82,7 +82,7 @@ static int PlatformUpdateDisplay(SharedState* state, int screenWidth, int screen
 	  DIB_RGB_COLORS,
 	  SRCCOPY
 	);
-#else
+#elif 0
 	glViewport(0, 0, screenWidth, screenHeight);
 
 	GLuint tex = 0;
@@ -135,21 +135,13 @@ static int PlatformUpdateDisplay(SharedState* state, int screenWidth, int screen
 	glVertex2i(-1, 1);
 	
 	glEnd();
-	
+#else
 	SwapBuffers(hdc);
 #endif
 	
 	return 0;
 }
 
-static int Win32GoBorderlessFullscreen(HWND hwnd)
-{
-	int w = GetSystemMetrics(SM_CXSCREEN);
-	int h = GetSystemMetrics(SM_CYSCREEN);
-	SetWindowLongPtr(hwnd, GWL_STYLE, WS_VISIBLE | WS_POPUP);
-	SetWindowPos(hwnd, HWND_TOP, 0, 0, w, h, SWP_FRAMECHANGED);
-	return 0;
-}
 static int PlatformGoBorderlessFullscreen(SharedState *s)
 {
 	HWND hwnd = ((W32Extra*)(s->extra))->main_window;
@@ -385,37 +377,115 @@ int InitSharedState(SharedState *shared_state)
 	
 	shared_state->max_fps = 60;
 	
+	shared_state->cmdBuff.max_size = MEGABYTES(8);
+	shared_state->cmdBuff.base_memory = new u8[shared_state->cmdBuff.max_size];
+	shared_state->cmdBuff.used = 0;
+	shared_state->cmdBuff.cmd_count = 0;
+	
 	return 0;
-	// TODO: implement uninitializer TerminateSharedState
+	// TODO: implement uninitializer TerminateSharedState. But why?
 }
 
-/*
-static int OpenAssetFileA(SharedState *s, std::string &filename)
+void ProcessCommandBuffer_OpenGL(PlatformBitBuffer *bitBuff, CommandBuffer *cmdBuff)
 {
-	W32Extra *extra = (W32Extra*)(s->extra);
-	extra->file.open(filename, std::ifstream::binary);
-	return extra->file.fail();
+	glViewport(0, 0, bitBuff->width, bitBuff->height);
+	
+	glMatrixMode(GL_TEXTURE);
+    glLoadIdentity();
+    
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+	
+	glMatrixMode(GL_PROJECTION);
+	ASSERT(bitBuff->width && bitBuff->height);
+	
+	float proj_mat[] = 
+	{
+		 2,  0,  0,  0,
+		 0,  2,  0,  0,
+		 0,  0,  1.0f/1000,  0,
+		-1, -1,  -1,  1
+	};
+	
+	glLoadMatrixf(proj_mat);
+	//glLoadIdentity();
+	
+	//glViewport(0, 0, bitBuff->width, bitBuff->height);
+	
+	for (u32 offset = 0; offset < cmdBuff->used;)
+	{
+		CommandHeader *header = (CommandHeader*)(cmdBuff->base_memory + offset);
+		offset += sizeof(*header);
+		
+		switch (header->command_type)
+		{
+			case COMMAND_TYPE_CLEAR:
+			{
+				Command_Clear *cmd = (Command_Clear*)(cmdBuff->base_memory + offset);
+				glClearColor(cmd->color.r, cmd->color.g, cmd->color.b, cmd->color.a);
+				glClear(GL_COLOR_BUFFER_BIT);
+				offset += sizeof(*cmd);
+			} break;
+			
+			case COMMAND_TYPE_TRIANGLE:
+			{
+				Command_Triangle *cmd = (Command_Triangle*)(cmdBuff->base_memory + offset);
+				
+				glBegin(GL_TRIANGLES);
+	
+				glColor4f(cmd->color.r, cmd->color.g, cmd->color.b, cmd->color.a);
+				
+				for (int i = 0; i < 3; i++)
+				{
+					glTexCoord2f(cmd->tex_points[i].u, cmd->tex_points[i].v);
+					glVertex3f(cmd->points[i].x, cmd->points[i].y, cmd->points[i].z);
+				}
+				
+				glEnd();
+				
+				//auto error = glGetError();
+				
+				offset += sizeof(*cmd);
+			} break;
+			
+			default: ASSERT(0); break;
+		}
+	}
 }
-static int ReadAssetLineA(SharedState *s, std::string &line)
+
+void ProcessCommandBuffer_Software(PlatformBitBuffer *bitBuff, CommandBuffer *cmdBuff)
 {
-	W32Extra *extra = (W32Extra*)(s->extra);
-	return !getline(extra->file, line).eof();
+	for (u32 offset = 0; offset < cmdBuff->used;)
+	{
+		CommandHeader *header = (CommandHeader*)(cmdBuff->base_memory + offset);
+		offset += sizeof(*header);
+		
+		switch (header->command_type)
+		{
+			case COMMAND_TYPE_CLEAR:
+			{
+				Command_Clear *cmd = (Command_Clear*)(cmdBuff->base_memory + offset);
+				FillPlatformBitBuffer(bitBuff, MakeColor(255, cmd->color.r*255, cmd->color.g*255, cmd->color.b*255));
+				offset += sizeof(*cmd);
+			} break;
+			
+			case COMMAND_TYPE_TRIANGLE:
+			{
+				Command_Triangle *cmd = (Command_Triangle*)(cmdBuff->base_memory + offset);
+				
+				TextureTrianglef(bitBuff,
+							    cmd->points[0].x,    cmd->points[0].y,
+							cmd->tex_points[0].x,cmd->tex_points[0].y,cmd->tex_points[0].z,
+							    cmd->points[1].x,    cmd->points[1].y,
+							cmd->tex_points[1].x,cmd->tex_points[1].y, cmd->tex_points[1].z,
+							    cmd->points[2].x,    cmd->points[2].y,
+							cmd->tex_points[2].x,cmd->tex_points[2].y, cmd->tex_points[2].z,
+							0, 0);
+				
+				offset += sizeof(*cmd);
+			} break;
+			
+			default: ASSERT(0); break;
+		}
+	}
 }
-static int ReadAssetBytesA(SharedState *s, char *buffer, unsigned int bytes)
-{
-	W32Extra *extra = (W32Extra*)(s->extra);
-	extra->file.read(buffer, bytes);
-	return 0;
-}
-static int ReadAssetUntilSpaceA(SharedState *s, std::string &line)
-{
-	W32Extra *extra = (W32Extra*)(s->extra);
-	extra->file >> line;
-	return 0;
-}
-static int CloseAssetFile(SharedState *s)
-{
-	W32Extra *extra = (W32Extra*)(s->extra);
-	extra->file.close();
-	return 0;
-}*/

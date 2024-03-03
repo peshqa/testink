@@ -69,6 +69,11 @@ typedef union
 		float g;
 		float b;
 	};
+	struct
+	{
+		Vec2 xy;
+		float _pad;
+	};
 	float elem[3];
 } Vec3;
 

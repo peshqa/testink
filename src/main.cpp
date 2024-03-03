@@ -318,7 +318,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     wc.lpfnWndProc   = WindowProc;
     wc.hInstance     = hInstance;
     wc.lpszClassName = CLASS_NAME;
-	wc.style = CS_OWNDC;
+	wc.style = CS_OWNDC; // must have CS_OWNDC for OpenGL
 	wc.hCursor = LoadCursor(0, IDC_ARROW);
 
     RegisterClass(&wc);
@@ -353,7 +353,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		(LONG_PTR)&shared_state
 	);
 
-	//PlatformGoBorderlessFullscreen(&shared_state);
+	PlatformGoBorderlessFullscreen(&shared_state);
 	
 	// Sound stuff
 	LPDIRECTSOUNDBUFFER sound_buffer;
@@ -433,7 +433,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		}
 		
 		//shared_state.soundBuff.samples_to_fill = 0;
+		ClearCommandBuffer(&shared_state.cmdBuff);
 		UpdateProjectFunc(&shared_state);
+		ProcessCommandBuffer_OpenGL(shared_state.bitBuff, &shared_state.cmdBuff);
+		//ProcessCommandBuffer_Software(shared_state.bitBuff, &shared_state.cmdBuff);
 		FillDirectSoundBuffer(sound_buffer, &sound, lock_offset, bytes_to_lock, shared_state.soundBuff);
 		
 		HDC hdc = GetDC(hwnd);

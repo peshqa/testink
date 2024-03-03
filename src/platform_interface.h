@@ -42,6 +42,20 @@ typedef int32_t b32;
 
 #define INPUT_KEY_COUNT 300
 
+enum CommandType : u32
+{
+	COMMAND_TYPE_CLEAR,
+	COMMAND_TYPE_TRIANGLE
+};
+
+typedef struct
+{
+	u32 cmd_count;
+	u8 *base_memory;
+	u32 max_size;
+	u32 used;
+} CommandBuffer;
+
 enum InputCode : unsigned int
 {
 	INPUT_LEFT = 0x25,
@@ -119,6 +133,8 @@ struct SharedState
 	unsigned char is_accelerometer_active;
 	unsigned char is_gyroscope_active;
 	float rot_vec_values[4];
+	
+	CommandBuffer cmdBuff;
 	
 	void *extra;
 };

@@ -284,8 +284,6 @@ int UpdateProject3DCube(SharedState* state)
 	
 	size_t memory_used = game_state->arena.used;
 	
-	//u64 time_begin_frame = __rdtsc();
-	
 	float *depth_buffer;
 	depth_buffer = ArenaPushArray(&game_state->arena, state->client_width*state->client_height, float);
 	ZeroMemory((u8*)depth_buffer, state->client_width*state->client_height*sizeof(float));
@@ -356,20 +354,15 @@ int UpdateProject3DCube(SharedState* state)
 	float z_near = 0.01f;
 	float z_far = 1000.0f;
 	Mat4 proj_mat4 = MakeProjectionMat4(90.0f, 1, state->bitBuff->width, state->bitBuff->height, z_near, z_far);
-	//Mat4 scale_mat4 = MakeScaleMat4({1, 1, 1});
 	
 	Vec4 target = {0.0f, 0.0f, 1.0f};
-	Vec4 target_rot_yx;
 	Vec3 target_final;
 
-	target_rot_yx = target * MakeXRotMat4(-game_state->pitch) * MakeYRotMat4(game_state->yaw);
+	Vec4 target_rot_yx = target * MakeXRotMat4(-game_state->pitch) * MakeYRotMat4(game_state->yaw);
 	
 	float move_scale = 1.0f;
 	if (state->input_state['W'] & 1)
 	{
-		//game_state->x_offset += target_rot_yx.x*delta_time*move_scale;
-		//game_state->y_offset += target_rot_yx.y*delta_time*move_scale;
-		//game_state->z_offset += target_rot_yx.z*delta_time*move_scale;
 		game_state->offset += target_rot_yx.xyz*delta_time*move_scale;
 	}
 	if (state->input_state['A'] & 1)
@@ -397,9 +390,6 @@ int UpdateProject3DCube(SharedState* state)
 		game_state->offset.y -= delta_time*2*move_scale;
 	}
 	
-	//float ox = game_state->offset.x;
-	//float oy = game_state->offset.y;
-	//float oz = game_state->offset.z;
 	Vec3 pos = game_state->offset;
 	target_final = pos + target_rot_yx.xyz;
 	
@@ -428,7 +418,8 @@ int UpdateProject3DCube(SharedState* state)
 	
 	//u64 time_begin_raster = __rdtsc();
 	//FillPlatformBitBuffer(state->bitBuff, MakeColor(255,25,12,6)); // solid color
-	DrawGradientScreenv(state->bitBuff, {.45f, .45f, 0.9f}, {1.0f, 1.0f, 1.0f}); // fancy vertical gradient
+	//DrawGradientScreenv(state->bitBuff, {.45f, .45f, 0.9f}, {1.0f, 1.0f, 1.0f}); // fancy vertical gradient
+	ClearCommand(&state->cmdBuff, {.45f, .45f, 0.9f});
 	
 	int clr = MakeColor(255,255,255,255);
 	
@@ -490,8 +481,8 @@ int UpdateProject3DCube(SharedState* state)
 
 			for (int i = 0; i < count_clipped_triangles; i++)
 			{
-				tris_clipped[tris_clipped_next_free++] = tri_clipped[i];
 				//tri_colors.push_back(tri_color);
+				tris_clipped[tris_clipped_next_free++] = tri_clipped[i];
 				tri_colors[tri_colors_count++] = tri_color;
 				tex_map_clipped[tex_map_clipped_count++] = tex_clipped[i];
 			}
@@ -500,7 +491,6 @@ int UpdateProject3DCube(SharedState* state)
 		
 	}
 	
-	//u64 time_begin_proj = __rdtsc();
 	// Project 3D vertices onto 2D screen
 	int yac = 0;
 	while (yac < verts_viewed_next_free)
@@ -591,19 +581,9 @@ int UpdateProject3DCube(SharedState* state)
 		FreeListNode *t_node = tex_batch->first;
 		while (node)
 		{
-			/*FillTrianglef(state->bitBuff,
-							vertices_projected[t[0]][0], vertices_projected[t[0]][1],
-							vertices_projected[t[1]][0], vertices_projected[t[1]][1],
-							vertices_projected[t[2]][0], vertices_projected[t[2]][1],
-							tri_color);*/
-			/*DrawTrianglef(state->bitBuff,
-							vertices_projected[t[0]][0], vertices_projected[t[0]][1],
-							vertices_projected[t[1]][0], vertices_projected[t[1]][1],
-							vertices_projected[t[2]][0], vertices_projected[t[2]][1],
-							clr);*/
 			int *tt = t_node->data.elem;
 			int *t = node->data.elem;
-
+			/*
 			TextureTrianglef(state->bitBuff,
 							   verts_projected[t[0]].x,   verts_projected[t[0]].y,
 							clipped_tex_verts[tt[0]].x,clipped_tex_verts[tt[0]].y,clipped_tex_verts[tt[0]].z,
@@ -611,21 +591,15 @@ int UpdateProject3DCube(SharedState* state)
 							clipped_tex_verts[tt[1]].x,clipped_tex_verts[tt[1]].y, clipped_tex_verts[tt[1]].z,
 							   verts_projected[t[2]].x,   verts_projected[t[2]].y,
 							clipped_tex_verts[tt[2]].x,clipped_tex_verts[tt[2]].y, clipped_tex_verts[tt[2]].z,
-							&game_state->image, depth_buffer);
+							&game_state->image, depth_buffer);*/
+			Vec4 cmd_color = {tri_color.r, tri_color.g, tri_color.b, 1.0f};
+			TriangleCommand(&state->cmdBuff, cmd_color, verts_projected, node->data, clipped_tex_verts, t_node->data);
 
 			node = node->next;
 			t_node = t_node->next;
 		}
 		
 	}
-	/*u64 time_end = __rdtsc();
-	u64 time1 = -time_begin_frame + time_begin_raster;
-	u64 time12 = -time_begin_raster + time_begin_transform;
-	u64 time2 = -time_begin_transform + time_begin_view;
-	u64 time3 = -time_begin_view + time_begin_clip;
-	u64 time4 = -time_begin_clip + time_begin_proj;
-	u64 time5 = -time_begin_proj + time_end;
-	u64 time_frame = -time_begin_frame + time_end;*/
 	game_state->arena.used = memory_used;
 	
 	// Sound
