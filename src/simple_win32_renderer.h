@@ -82,7 +82,7 @@ static int PlatformUpdateDisplay(SharedState* state, int screenWidth, int screen
 	  DIB_RGB_COLORS,
 	  SRCCOPY
 	);
-#elif 0
+#elif 1
 	glViewport(0, 0, screenWidth, screenHeight);
 
 	GLuint tex = 0;
@@ -109,7 +109,7 @@ static int PlatformUpdateDisplay(SharedState* state, int screenWidth, int screen
 	glEnable(GL_TEXTURE_2D);
 
 	glClearColor(1.0f, 1.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
@@ -135,7 +135,8 @@ static int PlatformUpdateDisplay(SharedState* state, int screenWidth, int screen
 	glVertex2i(-1, 1);
 	
 	glEnd();
-#else
+	
+	glDisable(GL_TEXTURE_2D);
 	SwapBuffers(hdc);
 #endif
 	
@@ -390,6 +391,8 @@ void ProcessCommandBuffer_OpenGL(PlatformBitBuffer *bitBuff, CommandBuffer *cmdB
 {
 	glViewport(0, 0, bitBuff->width, bitBuff->height);
 	
+	glEnable(GL_DEPTH_TEST);
+	
 	glMatrixMode(GL_TEXTURE);
     glLoadIdentity();
     
@@ -408,9 +411,6 @@ void ProcessCommandBuffer_OpenGL(PlatformBitBuffer *bitBuff, CommandBuffer *cmdB
 	};
 	
 	glLoadMatrixf(proj_mat);
-	//glLoadIdentity();
-	
-	//glViewport(0, 0, bitBuff->width, bitBuff->height);
 	
 	for (u32 offset = 0; offset < cmdBuff->used;)
 	{
@@ -423,7 +423,7 @@ void ProcessCommandBuffer_OpenGL(PlatformBitBuffer *bitBuff, CommandBuffer *cmdB
 			{
 				Command_Clear *cmd = (Command_Clear*)(cmdBuff->base_memory + offset);
 				glClearColor(cmd->color.r, cmd->color.g, cmd->color.b, cmd->color.a);
-				glClear(GL_COLOR_BUFFER_BIT);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 				offset += sizeof(*cmd);
 			} break;
 			
@@ -437,7 +437,8 @@ void ProcessCommandBuffer_OpenGL(PlatformBitBuffer *bitBuff, CommandBuffer *cmdB
 				
 				for (int i = 0; i < 3; i++)
 				{
-					glTexCoord2f(cmd->tex_points[i].u, cmd->tex_points[i].v);
+					glTexCoord3f(cmd->tex_points[i].u, cmd->tex_points[i].v, cmd->tex_points[i].w);
+					//glTexCoord2f(cmd->tex_points[i].u, cmd->tex_points[i].v);
 					glVertex3f(cmd->points[i].x, cmd->points[i].y, cmd->points[i].z);
 				}
 				
@@ -455,6 +456,8 @@ void ProcessCommandBuffer_OpenGL(PlatformBitBuffer *bitBuff, CommandBuffer *cmdB
 
 void ProcessCommandBuffer_Software(PlatformBitBuffer *bitBuff, CommandBuffer *cmdBuff)
 {
+	float *depth_buffer = new float[bitBuff->width*bitBuff->height]{};
+	
 	for (u32 offset = 0; offset < cmdBuff->used;)
 	{
 		CommandHeader *header = (CommandHeader*)(cmdBuff->base_memory + offset);
@@ -480,7 +483,7 @@ void ProcessCommandBuffer_Software(PlatformBitBuffer *bitBuff, CommandBuffer *cm
 							cmd->tex_points[1].x,cmd->tex_points[1].y, cmd->tex_points[1].z,
 							    cmd->points[2].x,    cmd->points[2].y,
 							cmd->tex_points[2].x,cmd->tex_points[2].y, cmd->tex_points[2].z,
-							0, 0);
+							0, depth_buffer, cmd->color);
 				
 				offset += sizeof(*cmd);
 			} break;
@@ -488,4 +491,6 @@ void ProcessCommandBuffer_Software(PlatformBitBuffer *bitBuff, CommandBuffer *cm
 			default: ASSERT(0); break;
 		}
 	}
+	
+	delete[] depth_buffer;
 }

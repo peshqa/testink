@@ -266,8 +266,9 @@ static int TextureTriangle(PlatformBitBuffer *bitBuff,
 					int x1, int y1, float u1, float v1, float w1,
 					int x2, int y2, float u2, float v2, float w2,
 					int x3, int y3, float u3, float v3, float w3,
-					SimpleImage* img, float* depth_buffer)
+					SimpleImage* img, float* depth_buffer, Vec4 color)
 {
+	int color_ = MakeColor(color.a*255, color.r*255, color.g*255, color.b*255);
 	if (y2 < y1)
 	{
 		Swap(&x1, &x2);
@@ -369,12 +370,12 @@ static int TextureTriangle(PlatformBitBuffer *bitBuff,
 				
 				if (depth_buffer && tex_w > depth_buffer[i*bitBuff->width + j])
 				{
-					int color = SampleTexture(img, tex_u / tex_w, tex_v / tex_w);
-					//color = 0xFFFFFFFF;
-					PlatformDrawPixel(bitBuff, j, i, color);
+					//int color = SampleTexture(img, tex_u / tex_w, tex_v / tex_w);
+					//int color_ = MakeColor(color.a, color.r, color.g, color.b);
+					PlatformDrawPixel(bitBuff, j, i, color_);
 					depth_buffer[i*bitBuff->width + j] = tex_w;
 				} else {
-					PlatformDrawPixel(bitBuff, j, i, 0xFFFFFFFF);
+					//PlatformDrawPixel(bitBuff, j, i, 0xFFFFFFFF);
 				}
 				
 				t += tstep;
@@ -435,12 +436,12 @@ static int TextureTriangle(PlatformBitBuffer *bitBuff,
 				
 				if (depth_buffer && tex_w > depth_buffer[i*bitBuff->width + j])
 				{
-					int color = SampleTexture(img, tex_u / tex_w, tex_v / tex_w);
-					//color = 0;
-					PlatformDrawPixel(bitBuff, j, i, color);
+					//int color = SampleTexture(img, tex_u / tex_w, tex_v / tex_w);
+					//int color_ = MakeColor(color.a, color.r, color.g, color.b);
+					PlatformDrawPixel(bitBuff, j, i, color_);
 					depth_buffer[i*bitBuff->width + j] = tex_w;
 				} else {
-					PlatformDrawPixel(bitBuff, j, i, 0xFFFFFFFF);
+					//PlatformDrawPixel(bitBuff, j, i, 0xFFFFFFFF);
 				}
 				t += tstep;
 			}
@@ -467,7 +468,7 @@ static int TextureTrianglef(PlatformBitBuffer *bitBuff,
 					float x1, float y1, float u1, float v1, float w1,
 					float x2, float y2, float u2, float v2, float w2,
 					float x3, float y3, float u3, float v3, float w3,
-					SimpleImage* img, float* depth_buffer)
+					SimpleImage* img, float* depth_buffer, Vec4 color)
 {
 	int end_x = bitBuff->width;
 	int end_y = bitBuff->height-1;
@@ -475,7 +476,7 @@ static int TextureTrianglef(PlatformBitBuffer *bitBuff,
 			ConvertRelToPlain(x1, 0, end_x), ConvertRelToPlain(y1, 0, end_y), u1, v1, w1,
 			ConvertRelToPlain(x2, 0, end_x), ConvertRelToPlain(y2, 0, end_y), u2, v2, w2,
 			ConvertRelToPlain(x3, 0, end_x), ConvertRelToPlain(y3, 0, end_y), u3, v3, w3,
-			img, depth_buffer);
+			img, depth_buffer, color);
 }
 static int PlatformFillRect(PlatformBitBuffer *bitBuff, int left, int top, int right, int bottom, int color)
 {

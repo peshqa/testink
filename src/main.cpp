@@ -435,14 +435,41 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		//shared_state.soundBuff.samples_to_fill = 0;
 		ClearCommandBuffer(&shared_state.cmdBuff);
 		UpdateProjectFunc(&shared_state);
-		ProcessCommandBuffer_OpenGL(shared_state.bitBuff, &shared_state.cmdBuff);
-		//ProcessCommandBuffer_Software(shared_state.bitBuff, &shared_state.cmdBuff);
-		FillDirectSoundBuffer(sound_buffer, &sound, lock_offset, bytes_to_lock, shared_state.soundBuff);
 		
 		HDC hdc = GetDC(hwnd);
-		((W32Extra*)(shared_state.extra))->hdc = hdc;
-		PlatformUpdateDisplay(&shared_state, shared_state.client_width, shared_state.client_height);
+		if ((shared_state.input_state[INPUT_F2] & 0b1) == 1)
+		{
+			ProcessCommandBuffer_Software(shared_state.bitBuff, &shared_state.cmdBuff);
+			/*int res = StretchDIBits(
+			  hdc,
+			  0,
+			  0,
+			  shared_state.client_width,
+			  shared_state.client_height,
+			  0,
+			  0,
+			  shared_state.bitBuff->width,
+			  shared_state.bitBuff->height,
+			  shared_state.bitBuff->bits,
+			  (BITMAPINFO*)(shared_state.bitBuff->info),
+			  DIB_RGB_COLORS,
+			  SRCCOPY
+			);
+			SwapBuffers(hdc);*/
+			PlatformUpdateDisplay(&shared_state, shared_state.client_width, shared_state.client_height);
+		} else {
+			ProcessCommandBuffer_OpenGL(shared_state.bitBuff, &shared_state.cmdBuff);
+			SwapBuffers(hdc);
+			
+		}
 		ReleaseDC(hwnd, hdc);
+		
+		FillDirectSoundBuffer(sound_buffer, &sound, lock_offset, bytes_to_lock, shared_state.soundBuff);
+		
+		//HDC hdc = GetDC(hwnd);
+		//((W32Extra*)(shared_state.extra))->hdc = hdc;
+		//PlatformUpdateDisplay(&shared_state, shared_state.client_width, shared_state.client_height);
+		//ReleaseDC(hwnd, hdc);
 		
 		for (int i = 0; i < INPUT_KEY_COUNT; i++)
 		{

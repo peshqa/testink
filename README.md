@@ -10,6 +10,7 @@ test code
 - collisions?
 - sRGB gamma correction?
 - premultiplied alpha?
+- better memory allocator? temporary memory arena?
 - busy work
     - add SIMD for math operations
 	- optimize drawing algorithms?
