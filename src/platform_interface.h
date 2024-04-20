@@ -135,6 +135,7 @@ struct SharedState
 	float rot_vec_values[4];
 	
 	CommandBuffer cmdBuff;
+	int texture_count;
 	
 	void *extra;
 };
@@ -155,5 +156,5 @@ int CloseAssetFile(SharedState *s);*/
 int MakeColor(int a, int r, int g, int b);
 //int PlatformDrawPixel(PlatformBitBuffer *bitBuff, int x, int y, int color);
 int ResizePlatformBitBuffer(PlatformBitBuffer *p, int screenWidth, int screenHeight);
-int GrayscalePlatformBitBuffer(PlatformBitBuffer *bitBuff);
-int RedPlatformBitBuffer(PlatformBitBuffer *bitBuff);
+//int GrayscalePlatformBitBuffer(PlatformBitBuffer *bitBuff);
+//int RedPlatformBitBuffer(PlatformBitBuffer *bitBuff);

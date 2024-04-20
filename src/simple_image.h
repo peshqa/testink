@@ -4,9 +4,6 @@ ppm_image_loader.h - this header file combines different file format loaders
 */
 #pragma once
 
-//#include <fstream>
-//#include <string>
-
 // define some common stuff
 typedef struct
 {
@@ -14,6 +11,8 @@ typedef struct
 	int height;
 	// assuming its 4 bytes per pixel
 	int *pixels;
+	// TODO: remove index, have some way of tracking loaded images
+	int index;
 } SimpleImage;
 
 #pragma pack(push, 1)
@@ -38,13 +37,6 @@ typedef struct
 	unsigned int num_important_colors; // ?
 } BitmapFileHeader;
 #pragma pack(pop)
-/*
-static int TerminateImage(SimpleImage *image)
-{
-	delete [] image->pixels;
-	return 0;
-}*/
-
 static char *FindNextToken(u32 str_size, char *str, u32 *leftover_size)
 {
 	for (u32 i = 0; i < str_size; i++)
@@ -89,7 +81,16 @@ static char *ParseInteger(u32 str_size, char *str, u32 *leftover_size, u32 *out)
 	*leftover_size = str_size - i;
 	return &str[i];
 }
-
+static int CountNTString(char* str)
+{
+	int count = 0;
+	while (*str && count < 128)
+	{
+		str++;
+		count++;
+	}
+	return count;
+}
 static int LoadPPMImage(SharedState *s, char* file_path, SimpleImage *image)
 {
 	void *memory;
@@ -256,7 +257,37 @@ static int LoadBMPImage(SharedState *s, char *file_path, SimpleImage *image)
 
 	return 0;
 }
-
+// function determines image format based on file extension and calls the actual image loader
+static int LoadImage(SharedState *s, char* file_path, SimpleImage *image)
+{
+	int str_count = CountNTString(file_path);
+	//ASSERT(0);
+	if (str_count < 4)
+	{
+		return 0;
+	}
+	
+	if (file_path[str_count-4] != '.')
+	{
+		return 0;
+	}
+	int res;
+	if (file_path[str_count-3] == 'b')
+	{
+		res = LoadBMPImage(s, file_path, image);
+	}
+	if (file_path[str_count-3] == 'p')
+	{
+		res = LoadPPMImage(s, file_path, image);
+	}
+	if (res == 0)
+	{
+		//image->index = s->texture_count++;
+		image->index = 0;
+		return 1;
+	}
+	return 0;
+}
 static int SampleTexture(SimpleImage *img, float u, float v)
 {
 	if (u >= 0.0f && u <= 1.0f && v >= 0.0f && v <= 1.0f)

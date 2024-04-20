@@ -6,10 +6,16 @@ platform_simple_renderer.h - (platform independent) core of all smaller projects
 
 #include "simple_math.h"
 #include "platform_interface.h"
-
-//#include <vector>
-
 #include "simple_image.h"
+
+// TODO: delete this?
+typedef struct
+{
+	SimpleImage img;
+	// TODO: do we care?
+	//u32 filtering;
+	//u32 wrapping;
+} SimpleTexture;
 
 static int Concat(int src1_count, char* src1, int src2_count, char* src2, int dest_count, char* dest)
 {
@@ -103,47 +109,6 @@ static int PlatformDrawLinef(PlatformBitBuffer *bitBuff, float x1, float y1, flo
 			ConvertRelToPlain(y2, 0, end_y),
 			color);
 }
-// util function to draw filled triangle
-/*
-static int PlatformGetLineXValues(int x1, int y1, int x2, int y2, std::vector<int> &v)
-{
-	int dx = abs(x2 - x1);
-    int sx = x1 < x2 ? 1 : -1;
-    int dy = -abs(y2 - y1);
-    int sy = y1 < y2 ? 1 : -1;
-    int error = dx + dy;
-	
-	int last_x = x1-1;
-	int last_y = y1;
-    
-    while (true)
-	{
-        //PlatformDrawPixel(bitBuff, x1, y1, color);
-		if (last_y != y1)
-		{
-			v.push_back(x1);
-		}
-		last_y = y1;
-		last_x = x1;
-        if (x1 == x2 && y1 == y2) break;
-        int e2 = 2 * error;
-        if (e2 >= dy)
-		{
-            if (x1 == x2) break;
-            error = error + dy;
-            x1 = x1 + sx;
-        }
-        if (e2 <= dx)
-		{
-            if (y1 == y2) break;
-            error = error + dx;
-            y1 = y1 + sy;
-        }
-    }
-	v.push_back(last_x);
-	return 0;
-}
-*/
 static int DrawHorizontalLine(PlatformBitBuffer *bitBuff, int x1, int x2, int y, int color)
 {
 	int tmp;
@@ -166,7 +131,7 @@ static int DrawTrianglef(PlatformBitBuffer *bitBuff, float x1, float y1, float x
 	PlatformDrawLinef(bitBuff, x2, y2, x3, y3, color);
 	return 0;
 }
-// Vertical gradient
+// Vertical gradient, probably very inefficient
 static int DrawGradientScreen(PlatformBitBuffer *bitBuff, int s_red, int s_green, int s_blue, int e_red, int e_blue, int e_green)
 {
 	for (int i = 0; i < bitBuff->width; i++)
@@ -199,57 +164,6 @@ static void DrawGradientScreenv(PlatformBitBuffer *bitBuff, Vec3 start_rgb, Vec3
 		}
 	}
 }
-/*
-static int FillTriangle(PlatformBitBuffer *bitBuff, int x1, int y1, int x2, int y2, int x3, int y3, int color)
-{
-	// Sort the points so that y1 <= y2 <= y3
-	int tmp;
-	if (y2 < y1)
-	{
-		tmp = y1;
-		y1 = y2;
-		y2 = tmp;
-		tmp = x1;
-		x1 = x2;
-		x2 = tmp;
-	}
-	if (y3 < y1)
-	{
-		tmp = y1;
-		y1 = y3;
-		y3 = tmp;
-		tmp = x1;
-		x1 = x3;
-		x3 = tmp;
-	}
-	if (y3 < y2)
-	{
-		tmp = y2;
-		y2 = y3;
-		y3 = tmp;
-		tmp = x2;
-		x2 = x3;
-		x3 = tmp;
-	}
-	
-	// Compute the x coordinates of the triangle edges
-	std::vector<int> v1;
-	std::vector<int> v2;
-	PlatformGetLineXValues(x1, y1, x2, y2, v1);
-	v1.pop_back();
-	PlatformGetLineXValues(x2, y2, x3, y3, v1);
-	PlatformGetLineXValues(x1, y1, x3, y3, v2);
-	
-	int idx = 0;
-	for (int i = y1; i <= y3; i++)
-	{
-		DrawHorizontalLine(bitBuff, v1[idx], v2[idx], i, color);
-		idx++;
-	}
-	
-	return 0;
-}
-*/
 static void Swap(int *one, int *two)
 {
 	int temp = *one;
@@ -262,6 +176,67 @@ static void Swap(float *one, float *two)
 	*one = *two;
 	*two = temp;
 }
+static void Swap(Vec2 *one, Vec2 *two)
+{
+	Vec2 temp = *one;
+	*one = *two;
+	*two = temp;
+}
+static void Swap(Vec3 *one, Vec3 *two)
+{
+	Vec3 temp = *one;
+	*one = *two;
+	*two = temp;
+}
+static void newTextureTriangle(PlatformBitBuffer *bitBuff,
+					Vec2 p1, Vec2 p2, Vec2 p3,
+					Vec3 tp1, Vec3 tp2, Vec3 tp3,
+					SimpleImage *img, float *depth_buffer, Vec4 color)
+{
+	int color_ = MakeColor(color.a*255, color.r*255, color.g*255, color.b*255);
+	if (p2.y < p1.y)
+	{
+		Swap(&p1,  &p2);
+		Swap(&tp1, &tp2);
+	}
+	if (p3.y < p1.y)
+	{
+		Swap(&p3,  &p1);
+		Swap(&tp3, &tp1);
+	}
+	if (p3.y < p2.y)
+	{
+		Swap(&p3,  &p2);
+		Swap(&tp3, &tp2);
+	}
+	
+	Vec3 step_tp12 = {0, 0, 0};
+	Vec2 delta_p12 = p2 - p1;
+	Vec3 delta_tp12 = tp2 - tp1;
+	float step_x12 = 0;
+	if (delta_p12.y != 0)
+	{
+		step_x12 = delta_p12.x / delta_p12.y;
+		step_tp12 = delta_tp12 / delta_p12.y;
+	}
+	
+	Vec3 step_tp13 = {0, 0, 0};
+	Vec2 delta_p13 = p3 - p1;
+	Vec3 delta_tp13 = tp3 - tp1;
+	float step_x13 = 0;
+	if (delta_p13.y != 0)
+	{
+		step_x13 = delta_p13.x / delta_p13.y;
+		step_tp13 = delta_tp13 / delta_p13.y;
+	}
+	
+	Vec2 side1 = p1;
+	Vec2 size2 = p1;
+	for (int i = 0; i < delta_p12.y; i++)
+	{
+		
+	}
+}
 static int TextureTriangle(PlatformBitBuffer *bitBuff,
 					int x1, int y1, float u1, float v1, float w1,
 					int x2, int y2, float u2, float v2, float w2,
@@ -269,6 +244,7 @@ static int TextureTriangle(PlatformBitBuffer *bitBuff,
 					SimpleImage* img, float* depth_buffer, Vec4 color)
 {
 	int color_ = MakeColor(color.a*255, color.r*255, color.g*255, color.b*255);
+	//w1 = w2 = w3 = 1.0f;
 	if (y2 < y1)
 	{
 		Swap(&x1, &x2);
@@ -370,7 +346,7 @@ static int TextureTriangle(PlatformBitBuffer *bitBuff,
 				
 				if (depth_buffer && tex_w > depth_buffer[i*bitBuff->width + j])
 				{
-					//int color = SampleTexture(img, tex_u / tex_w, tex_v / tex_w);
+					int color_ = SampleTexture(img, tex_u / tex_w, tex_v / tex_w);
 					//int color_ = MakeColor(color.a, color.r, color.g, color.b);
 					PlatformDrawPixel(bitBuff, j, i, color_);
 					depth_buffer[i*bitBuff->width + j] = tex_w;
@@ -436,7 +412,7 @@ static int TextureTriangle(PlatformBitBuffer *bitBuff,
 				
 				if (depth_buffer && tex_w > depth_buffer[i*bitBuff->width + j])
 				{
-					//int color = SampleTexture(img, tex_u / tex_w, tex_v / tex_w);
+					int color_ = SampleTexture(img, tex_u / tex_w, tex_v / tex_w);
 					//int color_ = MakeColor(color.a, color.r, color.g, color.b);
 					PlatformDrawPixel(bitBuff, j, i, color_);
 					depth_buffer[i*bitBuff->width + j] = tex_w;
@@ -1035,7 +1011,14 @@ typedef struct
 	Vec4 color;
 	Vec3 points[3];
 	Vec3 tex_points[3];
+	SimpleImage *tex;
 } Command_Triangle;
+
+typedef struct
+{
+	SimpleImage *img;
+	int index;
+} Command_InitTexture;
 
 void ClearCommandBuffer(CommandBuffer *cmdBuff)
 {
@@ -1063,6 +1046,11 @@ u8* PushCommand(CommandBuffer *cmdBuff, u32 command_type)
 		{
 			cmdBuff->used += sizeof(Command_Triangle);
 		} break;
+		/*
+		case COMMAND_TYPE_INIT_TEXTURE:
+		{
+			cmdBuff->used += sizeof(Command_InitTexture);
+		} break;*/
 		
 		default: ASSERT(0); break;
 	}
@@ -1079,7 +1067,7 @@ void ClearCommand(CommandBuffer *cmdBuff, Vec4 color)
 }
 
 // TODO: Vec3* tex_pts or Vec2* tex_pts?
-void TriangleCommand(CommandBuffer *cmdBuff, Vec4 color, Vec3* pts, Tri tri, Vec3* tex_pts, Tri tex_tri)
+void TriangleCommand(CommandBuffer *cmdBuff, Vec4 color, Vec3* pts, Tri tri, Vec3* tex_pts, Tri tex_tri, SimpleImage *img)
 {
 	Command_Triangle *cmd = (Command_Triangle*)PushCommand(cmdBuff, COMMAND_TYPE_TRIANGLE);
 	cmd->color = color;
@@ -1089,4 +1077,5 @@ void TriangleCommand(CommandBuffer *cmdBuff, Vec4 color, Vec3* pts, Tri tri, Vec
 	cmd->tex_points[0] = tex_pts[tex_tri.p1];
 	cmd->tex_points[1] = tex_pts[tex_tri.p2];
 	cmd->tex_points[2] = tex_pts[tex_tri.p3];
+	cmd->tex = img;
 }

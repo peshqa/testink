@@ -18,6 +18,15 @@ simple_math.h - self explanatory header name
 
 #define ABS(a) ((a) > 0 ? (a) : -(a))
 
+float SafeDivide0(float left, float right)
+{
+	if (right == 0.0f)
+	{
+		return 0;
+	}
+	return left / right;
+}
+
 typedef union
 {
 	struct

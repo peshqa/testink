@@ -13,9 +13,6 @@ simple_win32_renderer.h - (Windows specific) core of all smaller projects that d
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <Windowsx.h>
-//#include <stdlib.h>
-//#include <string>
-//#include <vector>
 
 #include <gl/gl.h>
 
@@ -42,7 +39,6 @@ static int ResizePlatformBitBuffer(PlatformBitBuffer *p, int screenWidth, int sc
 	int mem_size = screenWidth * screenHeight * sizeof(int) + sizeof(BITMAPINFO);
 	p->info = VirtualAlloc(0, mem_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	p->bits = (char*)p->info + sizeof(BITMAPINFO);
-
 	
 	BITMAPINFO *info = (BITMAPINFO*)(p->info);
 	info->bmiHeader.biSize = sizeof(info->bmiHeader);
@@ -58,6 +54,17 @@ static int ResizePlatformBitBuffer(PlatformBitBuffer *p, int screenWidth, int sc
 static int MakeColor(int a, int r, int g, int b)
 {
 	return (a<<24) + (r<<16) + (g<<8) + b;
+}
+
+void InitTexture_OpenGL(SimpleImage *img, int index)
+{
+	glBindTexture(GL_TEXTURE_2D, index);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, img->width, img->height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, img->pixels);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
 }
 
 static int PlatformUpdateDisplay(SharedState* state, int screenWidth, int screenHeight)
@@ -84,16 +91,8 @@ static int PlatformUpdateDisplay(SharedState* state, int screenWidth, int screen
 	);
 #elif 1
 	glViewport(0, 0, screenWidth, screenHeight);
-
-	GLuint tex = 0;
-	static int init = 0;
-	if (!init)
-	{
-		glGenTextures(1, &tex);
-		init = 1;
-	}
 	
-	glBindTexture(GL_TEXTURE_2D, tex);
+	glBindTexture(GL_TEXTURE_2D, 1);
 	
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, bitBuff->width, bitBuff->height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, bitBuff->bits);
 	
@@ -101,8 +100,6 @@ static int PlatformUpdateDisplay(SharedState* state, int screenWidth, int screen
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_PRIORITY, 0);
 	
 	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 	
@@ -383,6 +380,8 @@ int InitSharedState(SharedState *shared_state)
 	shared_state->cmdBuff.used = 0;
 	shared_state->cmdBuff.cmd_count = 0;
 	
+	shared_state->texture_count = 2;
+	
 	return 0;
 	// TODO: implement uninitializer TerminateSharedState. But why?
 }
@@ -401,7 +400,6 @@ void ProcessCommandBuffer_OpenGL(PlatformBitBuffer *bitBuff, CommandBuffer *cmdB
 	
 	glMatrixMode(GL_PROJECTION);
 	ASSERT(bitBuff->width && bitBuff->height);
-	
 	float proj_mat[] = 
 	{
 		 2,  0,  0,  0,
@@ -409,7 +407,6 @@ void ProcessCommandBuffer_OpenGL(PlatformBitBuffer *bitBuff, CommandBuffer *cmdB
 		 0,  0,  1.0f/1000,  0,
 		-1, -1,  -1,  1
 	};
-	
 	glLoadMatrixf(proj_mat);
 	
 	for (u32 offset = 0; offset < cmdBuff->used;)
@@ -431,23 +428,47 @@ void ProcessCommandBuffer_OpenGL(PlatformBitBuffer *bitBuff, CommandBuffer *cmdB
 			{
 				Command_Triangle *cmd = (Command_Triangle*)(cmdBuff->base_memory + offset);
 				
+				glEnable(GL_TEXTURE_2D);
+				glBindTexture(GL_TEXTURE_2D, 2);
+				if (cmd->tex->index == 0)
+				{
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, cmd->tex->width, cmd->tex->height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, cmd->tex->pixels);
+
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+					
+					glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+					
+					cmd->tex->index = 2;
+				}
 				glBegin(GL_TRIANGLES);
 	
 				glColor4f(cmd->color.r, cmd->color.g, cmd->color.b, cmd->color.a);
 				
 				for (int i = 0; i < 3; i++)
 				{
-					glTexCoord3f(cmd->tex_points[i].u, cmd->tex_points[i].v, cmd->tex_points[i].w);
+					glTexCoord4f(cmd->tex_points[i].u/cmd->tex_points[i].w, (1.0f-cmd->tex_points[i].v)/cmd->tex_points[i].w, 0.0f, 1);
 					//glTexCoord2f(cmd->tex_points[i].u, cmd->tex_points[i].v);
 					glVertex3f(cmd->points[i].x, cmd->points[i].y, cmd->points[i].z);
 				}
 				
 				glEnd();
-				
+				//auto err = glGetError();
+				//ASSERT(0);
+				glDisable(GL_TEXTURE_2D);
 				//auto error = glGetError();
 				
 				offset += sizeof(*cmd);
 			} break;
+			/*
+			case COMMAND_TYPE_INIT_TEXTURE:
+			{
+				Command_InitTexture *cmd = (Command_InitTexture*)(cmdBuff->base_memory + offset);
+				InitTexture_OpenGL();
+				offset += sizeof(*cmd);
+			} break;*/
 			
 			default: ASSERT(0); break;
 		}
@@ -483,10 +504,16 @@ void ProcessCommandBuffer_Software(PlatformBitBuffer *bitBuff, CommandBuffer *cm
 							cmd->tex_points[1].x,cmd->tex_points[1].y, cmd->tex_points[1].z,
 							    cmd->points[2].x,    cmd->points[2].y,
 							cmd->tex_points[2].x,cmd->tex_points[2].y, cmd->tex_points[2].z,
-							0, depth_buffer, cmd->color);
+							cmd->tex, depth_buffer, cmd->color);
 				
 				offset += sizeof(*cmd);
 			} break;
+			/*
+			case COMMAND_TYPE_INIT_TEXTURE:
+			{
+				Command_InitTexture *cmd = (Command_InitTexture*)(cmdBuff->base_memory + offset);
+				offset += sizeof(*cmd);
+			} break;*/
 			
 			default: ASSERT(0); break;
 		}

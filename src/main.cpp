@@ -38,10 +38,18 @@ static void InitOpenGL(HWND hwnd)
 	HGLRC opengl_context = wglCreateContext(hdc);
 	if (!wglMakeCurrent(hdc, opengl_context))
 	{
-		//DWORD error = GetLastError();
 		ASSERT(0);
 	}
 	ReleaseDC(hwnd, hdc);
+	
+	typedef BOOL WINAPI wgl_swap_interval_ext(int interval);
+	wgl_swap_interval_ext *wglSwapIntervalEXT = (wgl_swap_interval_ext*)wglGetProcAddress("wglSwapIntervalEXT");
+	if (wglSwapIntervalEXT)
+	{
+		wglSwapIntervalEXT(1); // enables VSync
+	} else {
+		ASSERT(0);
+	}
 }
 
 // NOTE: not made for files bigger than 4GB (ReadFilee uses DWORD)
@@ -477,7 +485,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 			shared_state.input_state[i] <<= 1;
 			shared_state.input_state[i] += last_input;
 		}
-		
 		
 		// Timing
 		u64 counter_before_sleep = W32GetPerfCounter();
