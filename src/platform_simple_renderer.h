@@ -234,8 +234,9 @@ static void newTextureTriangle(PlatformBitBuffer *bitBuff,
 	Vec2 size2 = p1;
 	for (int i = 0; i < delta_p12.y; i++)
 	{
-		
+		side1.y++;
 	}
+	// WIP
 }
 static int TextureTriangle(PlatformBitBuffer *bitBuff,
 					int x1, int y1, float u1, float v1, float w1,

@@ -13,8 +13,38 @@ Console isn't used by the app (initially), so 'wWinMain' is the main function.
 #include <dsound.h>
 #include <math.h>
 
+#define GL_SHADING_LANGUAGE_VERSION 0x8b8c
+
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter);
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
+
+typedef struct
+{
+	char *vendor;
+	char *renderer;
+	char *version;
+	char *shading_lang_ver;
+	char *extensions;
+} OpenGLInfo;
+
+static OpenGLInfo GetGLInfo()
+{
+	OpenGLInfo info = {};
+	info.vendor = (char*)glGetString(GL_VENDOR);
+	info.renderer = (char*)glGetString(GL_RENDERER);
+	info.version = (char*)glGetString(GL_VERSION);
+	// NOTE: GL_SHADING_LANGUAGE_VERSION available since GL 2.0
+	if (info.version[0] == '1')
+	{
+		info.shading_lang_ver = "N/A";
+	}
+	else
+	{
+		info.shading_lang_ver = (char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
+	}
+	info.extensions = (char*)glGetString(GL_EXTENSIONS);
+	return info;
+}
 
 static void InitOpenGL(HWND hwnd)
 {
@@ -41,6 +71,8 @@ static void InitOpenGL(HWND hwnd)
 		ASSERT(0);
 	}
 	ReleaseDC(hwnd, hdc);
+	
+	GetGLInfo();
 	
 	typedef BOOL WINAPI wgl_swap_interval_ext(int interval);
 	wgl_swap_interval_ext *wglSwapIntervalEXT = (wgl_swap_interval_ext*)wglGetProcAddress("wglSwapIntervalEXT");

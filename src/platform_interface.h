@@ -18,6 +18,8 @@ typedef int16_t i16;
 typedef int8_t  i8;
 typedef int32_t b32;
 
+typedef uintptr_t uptr;
+
 // figure out if SIMD is supported
 #ifdef _MSC_VER // ms compiler is being used
 #define USING_SIMD_SSE 1
@@ -33,7 +35,7 @@ typedef int32_t b32;
 #define ASSERT(e)
 #endif
 
-#define ARRAY_LENGTH(a) sizeof(a) / sizeof(a[0])
+#define ARRAY_LENGTH(a) (sizeof(a) / sizeof(a[0]))
 
 #define KILOBYTES(b)  (1024*(b)            )
 #define MEGABYTES(kb) (1024*(KILOBYTES(kb)))

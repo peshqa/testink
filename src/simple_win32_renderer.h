@@ -458,7 +458,6 @@ void ProcessCommandBuffer_OpenGL(PlatformBitBuffer *bitBuff, CommandBuffer *cmdB
 				//auto err = glGetError();
 				//ASSERT(0);
 				glDisable(GL_TEXTURE_2D);
-				//auto error = glGetError();
 				
 				offset += sizeof(*cmd);
 			} break;
@@ -478,6 +477,8 @@ void ProcessCommandBuffer_OpenGL(PlatformBitBuffer *bitBuff, CommandBuffer *cmdB
 void ProcessCommandBuffer_Software(PlatformBitBuffer *bitBuff, CommandBuffer *cmdBuff)
 {
 	float *depth_buffer = new float[bitBuff->width*bitBuff->height]{};
+	//Mat4 proj_mat4 = MakeProjectionMat4(90.0f, 1, bitBuff->width, bitBuff->height, 0.01f, 1000.0f);
+	Mat4 proj_mat4 = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
 	
 	for (u32 offset = 0; offset < cmdBuff->used;)
 	{
@@ -497,9 +498,22 @@ void ProcessCommandBuffer_Software(PlatformBitBuffer *bitBuff, CommandBuffer *cm
 			{
 				Command_Triangle *cmd = (Command_Triangle*)(cmdBuff->base_memory + offset);
 				
+				//Project triangle
+				/*Vec3 points[3];
+				Vec3 tex_points[3];
+				for (int i = 0; i < 3; i++)
+				{
+					Vec4 point = { cmd->points[i].x, cmd->points[i].y, cmd->points[i].z, 1.0f };
+					point = point * proj_mat4;
+					tex_points[i].x /= point.w;
+					tex_points[i].y /= point.w;
+					tex_points[i].z = 1.0f / point.w;
+					points[i] = {point.x/point.w+0.5f, point.y/point.w+0.5f, point.z};
+				}*/
+				
 				TextureTrianglef(bitBuff,
 							    cmd->points[0].x,    cmd->points[0].y,
-							cmd->tex_points[0].x,cmd->tex_points[0].y,cmd->tex_points[0].z,
+							cmd->tex_points[0].x,cmd->tex_points[0].y, cmd->tex_points[0].z,
 							    cmd->points[1].x,    cmd->points[1].y,
 							cmd->tex_points[1].x,cmd->tex_points[1].y, cmd->tex_points[1].z,
 							    cmd->points[2].x,    cmd->points[2].y,

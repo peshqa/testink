@@ -282,6 +282,7 @@ int UpdateProject3DCube(SharedState* state)
 	ProjectState3DCube *game_state = (ProjectState3DCube*)(state->project_memory);
 	float delta_time = state->delta_time;
 	
+	// TODO: add memory arena function to track memory used
 	size_t memory_used = game_state->arena.used;
 	
 	float *depth_buffer;
@@ -496,7 +497,7 @@ int UpdateProject3DCube(SharedState* state)
 	{
 		float *vx = verts_viewed[yac].elem;
 		Vec4 vec = {vx[0], vx[1], vx[2], 1};
-		vec =  vec * proj_mat4;
+		vec = vec * proj_mat4;
 		
 		clipped_tex_verts[yac].x /= vec.w;
 		clipped_tex_verts[yac].y /= vec.w;
