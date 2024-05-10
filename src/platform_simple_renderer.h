@@ -188,55 +188,86 @@ static void Swap(Vec3 *one, Vec3 *two)
 	*one = *two;
 	*two = temp;
 }
+
+float edge_function(Vec2 a, Vec2 b, Vec2 c)
+{
+    return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x);
+}
+
 static void newTextureTriangle(PlatformBitBuffer *bitBuff,
-					Vec2 p1, Vec2 p2, Vec2 p3,
-					Vec3 tp1, Vec3 tp2, Vec3 tp3,
+					Vec3 v0, Vec3 v1, Vec3 v2,
+					Vec3 tv0, Vec3 tv1, Vec3 tv2,
 					SimpleImage *img, float *depth_buffer, Vec4 color)
 {
-	int color_ = MakeColor(color.a*255, color.r*255, color.g*255, color.b*255);
-	if (p2.y < p1.y)
-	{
-		Swap(&p1,  &p2);
-		Swap(&tp1, &tp2);
-	}
-	if (p3.y < p1.y)
-	{
-		Swap(&p3,  &p1);
-		Swap(&tp3, &tp1);
-	}
-	if (p3.y < p2.y)
-	{
-		Swap(&p3,  &p2);
-		Swap(&tp3, &tp2);
-	}
+#if 1
+	v0.x = v0.x*bitBuff->width;
+	v0.y = v0.y*bitBuff->height;
+	v1.x = v1.x*bitBuff->width;
+	v1.y = v1.y*bitBuff->height;
+	v2.x = v2.x*bitBuff->width;
+	v2.y = v2.y*bitBuff->height;
+#else
+	v0.x = v0.x*(bitBuff->width -1);
+	v0.y = v0.y*(bitBuff->height-1);
+	v1.x = v1.x*(bitBuff->width -1);
+	v1.y = v1.y*(bitBuff->height-1);
+	v2.x = v2.x*(bitBuff->width -1);
+	v2.y = v2.y*(bitBuff->height-1);
+#endif
+    v0.z = 1 / v0.z;
+	v1.z = 1 / v1.z;
+	v2.z = 1 / v2.z;
 	
-	Vec3 step_tp12 = {0, 0, 0};
-	Vec2 delta_p12 = p2 - p1;
-	Vec3 delta_tp12 = tp2 - tp1;
-	float step_x12 = 0;
-	if (delta_p12.y != 0)
-	{
-		step_x12 = delta_p12.x / delta_p12.y;
-		step_tp12 = delta_tp12 / delta_p12.y;
-	}
+	tv0 *= v0.z;
+    tv1 *= v1.z;
+    tv2 *= v2.z;
 	
-	Vec3 step_tp13 = {0, 0, 0};
-	Vec2 delta_p13 = p3 - p1;
-	Vec3 delta_tp13 = tp3 - tp1;
-	float step_x13 = 0;
-	if (delta_p13.y != 0)
-	{
-		step_x13 = delta_p13.x / delta_p13.y;
-		step_tp13 = delta_tp13 / delta_p13.y;
-	}
+	float area = edge_function(v0.xy, v1.xy, v2.xy);
 	
-	Vec2 side1 = p1;
-	Vec2 size2 = p1;
-	for (int i = 0; i < delta_p12.y; i++)
+	float test = MAX(0.0f, MIN(MIN(v0.y, v1.y), v2.y));
+	float test2 = MAX(0.0f, MIN(MIN(v0.x, v1.x), v2.x));
+	
+	float test3 = MIN(bitBuff->height, MAX(MAX(v0.y, v1.y), v2.y));
+	float test4 = MIN(bitBuff->width, MAX(MAX(v0.x, v1.x), v2.x));
+	
+	for (u32 j = (u32)test; j < test3; ++j)
 	{
-		side1.y++;
-	}
-	// WIP
+        for (u32 i = (u32)test2; i < test4; ++i)
+		{
+            Vec2 p = {i + 0.5f, j + 0.5f};
+            float w0 = edge_function(v1.xy, v2.xy, p);
+            float w1 = edge_function(v2.xy, v0.xy, p);
+            float w2 = edge_function(v0.xy, v1.xy, p);
+            if ((w0 >= 0 && w1 >= 0 && w2 >= 0) || (w0 < 0 && w1 < 0 && w2 < 0))
+			//if (w0 >= 0 && w1 >= 0 && w2 >= 0)
+			{
+				w0 /= area;
+				w1 /= area;
+				w2 /= area;
+				
+				float oneOverZ = v0.z * w0 + v1.z * w1 + v2.z * w2;
+				float z = 1 / oneOverZ;
+				if (depth_buffer && z < depth_buffer[j*bitBuff->width + i])
+				{
+					float s = w0 * tv0.u + w1 * tv1.u + w2 * tv2.u;
+					float t = w0 * tv0.v + w1 * tv1.v + w2 * tv2.v;
+					s *= z;
+					t *= z;
+					
+					//int color_ = MakeColor(1*255, r*255, g*255, b*255);
+					int color_ = SampleTexture(img, s, t);
+					Vec4 unpacked = ColorIntToVec4(color_);
+					color_ = MakeColor(unpacked.a*color.a*255, unpacked.r*color.r*255, unpacked.g*color.g*255, unpacked.b*color.b*255);
+					PlatformDrawPixel(bitBuff, i, j, color_);
+					depth_buffer[j*bitBuff->width + i] = z;
+				} else {
+					// ...
+				}
+               
+            }
+        }
+    }
+	//ASSERT(0);
 }
 static int TextureTriangle(PlatformBitBuffer *bitBuff,
 					int x1, int y1, float u1, float v1, float w1,
@@ -584,114 +615,7 @@ static void DrawSimpleCirclef(PlatformBitBuffer *bitBuff, float radiusf, Vec2 po
 	}
 	//PlatformFillRect(bitBuff, x_min, y_min, x_max, y_max, color32);
 }
-/*
-static int oldLoadFileOBJ(SharedState *s, char *filename_, Vec3 *points, int *points_count, Tri *triangles, int *triangles_count,
-				Vec2 *tex_points, int *tex_points_count, Tri *texture_map, int *texture_map_count)
-{
-	int points_next_free = *points_count;
-	int triangles_next_free = *triangles_count;
-	int tex_points_next_free = *tex_points_count;
-	int texture_map_next_free = *texture_map_count;
-	std::string filename = std::string(filename_);
-	//std::ifstream file_obj(filename);
-	
-	if (OpenAssetFileA(s, filename) != 0)
-	{
-		ASSERT(!"failed to open obj file");
-		return 1;
-	}
-	
-	std::string line;
-	
-	while(ReadAssetLineA(s, line))
-	{
-		if (line[0] == 'v' && line[1] == ' ')
-		{
-			// Vertex
-			
-			std::string vals_str = line.substr(2);
-			Vec3 vals;
 
-			std::string val0 = vals_str.substr(0, vals_str.find(' '));
-			vals.elem[0] = (float)atof(val0.c_str());
-
-			std::string val1 = vals_str.substr(val0.length() + 1, vals_str.find(' ', val0.length() + 1));
-			vals.elem[1] = (float)atof(val1.c_str());
-			
-			std::string val2 = vals_str.substr(vals_str.find_last_of(' ') + 1);
-			vals.elem[2] = (float)atof(val2.c_str());
-			
-			points[points_next_free++] = vals;
-		} else if (line[0] == 'v' && line[1] == 't' && line[2] == ' ') {
-			// Texture vertex
-			
-			std::string vals_str = line.substr(3);
-			Vec2 vals;
-			
-			std::string val0 = vals_str.substr(0, vals_str.find(' '));
-			vals.elem[0] = (float)atof(val0.c_str());
-			
-			std::string val1 = vals_str.substr(vals_str.find_last_of(' ') + 1);
-			vals.elem[1] = (float)atof(val1.c_str());
-			
-			//texture_points.push_back(vals);
-			tex_points[tex_points_next_free++] = vals;
-		} else if (line[0] == 'v' && line[1] == 'n' && line[2] == ' ') {
-			// do nothing
-		} else if (line[0] == 'f' && line[1] == ' ') {
-			// Face
-			
-			std::string lineVals = line.substr(2);
-
-			//std::string val0 = lineVals.substr(0, lineVals.find_first_of(' '));
-			
-			// If the value for this face includes texture and/or 
-			// normal, parse them out
-			if (lineVals.find('/') >= 0)
-			{
-				// Get first group of values
-				std::string g1 = lineVals.substr(0, lineVals.find(' '));
-				
-				// Get second group of values
-				std::string g2 = line.substr(line.find(' ') + 1);
-				g2 = g2.substr(g2.find(' ') + 1);
-				//g2 = g2.substr(0, g2.find(' '));
-	
-				std::string g3 = line.substr(line.find_last_of(' ') + 1);
-				
-				//int *t_vals = new int[3]{};
-				Tri t_vals;
-				std::string m1 = g1.substr(g1.find('/')+1, g1.find(' ') - g1.find('/') - 1);
-				std::string m2 = g2.substr(g2.find('/')+1, g2.find(' ') - g2.find('/') - 1);
-				std::string m3 = g3.substr(g3.find('/')+1, g3.find(' ') - g3.find('/') - 1);
-				t_vals.elem[0] = (int)atoi(m1.c_str()) - 1;
-				t_vals.elem[1] = (int)atoi(m2.c_str()) - 1;
-				t_vals.elem[2] = (int)atoi(m3.c_str()) - 1;
-				texture_map[texture_map_next_free++] = (t_vals);
-	
-				g1 = g1.substr(0, g1.find('/'));
-				g2 = g2.substr(0, g2.find('/'));
-				g3 = g3.substr(0, g3.find('/'));
-				//int *vals = new int[3]{};
-				Tri vals;
-				vals.elem[0] = (int)atoi(g1.c_str()) - 1;
-				vals.elem[1] = (int)atoi(g2.c_str()) - 1;
-				vals.elem[2] = (int)atoi(g3.c_str()) - 1;
-				triangles[triangles_next_free++] = (vals);
-			} else {
-				ASSERT(!"unhandled case in LoadFileOBJ - face has no textures");
-			}
-		}
-	}
-	
-	CloseAssetFile(s);
-	*points_count = points_next_free;
-	*triangles_count = triangles_next_free;
-	*tex_points_count = tex_points_next_free;
-	*texture_map_count = texture_map_next_free;
-	
-	return 0;
-}*/
 static char *ParserAdvance(u32 str_size, char *str, u32 *leftover_size, u32 forward)
 {
 	u32 i = 0;
@@ -1021,6 +945,12 @@ typedef struct
 	int index;
 } Command_InitTexture;
 
+typedef struct
+{
+	uptr *vertices;
+	i32 *strides;
+} Command_SetVertices;
+
 void ClearCommandBuffer(CommandBuffer *cmdBuff)
 {
 	cmdBuff->used = 0;
@@ -1041,6 +971,11 @@ u8* PushCommand(CommandBuffer *cmdBuff, u32 command_type)
 		case COMMAND_TYPE_CLEAR:
 		{
 			cmdBuff->used += sizeof(Command_Clear);
+		} break;
+		
+		case COMMAND_TYPE_SET_VERTICES:
+		{
+			cmdBuff->used += sizeof(Command_SetVertices);
 		} break;
 		
 		case COMMAND_TYPE_TRIANGLE:
@@ -1065,6 +1000,13 @@ void ClearCommand(CommandBuffer *cmdBuff, Vec4 color)
 {
 	Command_Clear *cmd = (Command_Clear*)PushCommand(cmdBuff, COMMAND_TYPE_CLEAR);
 	cmd->color = color;
+}
+
+void SetVerticesCommand(CommandBuffer *cmdBuff, uptr *verts, i32 *strides)
+{
+	Command_SetVertices *cmd = (Command_SetVertices*)PushCommand(cmdBuff, COMMAND_TYPE_SET_VERTICES);
+	cmd->vertices = verts;
+	cmd->strides = strides;
 }
 
 // TODO: Vec3* tex_pts or Vec2* tex_pts?

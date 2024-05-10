@@ -424,6 +424,13 @@ void ProcessCommandBuffer_OpenGL(PlatformBitBuffer *bitBuff, CommandBuffer *cmdB
 				offset += sizeof(*cmd);
 			} break;
 			
+			case COMMAND_TYPE_SET_VERTICES:
+			{
+				Command_SetVertices *cmd = (Command_SetVertices*)(cmdBuff->base_memory + offset);
+				// DO NOTHING (4 now)
+				offset += sizeof(*cmd);
+			} break;
+			
 			case COMMAND_TYPE_TRIANGLE:
 			{
 				Command_Triangle *cmd = (Command_Triangle*)(cmdBuff->base_memory + offset);
@@ -449,7 +456,7 @@ void ProcessCommandBuffer_OpenGL(PlatformBitBuffer *bitBuff, CommandBuffer *cmdB
 				
 				for (int i = 0; i < 3; i++)
 				{
-					glTexCoord4f(cmd->tex_points[i].u/cmd->tex_points[i].w, (1.0f-cmd->tex_points[i].v)/cmd->tex_points[i].w, 0.0f, 1);
+					glTexCoord4f(cmd->tex_points[i].u/cmd->points[i].z, (1.0f-cmd->tex_points[i].v)/cmd->points[i].z, 0.0f, 1.0f/cmd->points[i].z);
 					//glTexCoord2f(cmd->tex_points[i].u, cmd->tex_points[i].v);
 					glVertex3f(cmd->points[i].x, cmd->points[i].y, cmd->points[i].z);
 				}
@@ -477,8 +484,15 @@ void ProcessCommandBuffer_OpenGL(PlatformBitBuffer *bitBuff, CommandBuffer *cmdB
 void ProcessCommandBuffer_Software(PlatformBitBuffer *bitBuff, CommandBuffer *cmdBuff)
 {
 	float *depth_buffer = new float[bitBuff->width*bitBuff->height]{};
+	for (int i = 0; i < bitBuff->width*bitBuff->height; i++)
+	{
+		depth_buffer[i] = 10000.0f;
+	}
 	//Mat4 proj_mat4 = MakeProjectionMat4(90.0f, 1, bitBuff->width, bitBuff->height, 0.01f, 1000.0f);
 	Mat4 proj_mat4 = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+	
+	uptr *verts = 0;
+	i32 *strides = 0;
 	
 	for (u32 offset = 0; offset < cmdBuff->used;)
 	{
@@ -491,6 +505,14 @@ void ProcessCommandBuffer_Software(PlatformBitBuffer *bitBuff, CommandBuffer *cm
 			{
 				Command_Clear *cmd = (Command_Clear*)(cmdBuff->base_memory + offset);
 				FillPlatformBitBuffer(bitBuff, MakeColor(255, cmd->color.r*255, cmd->color.g*255, cmd->color.b*255));
+				offset += sizeof(*cmd);
+			} break;
+			
+			case COMMAND_TYPE_SET_VERTICES:
+			{
+				Command_SetVertices *cmd = (Command_SetVertices*)(cmdBuff->base_memory + offset);
+				verts = cmd->vertices;
+				strides = cmd->strides;
 				offset += sizeof(*cmd);
 			} break;
 			
@@ -511,14 +533,17 @@ void ProcessCommandBuffer_Software(PlatformBitBuffer *bitBuff, CommandBuffer *cm
 					points[i] = {point.x/point.w+0.5f, point.y/point.w+0.5f, point.z};
 				}*/
 				
-				TextureTrianglef(bitBuff,
+				/*TextureTrianglef(bitBuff,
 							    cmd->points[0].x,    cmd->points[0].y,
 							cmd->tex_points[0].x,cmd->tex_points[0].y, cmd->tex_points[0].z,
 							    cmd->points[1].x,    cmd->points[1].y,
 							cmd->tex_points[1].x,cmd->tex_points[1].y, cmd->tex_points[1].z,
 							    cmd->points[2].x,    cmd->points[2].y,
 							cmd->tex_points[2].x,cmd->tex_points[2].y, cmd->tex_points[2].z,
-							cmd->tex, depth_buffer, cmd->color);
+							cmd->tex, depth_buffer, cmd->color);*/
+				newTextureTriangle(bitBuff, cmd->points[0], cmd->points[1], cmd->points[2],
+									cmd->tex_points[0], cmd->tex_points[1], cmd->tex_points[2],
+									cmd->tex, depth_buffer, cmd->color);
 				
 				offset += sizeof(*cmd);
 			} break;

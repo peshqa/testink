@@ -95,7 +95,7 @@ static int LoadPPMImage(SharedState *s, char* file_path, SimpleImage *image)
 {
 	void *memory;
 	u32 memory_size = PlatformReadWholeFile(s, file_path, memory);
-	u32 leftover_size;
+	u32 leftover_size = memory_size;
 	if (memory_size == 0)
 	{
 		ASSERT(!"LoadPPMImage - Couldn't open the file");
@@ -105,6 +105,10 @@ static int LoadPPMImage(SharedState *s, char* file_path, SimpleImage *image)
 	char *line = (char*)memory;
 	
 	//if (line != "P6")
+	while (line[0] == '#')
+	{
+		line = FindNextLine(leftover_size, line, &leftover_size);
+	}
 	if (line[0] != 'P' && line[1] != '6')
 	{
 		ASSERT(!"LoadPPMImage - Magic number not matching");
@@ -115,7 +119,7 @@ static int LoadPPMImage(SharedState *s, char* file_path, SimpleImage *image)
 	unsigned int height;
 	int max_value;
 
-	line = FindNextLine(memory_size, line, &leftover_size);
+	do { line = FindNextLine(leftover_size, line, &leftover_size); } while (line[0] == '#');
 	line = ParseInteger(leftover_size, line, &leftover_size, &width);
 	line = FindNextToken(leftover_size, line, &leftover_size);
 	line = ParseInteger(leftover_size, line, &leftover_size, &height);
@@ -292,7 +296,15 @@ static int SampleTexture(SimpleImage *img, float u, float v)
 {
 	if (u >= 0.0f && u <= 1.0f && v >= 0.0f && v <= 1.0f)
 	{
-		return img->pixels[img->width*(int)((img->height-1)*(1.0f-v)) + (int)(img->width*u)];
+		return img->pixels[img->width*(int)((img->height)*(1.0f-v)) + (int)(img->width*u)];
+		//return img->pixels[img->width*(int)((img->height-1)*(1.0f-v)) + (int)(img->width*u)]; // TODO: which is correct?
 	}
 	return MakeColor(255, 241, 87, 236);
+}
+
+static Vec4 ColorIntToVec4(int color)
+{
+	u8 *b = (u8*)&color;
+	Vec4 res = {(float)b[2] / 255,(float)b[1] / 255, (float)b[0] / 255, (float)b[3] / 255};
+	return res;
 }

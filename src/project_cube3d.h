@@ -267,7 +267,7 @@ int InitProject3DCube(SharedState* state)
 	char texture_path[128];
 	ConcatNT(state->asset_path, (char*)"cube.obj", model_path);
 	//ConcatNT(state->asset_path, (char*)"test.bmp", texture_path);
-	ConcatNT(state->asset_path, (char*)"cube.ppm", texture_path);
+	ConcatNT(state->asset_path, (char*)"checkboard.ppm", texture_path);
 	LoadFileOBJ(state, model_path, p_state->verts, &p_state->verts_count, p_state->tris, &p_state->tris_count,
 				p_state->tex_verts, &p_state->tex_verts_count, p_state->tris_tex_map, &p_state->tris_tex_map_count);
 	/*oldLoadFileOBJ(state, model_path, p_state->verts, &p_state->verts_count, p_state->tris, &p_state->tris_count,
@@ -284,6 +284,16 @@ int UpdateProject3DCube(SharedState* state)
 	
 	// TODO: add memory arena function to track memory used
 	size_t memory_used = game_state->arena.used;
+	
+	uptr verts[] = { (uptr)&game_state->verts, (uptr)&game_state->tex_verts };
+	i32 strides[] = { sizeof(float)*3, sizeof(float)*2 };
+	ClearCommand(&state->cmdBuff, {.45f, .45f, 0.9f});
+	SetVerticesCommand(&state->cmdBuff, verts, strides);
+	Vec3 cmd_color = {1.0f, 1.0f, 1.0f};
+	for (int i = 0; i < game_state->tris_count; i++)
+	{
+		//TriangleCommand(&state->cmdBuff, game_state->tris, game_state->tris_tex_map, &game_state->image);
+	}
 	
 	float *depth_buffer;
 	depth_buffer = ArenaPushArray(&game_state->arena, state->client_width*state->client_height, float);
@@ -352,9 +362,9 @@ int UpdateProject3DCube(SharedState* state)
 		game_state->cube_pitch -= delta_time*1;
 	}
 
-	float z_near = 0.01f;
-	float z_far = 1000.0f;
-	Mat4 proj_mat4 = MakeProjectionMat4(90.0f, 1, state->bitBuff->width, state->bitBuff->height, z_near, z_far);
+	//float z_near = 0.01f;
+	//float z_far = 1000.0f;
+	Mat4 proj_mat4 = MakeProjectionMat4(90.0f, 1, state->bitBuff->width, state->bitBuff->height, 0.01f, 1000.0f);
 	
 	Vec4 target = {0.0f, 0.0f, 1.0f};
 	Vec3 target_final;
@@ -396,36 +406,11 @@ int UpdateProject3DCube(SharedState* state)
 	
 	Vec3 up = {0, 1, 0};
 	Mat4 look_at_mat4 = QuickInverseMat4(MakePointAtMat4(pos, target_final, up));
-	/*
-	float x_rot_mat4x4[16];
-	float y_rot_mat4x4[16]{};
-	float z_rot_mat4x4[16]{};
-	
-	// https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
-	InitYRotMat4x4(x_rot_mat4x4, game_state->cube_pitch+
-		(2*atan2(sqrt(1+2*(state->rot_vec_values[3]*state->rot_vec_values[1]-state->rot_vec_values[0]*state->rot_vec_values[2])),
-		sqrt(1-2*(state->rot_vec_values[3]*state->rot_vec_values[1]-state->rot_vec_values[0]*state->rot_vec_values[2]))) - 3.14159/2)*1
-	);
-	InitZRotMat4x4(y_rot_mat4x4, game_state->cube_yaw+
-		atan2(2*(state->rot_vec_values[3]*state->rot_vec_values[2]+state->rot_vec_values[0]*state->rot_vec_values[1]),
-		1-2*(state->rot_vec_values[1]*state->rot_vec_values[1]+state->rot_vec_values[2]*state->rot_vec_values[2]))
-	);
-	InitXRotMat4x4(z_rot_mat4x4, 
-		atan2(2*(state->rot_vec_values[3]*state->rot_vec_values[0]+state->rot_vec_values[1]*state->rot_vec_values[2]),
-		1-2*(state->rot_vec_values[0]*state->rot_vec_values[0]+state->rot_vec_values[1]*state->rot_vec_values[1]))
-	);*/
-	//Mat4 translate_mat4 = MakeTranslationMat4({0.0f, 0.0f, 1.0f});
 	Mat4 combined_mat4 = MakeScaleMat4({1, 1, 1}) * MakeYRotMat4(game_state->cube_pitch) * MakeXRotMat4(game_state->cube_yaw) * MakeTranslationMat4({0.0f, 0.0f, 4.0f});
-	
-	//u64 time_begin_raster = __rdtsc();
-	//FillPlatformBitBuffer(state->bitBuff, MakeColor(255,25,12,6)); // solid color
-	//DrawGradientScreenv(state->bitBuff, {.45f, .45f, 0.9f}, {1.0f, 1.0f, 1.0f}); // fancy vertical gradient
-	ClearCommand(&state->cmdBuff, {.45f, .45f, 0.9f});
-	
+		
 	int clr = MakeColor(255,255,255,255);
 	
 	// Apply world transformations to vertices
-	//u64 time_begin_transform = __rdtsc();
 	for (int i = 0; i < game_state->verts_count; i++)
 	{
 		float *vx = game_state->verts[i].elem;
@@ -434,7 +419,6 @@ int UpdateProject3DCube(SharedState* state)
 	}
 	
 	// Apply view matrix
-	//u64 time_begin_view = __rdtsc();
 	for (int i = 0; i < verts_transformed_next_free; i++)
 	{
 		float *vx = verts_transformed[i].elem;
@@ -475,7 +459,7 @@ int UpdateProject3DCube(SharedState* state)
 			Tri tri_clipped[2];
 			Tri tex_clipped[2];
 			Vec3 plane_normal = {0.0f, 0.0f, 1.0f};
-			Vec3 plane_point = {0.0f, 0.0f, z_near};
+			Vec3 plane_point = {0.0f, 0.0f, 0.01f};
 			
 			count_clipped_triangles = ClipAgainstPlane(plane_normal, plane_point, verts_viewed, &verts_viewed_next_free, clipped_tex_verts, &clipped_tex_verts_count,
 					tri, game_state->tris_tex_map[count].elem, tri_clipped[0].elem, tex_clipped[0].elem, tri_clipped[1].elem, tex_clipped[1].elem);
@@ -499,10 +483,10 @@ int UpdateProject3DCube(SharedState* state)
 		Vec4 vec = {vx[0], vx[1], vx[2], 1};
 		vec = vec * proj_mat4;
 		
-		clipped_tex_verts[yac].x /= vec.w;
-		clipped_tex_verts[yac].y /= vec.w;
-		clipped_tex_verts[yac].z = 1.0f / vec.w;
-		verts_projected[verts_projected_next_free++] = {vec.x/vec.w+0.5f, vec.y/vec.w+0.5f, vec.z};
+		//clipped_tex_verts[yac].x /= vec.w;
+		//clipped_tex_verts[yac].y /= vec.w;
+		//clipped_tex_verts[yac].z = 1.0f / vec.w;
+		verts_projected[verts_projected_next_free++] = { vec.x/vec.w+0.5f, vec.y/vec.w+0.5f, vec.z };
 		yac++;
 	}
 	

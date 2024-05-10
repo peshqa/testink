@@ -47,6 +47,7 @@ typedef uintptr_t uptr;
 enum CommandType : u32
 {
 	COMMAND_TYPE_CLEAR,
+	COMMAND_TYPE_SET_VERTICES,
 	COMMAND_TYPE_TRIANGLE
 };
 

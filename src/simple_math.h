@@ -17,6 +17,8 @@ simple_math.h - self explanatory header name
 #define PI32 3.14159265359f
 
 #define ABS(a) ((a) > 0 ? (a) : -(a))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 float SafeDivide0(float left, float right)
 {
@@ -193,6 +195,12 @@ Vec3 operator*(Vec3 v, float f)
 Vec3 operator*(float f, Vec3 v)
 {
 	return v * f;
+}
+
+Vec3 &operator*=(Vec3 &a, float f)
+{
+	a = a * f;
+	return a;
 }
 
 Vec3 operator/(Vec3 v, float f)
@@ -511,6 +519,8 @@ int ClipAgainstPlane(Vec3 plane_normal, Vec3 plane_point, Vec3 *points, int *poi
 		return 0;
 	}
 
+	// TODO: DO SOMETHING ABOUT THE CLIPPING screwing up texture coordinates
+	//if (1) // Disables clipping
 	if (nInsidePointCount == 3)
 	{
 		// All points lie on the inside of plane, so do nothing
@@ -559,6 +569,10 @@ int ClipAgainstPlane(Vec3 plane_normal, Vec3 plane_point, Vec3 *points, int *poi
 		out_tri1[2] = *points_count;
 		points[*points_count] = np2;
 		*points_count = *points_count + 1;
+		
+		//int tmp = out_tri1[1];
+		//out_tri1[1] = out_tri1[2];
+		//out_tri1[2] = tmp;
 
 		return 1;
 	}
@@ -603,6 +617,15 @@ int ClipAgainstPlane(Vec3 plane_normal, Vec3 plane_point, Vec3 *points, int *poi
 		out_tri2[2] = *points_count;
 		points[*points_count] = np2;
 		*points_count = *points_count + 1;
+		
+		//int xd1=0;
+		//int xd2=1;
+		//int tmp = out_tri2[xd2];
+		//out_tri2[xd2] = out_tri2[xd1];
+		//out_tri2[xd1] = tmp;
+		//int tmp2 = out_tex2[xd2];
+		//out_tex2[xd2] = out_tex2[xd1];
+		//out_tex2[xd1] = tmp2;
 
 		return 2;
 	}
