@@ -267,7 +267,7 @@ int InitProject3DCube(SharedState* state)
 	char texture_path[128];
 	ConcatNT(state->asset_path, (char*)"cube.obj", model_path);
 	//ConcatNT(state->asset_path, (char*)"test.bmp", texture_path);
-	ConcatNT(state->asset_path, (char*)"checkboard.ppm", texture_path);
+	ConcatNT(state->asset_path, (char*)"checkerboard.ppm", texture_path);
 	LoadFileOBJ(state, model_path, p_state->verts, &p_state->verts_count, p_state->tris, &p_state->tris_count,
 				p_state->tex_verts, &p_state->tex_verts_count, p_state->tris_tex_map, &p_state->tris_tex_map_count);
 	/*oldLoadFileOBJ(state, model_path, p_state->verts, &p_state->verts_count, p_state->tris, &p_state->tris_count,
@@ -362,9 +362,9 @@ int UpdateProject3DCube(SharedState* state)
 		game_state->cube_pitch -= delta_time*1;
 	}
 
-	//float z_near = 0.01f;
+	float z_near = 0.01f;
 	//float z_far = 1000.0f;
-	Mat4 proj_mat4 = MakeProjectionMat4(90.0f, 1, state->bitBuff->width, state->bitBuff->height, 0.01f, 1000.0f);
+	Mat4 proj_mat4 = MakeProjectionMat4(90.0f, 1, state->bitBuff->width, state->bitBuff->height, z_near, 1000.0f);
 	
 	Vec4 target = {0.0f, 0.0f, 1.0f};
 	Vec3 target_final;
@@ -459,7 +459,7 @@ int UpdateProject3DCube(SharedState* state)
 			Tri tri_clipped[2];
 			Tri tex_clipped[2];
 			Vec3 plane_normal = {0.0f, 0.0f, 1.0f};
-			Vec3 plane_point = {0.0f, 0.0f, 0.1f};
+			Vec3 plane_point = {0.0f, 0.0f, z_near*5};
 			
 			count_clipped_triangles = ClipAgainstPlane(plane_normal, plane_point, verts_viewed, &verts_viewed_next_free, clipped_tex_verts, &clipped_tex_verts_count,
 					tri, game_state->tris_tex_map[count].elem, tri_clipped[0].elem, tex_clipped[0].elem, tri_clipped[1].elem, tex_clipped[1].elem);

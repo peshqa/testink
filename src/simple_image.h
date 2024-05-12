@@ -308,3 +308,40 @@ static Vec4 ColorIntToVec4(int color)
 	Vec4 res = {(float)b[2] / 255,(float)b[1] / 255, (float)b[0] / 255, (float)b[3] / 255};
 	return res;
 }
+
+static int ColorVec4ToInt(Vec4 v)
+{
+	int res = MakeColor(v.a*255, v.r*255, v.g*255, v.b*255);
+	return res;
+}
+
+// TODO: move to simple_math.h?
+static Vec4 Lerp(Vec4 a, Vec4 b, float t)
+{
+	return a * (1.0 - t) + (b * t);
+}
+
+static int BilinearSampleTexture(SimpleImage *img, float u, float v)
+{
+	if (u >= 0.0f && u <= 1.0f && v >= 0.0f && v <= 1.0f)
+	{
+		v = (1.0f-v);
+		int sample0 = img->pixels[img->width*(int)((img->height)*(v)) + (int)(img->width*u)];
+		int sample1 = img->pixels[img->width*(int)((img->height)*(v)) + (int)(img->width*u) + 1];
+		int sample2 = img->pixels[img->width*(int)((img->height)*(v)+1) + (int)(img->width*u)];
+		int sample3 = img->pixels[img->width*(int)((img->height)*(v)+1) + (int)(img->width*u) + 1];
+		
+		Vec4 v0 = ColorIntToVec4(sample0);
+		Vec4 v1 = ColorIntToVec4(sample1);
+		Vec4 v2 = ColorIntToVec4(sample2);
+		Vec4 v3 = ColorIntToVec4(sample3);
+		
+		float t_x = (img->width*u - (int)(img->width*u));
+		float t_y = (img->height*v - (int)(img->height*v));
+		ASSERT(t_x >= 0.0f && t_x <= 1.0f && t_y >= 0.0f && t_y <= 1.0f)
+		Vec4 result = Lerp(Lerp(v0, v1, t_x), Lerp(v2, v3, t_x), t_y);
+		
+		return ColorVec4ToInt(result);
+	}
+	return MakeColor(255, 241, 87, 236);
+}

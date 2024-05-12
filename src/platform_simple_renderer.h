@@ -255,7 +255,8 @@ static void newTextureTriangle(PlatformBitBuffer *bitBuff,
 					t *= z;
 					
 					//int color_ = MakeColor(1*255, r*255, g*255, b*255);
-					int color_ = SampleTexture(img, s, t);
+					//int color_ = SampleTexture(img, s, t);
+					int color_ = BilinearSampleTexture(img, s, t);
 					Vec4 unpacked = ColorIntToVec4(color_);
 					color_ = MakeColor(unpacked.a*color.a*255, unpacked.r*color.r*255, unpacked.g*color.g*255, unpacked.b*color.b*255);
 					PlatformDrawPixel(bitBuff, i, j, color_);

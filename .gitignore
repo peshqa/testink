@@ -11,7 +11,7 @@ android-native/obj
 *.png
 *.ppm
 !cube.*
-!checkboard.ppm
+!checkerboard.ppm
 *.pdb
 *.exe
 *.suo

@@ -141,6 +141,16 @@ Vec3 operator+(Vec3 a, Vec3 b)
 	res.z = a.z + b.z;
 	return res;
 }
+Vec4 operator+(Vec4 a, Vec4 b)
+{
+	// TODO: Add SIMD
+	Vec4 res;
+	res.x = a.x + b.x;
+	res.y = a.y + b.y;
+	res.z = a.z + b.z;
+	res.w = a.w + b.w;
+	return res;
+}
 
 Vec3 &operator+=(Vec3 &a, Vec3 b)
 {
@@ -163,6 +173,16 @@ Vec3 operator-(Vec3 a, Vec3 b)
 	res.z = a.z - b.z;
 	return res;
 }
+Vec4 operator-(Vec4 a, Vec4 b)
+{
+	// TODO: Add SIMD
+	Vec4 res;
+	res.x = a.x - b.x;
+	res.y = a.y - b.y;
+	res.z = a.z - b.z;
+	res.w = a.w - b.w;
+	return res;
+}
 
 Vec3 &operator-=(Vec3 &a, Vec3 b)
 {
@@ -177,13 +197,6 @@ Vec2 operator*(Vec2 v, float f)
 	res.y = v.y * f;
 	return res;
 }
-Vec2 operator*(float f, Vec2 v)
-{
-	Vec2 res;
-	res.x = v.x *f;
-	res.y = v.y *f;
-	return res;
-}
 Vec3 operator*(Vec3 v, float f)
 {
 	Vec3 res;
@@ -192,7 +205,24 @@ Vec3 operator*(Vec3 v, float f)
 	res.z = v.z * f;
 	return res;
 }
+Vec4 operator*(Vec4 v, float f)
+{
+	Vec4 res;
+	res.x = v.x * f;
+	res.y = v.y * f;
+	res.z = v.z * f;
+	res.w = v.w * f;
+	return res;
+}
+Vec2 operator*(float f, Vec2 v)
+{
+	return v * f;
+}
 Vec3 operator*(float f, Vec3 v)
+{
+	return v * f;
+}
+Vec4 operator*(float f, Vec4 v)
 {
 	return v * f;
 }
@@ -203,12 +233,28 @@ Vec3 &operator*=(Vec3 &a, float f)
 	return a;
 }
 
+Vec2 operator/(Vec2 v, float f)
+{
+	Vec2 res;
+	res.x = v.x / f;
+	res.y = v.y / f;
+	return res;
+}
 Vec3 operator/(Vec3 v, float f)
 {
 	Vec3 res;
 	res.x = v.x / f;
 	res.y = v.y / f;
 	res.z = v.z / f;
+	return res;
+}
+Vec4 operator/(Vec4 v, float f)
+{
+	Vec4 res;
+	res.x = v.x / f;
+	res.y = v.y / f;
+	res.z = v.z / f;
+	res.w = v.w / f;
 	return res;
 }
 
