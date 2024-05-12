@@ -454,12 +454,12 @@ int UpdateProject3DCube(SharedState* state)
 				koef = 0.01f;
 			Vec3 tri_color = {koef, koef, koef};
 			
-			// Clipping
+			// Near z clipping
 			int count_clipped_triangles = 0;
 			Tri tri_clipped[2];
 			Tri tex_clipped[2];
 			Vec3 plane_normal = {0.0f, 0.0f, 1.0f};
-			Vec3 plane_point = {0.0f, 0.0f, 0.01f};
+			Vec3 plane_point = {0.0f, 0.0f, 0.1f};
 			
 			count_clipped_triangles = ClipAgainstPlane(plane_normal, plane_point, verts_viewed, &verts_viewed_next_free, clipped_tex_verts, &clipped_tex_verts_count,
 					tri, game_state->tris_tex_map[count].elem, tri_clipped[0].elem, tex_clipped[0].elem, tri_clipped[1].elem, tex_clipped[1].elem);
@@ -475,21 +475,6 @@ int UpdateProject3DCube(SharedState* state)
 		
 	}
 	
-	// Project 3D vertices onto 2D screen
-	int yac = 0;
-	while (yac < verts_viewed_next_free)
-	{
-		float *vx = verts_viewed[yac].elem;
-		Vec4 vec = {vx[0], vx[1], vx[2], 1};
-		vec = vec * proj_mat4;
-		
-		//clipped_tex_verts[yac].x /= vec.w;
-		//clipped_tex_verts[yac].y /= vec.w;
-		//clipped_tex_verts[yac].z = 1.0f / vec.w;
-		verts_projected[verts_projected_next_free++] = { vec.x/vec.w+0.5f, vec.y/vec.w+0.5f, vec.z };
-		yac++;
-	}
-	
 	FreeList *tri_batch = ArenaPushType(&game_state->arena, FreeList);
 	FreeList *tex_batch = ArenaPushType(&game_state->arena, FreeList);
 	InitFreeList(tri_batch);
@@ -502,14 +487,14 @@ int UpdateProject3DCube(SharedState* state)
 		Vec3 tri_color = tri_colors[color_count++];
 		Tri tri_clipped[2];
 		Tri tex_clipped[2];
-		Vec3 plane_normal0 = {0.0f, 1.0f, 0.0f};
-		Vec3  plane_point0 = {0.0f, 0.0f, 0.0f};
-		Vec3 plane_normal1 = {0.0f, -1.0f, 0.0f};
-		Vec3  plane_point1 = {0.0f, 1.0f, 0.0f};
-		Vec3 plane_normal2 = {1.0f, 0.0f, 0.0f};
-		Vec3  plane_point2 = {0.0f, 0.0f, 0.0f};
-		Vec3 plane_normal3 = {-1.0f, 0.0f, 0.0f};
-		Vec3  plane_point3 = {1.0f, 0.0f, 0.0f};
+		Vec3 plane_normal0 = {0.0f, 1.0f, 0.0f}; // bottom
+		Vec3  plane_point0 = {0.0f, -100.0f, 0.0f};
+		Vec3 plane_normal1 = {0.0f, -1.0f, 0.0f}; // top
+		Vec3  plane_point1 = {0.0f, 100.0f, 0.0f};
+		Vec3 plane_normal2 = {1.0f, 0.0f, 0.0f}; // left
+		Vec3  plane_point2 = {-100.0f, 0.0f, 0.0f};
+		Vec3 plane_normal3 = {-1.0f, 0.0f, 0.0f}; // right
+		Vec3  plane_point3 = {100.0f, 0.0f, 0.0f};
 		
 		FreeListClear(tri_batch);
 		FreeListClear(tex_batch);
@@ -534,19 +519,19 @@ int UpdateProject3DCube(SharedState* state)
 				switch (plane)
 				{
 					case 0: count_clipped_triangles = 
-						ClipAgainstPlane(plane_normal0, plane_point0, verts_projected, &verts_projected_next_free, clipped_tex_verts, &clipped_tex_verts_count, test.elem, t_test.elem,
+						ClipAgainstPlane(plane_normal0, plane_point0, verts_projected, &verts_viewed_next_free, clipped_tex_verts, &clipped_tex_verts_count, test.elem, t_test.elem,
 						tri_clipped[0].elem, tex_clipped[0].elem,                                                    
 						tri_clipped[1].elem, tex_clipped[1].elem); break;                                            
 					case 1: count_clipped_triangles =                                                      
-						ClipAgainstPlane(plane_normal1, plane_point1, verts_projected, &verts_projected_next_free, clipped_tex_verts, &clipped_tex_verts_count, test.elem, t_test.elem,
+						ClipAgainstPlane(plane_normal1, plane_point1, verts_viewed, &verts_viewed_next_free, clipped_tex_verts, &clipped_tex_verts_count, test.elem, t_test.elem,
 						tri_clipped[0].elem, tex_clipped[0].elem,                                                    
 						tri_clipped[1].elem, tex_clipped[1].elem); break;                                            
 					case 2: count_clipped_triangles =                                                      
-						ClipAgainstPlane(plane_normal2, plane_point2, verts_projected, &verts_projected_next_free, clipped_tex_verts, &clipped_tex_verts_count, test.elem, t_test.elem,
+						ClipAgainstPlane(plane_normal2, plane_point2, verts_viewed, &verts_viewed_next_free, clipped_tex_verts, &clipped_tex_verts_count, test.elem, t_test.elem,
 						tri_clipped[0].elem, tex_clipped[0].elem,                                                    
 						tri_clipped[1].elem, tex_clipped[1].elem); break;                                            
 					case 3: count_clipped_triangles =                                                      
-						ClipAgainstPlane(plane_normal3, plane_point3, verts_projected, &verts_projected_next_free, clipped_tex_verts, &clipped_tex_verts_count, test.elem, t_test.elem,
+						ClipAgainstPlane(plane_normal3, plane_point3, verts_viewed, &verts_viewed_next_free, clipped_tex_verts, &clipped_tex_verts_count, test.elem, t_test.elem,
 						tri_clipped[0].elem, tex_clipped[0].elem,
 						tri_clipped[1].elem, tex_clipped[1].elem); break;
 				}
@@ -577,13 +562,42 @@ int UpdateProject3DCube(SharedState* state)
 							clipped_tex_verts[tt[2]].x,clipped_tex_verts[tt[2]].y, clipped_tex_verts[tt[2]].z,
 							&game_state->image, depth_buffer);*/
 			Vec4 cmd_color = {tri_color.r, tri_color.g, tri_color.b, 1.0f};
-			TriangleCommand(&state->cmdBuff, cmd_color, verts_projected, node->data, clipped_tex_verts, t_node->data, &game_state->image);
+			float *vx = verts_viewed[t[0]].elem;
+			Vec4 vec[3] = {verts_viewed[t[0]].x, verts_viewed[t[0]].y, verts_viewed[t[0]].z, 1,
+							verts_viewed[t[1]].x, verts_viewed[t[1]].y, verts_viewed[t[1]].z, 1,
+							verts_viewed[t[2]].x, verts_viewed[t[2]].y, verts_viewed[t[2]].z, 1};
+			vec[0] = vec[0] * proj_mat4;
+			vec[1] = vec[1] * proj_mat4;
+			vec[2] = vec[2] * proj_mat4;
+			Vec3 vecs[3] = {vec[0].x / vec[0].w + 0.5f, vec[0].y / vec[0].w + 0.5f, vec[0].z,
+							vec[1].x / vec[1].w + 0.5f, vec[1].y / vec[1].w + 0.5f, vec[1].z,
+							vec[2].x / vec[2].w + 0.5f, vec[2].y / vec[2].w + 0.5f, vec[2].z};
+			//verts_projected[verts_projected_next_free++] = { vec.x/vec.w+0.5f, vec.y/vec.w+0.5f, vec.z };
+			Tri finaltri = {0,1,2};
+			TriangleCommand(&state->cmdBuff, cmd_color, vecs, finaltri, clipped_tex_verts, t_node->data, &game_state->image);
 
 			node = node->next;
 			t_node = t_node->next;
 		}
 		
 	}
+	
+	// Project 3D vertices onto 2D screen
+	/*int yac = 0;
+	while (yac < verts_viewed_next_free)
+	{
+		float *vx = verts_viewed[yac].elem;
+		Vec4 vec = {vx[0], vx[1], vx[2], 1};
+		vec = vec * proj_mat4;
+		
+		//clipped_tex_verts[yac].x /= vec.w;
+		//clipped_tex_verts[yac].y /= vec.w;
+		//clipped_tex_verts[yac].z = 1.0f / vec.w;
+		verts_projected[verts_projected_next_free++] = { vec.x/vec.w+0.5f, vec.y/vec.w+0.5f, vec.z };
+		yac++;
+	}*/
+	
+	
 	game_state->arena.used = memory_used;
 	
 	// Sound

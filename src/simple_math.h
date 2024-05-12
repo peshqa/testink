@@ -460,11 +460,8 @@ void PlaneVectorIntersection(Vec3 plane_normal, Vec3 plane_point, Vec3 line_star
 	t = (-plane_d - ad) / (bd - ad);
 	Vec3 start_to_end;
 	Vec3 line_to_intersect;
-	//VecRaw3fSub(line_end, line_start, start_to_end);
 	start_to_end = line_end - line_start;
-	//VecRaw3fMulByFloat(start_to_end, t, line_to_intersect);
 	line_to_intersect = start_to_end * t;
-	//VecRaw3fAdd(line_start.elem, line_to_intersect.elem, output);
 	*output = line_start + line_to_intersect;
 }
 float dist(Vec3 plane_normal, Vec3 plane_point, Vec3 v)
@@ -520,7 +517,7 @@ int ClipAgainstPlane(Vec3 plane_normal, Vec3 plane_point, Vec3 *points, int *poi
 	}
 
 	// TODO: DO SOMETHING ABOUT THE CLIPPING screwing up texture coordinates
-	//if (1) // Disables clipping
+	//if (1) // Essentially disables clipping
 	if (nInsidePointCount == 3)
 	{
 		// All points lie on the inside of plane, so do nothing
@@ -548,17 +545,21 @@ int ClipAgainstPlane(Vec3 plane_normal, Vec3 plane_point, Vec3 *points, int *poi
 		Vec3 ntp2;
 		
 		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]], points[outside_points[0]], &np1, t);
-		ntp1.x = t * (tex_points[outside_tex_points[0]].x - tex_points[inside_tex_points[0]].x) + tex_points[inside_tex_points[0]].x;
-		ntp1.y = t * (tex_points[outside_tex_points[0]].y - tex_points[inside_tex_points[0]].y) + tex_points[inside_tex_points[0]].y;
-		ntp1.z = t * (tex_points[outside_tex_points[0]].z - tex_points[inside_tex_points[0]].z) + tex_points[inside_tex_points[0]].z;
+		//t /= np1.z;
+		ntp1.u = t * (tex_points[outside_tex_points[0]].x - tex_points[inside_tex_points[0]].x) + tex_points[inside_tex_points[0]].x;
+		ntp1.v = t * (tex_points[outside_tex_points[0]].y - tex_points[inside_tex_points[0]].y) + tex_points[inside_tex_points[0]].y;
+		ntp1.w = t * (tex_points[outside_tex_points[0]].z - tex_points[inside_tex_points[0]].z) + tex_points[inside_tex_points[0]].z;
+		//ntp1.w /= np1.z;
 		out_tex1[1] = *tex_points_count;
 		tex_points[*tex_points_count] = (ntp1);
 		*tex_points_count = *tex_points_count + 1;
 		
 		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]], points[outside_points[1]], &np2, t);
-		ntp2.x = t * (tex_points[outside_tex_points[1]].x - tex_points[inside_tex_points[0]].x) + tex_points[inside_tex_points[0]].x;
-		ntp2.y = t * (tex_points[outside_tex_points[1]].y - tex_points[inside_tex_points[0]].y) + tex_points[inside_tex_points[0]].y;
-		ntp2.z = t * (tex_points[outside_tex_points[1]].z - tex_points[inside_tex_points[0]].z) + tex_points[inside_tex_points[0]].z;
+		//t /= np2.z;
+		ntp2.u = t * (tex_points[outside_tex_points[1]].x - tex_points[inside_tex_points[0]].x) + tex_points[inside_tex_points[0]].x;
+		ntp2.v = t * (tex_points[outside_tex_points[1]].y - tex_points[inside_tex_points[0]].y) + tex_points[inside_tex_points[0]].y;
+		ntp2.w = t * (tex_points[outside_tex_points[1]].z - tex_points[inside_tex_points[0]].z) + tex_points[inside_tex_points[0]].z;
+		//ntp2.w /= np2.z;
 		out_tex1[2] = *tex_points_count;
 		tex_points[*tex_points_count] = (ntp2);
 		*tex_points_count = *tex_points_count + 1;
@@ -591,9 +592,13 @@ int ClipAgainstPlane(Vec3 plane_normal, Vec3 plane_point, Vec3 *points, int *poi
 		out_tex1[1] = inside_tex_points[1];
 		
 		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[0]], points[outside_points[0]], &np1, t);
-		ntp1.x = t * (tex_points[outside_tex_points[0]].x - tex_points[inside_tex_points[0]].x) + tex_points[inside_tex_points[0]].x;
-		ntp1.y = t * (tex_points[outside_tex_points[0]].y - tex_points[inside_tex_points[0]].y) + tex_points[inside_tex_points[0]].y;
-		ntp1.z = t * (tex_points[outside_tex_points[0]].z - tex_points[inside_tex_points[0]].z) + tex_points[inside_tex_points[0]].z;
+		//t /= np1.z;
+		ntp1.u = t * (tex_points[outside_tex_points[0]].x - tex_points[inside_tex_points[0]].x) + tex_points[inside_tex_points[0]].x;
+		ntp1.v = t * (tex_points[outside_tex_points[0]].y - tex_points[inside_tex_points[0]].y) + tex_points[inside_tex_points[0]].y;
+		ntp1.w = t * (tex_points[outside_tex_points[0]].z - tex_points[inside_tex_points[0]].z) + tex_points[inside_tex_points[0]].z;
+		//ntp1.u /= np1.z;
+		//ntp1.v /= np1.z;
+		//ntp1.w /= np1.z;
 		out_tex1[2] = *tex_points_count;
 		tex_points[*tex_points_count] = (ntp1);
 		*tex_points_count = *tex_points_count + 1;
@@ -607,9 +612,13 @@ int ClipAgainstPlane(Vec3 plane_normal, Vec3 plane_point, Vec3 *points, int *poi
 		out_tri2[1] = out_tri1[2];
 		out_tex2[1] = out_tex1[2];
 		PlaneVectorIntersection(plane_normal, plane_point, points[inside_points[1]], points[outside_points[0]], &np2, t);
-		ntp2.x = t * (tex_points[outside_tex_points[0]].x - tex_points[inside_tex_points[1]].x) + tex_points[inside_tex_points[1]].x;
-		ntp2.y = t * (tex_points[outside_tex_points[0]].y - tex_points[inside_tex_points[1]].y) + tex_points[inside_tex_points[1]].y;
-		ntp2.z = t * (tex_points[outside_tex_points[0]].z - tex_points[inside_tex_points[1]].z) + tex_points[inside_tex_points[1]].z;
+		//t /= np2.z;
+		ntp2.u = t * (tex_points[outside_tex_points[0]].u - tex_points[inside_tex_points[1]].u) + tex_points[inside_tex_points[1]].u;
+		ntp2.v = t * (tex_points[outside_tex_points[0]].v - tex_points[inside_tex_points[1]].v) + tex_points[inside_tex_points[1]].v;
+		ntp2.w = t * (tex_points[outside_tex_points[0]].w - tex_points[inside_tex_points[1]].w) + tex_points[inside_tex_points[1]].w;
+		//ntp2.u /= np2.z;
+		//ntp2.v /= np2.z;
+		//ntp2.w /= np2.z;
 		out_tex2[2] = *tex_points_count;
 		tex_points[*tex_points_count] = (ntp2);
 		*tex_points_count = *tex_points_count + 1;
