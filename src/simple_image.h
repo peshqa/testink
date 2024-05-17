@@ -318,7 +318,7 @@ static int ColorVec4ToInt(Vec4 v)
 // TODO: move to simple_math.h?
 static Vec4 Lerp(Vec4 a, Vec4 b, float t)
 {
-	return a * (1.0 - t) + (b * t);
+	return a*(1.0-t) + b*t;
 }
 
 static int BilinearSampleTexture(SimpleImage *img, float u, float v)

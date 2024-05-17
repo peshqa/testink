@@ -197,7 +197,8 @@ float edge_function(Vec2 a, Vec2 b, Vec2 c)
 static void newTextureTriangle(PlatformBitBuffer *bitBuff,
 					Vec3 v0, Vec3 v1, Vec3 v2,
 					Vec3 tv0, Vec3 tv1, Vec3 tv2,
-					SimpleImage *img, float *depth_buffer, Vec4 color)
+					SimpleImage *img, float *depth_buffer, Vec4 color,
+					i32 x_min, i32 y_min, i32 x_max, i32 y_max)
 {
 #if 1
 	v0.x = v0.x*bitBuff->width;
@@ -224,15 +225,15 @@ static void newTextureTriangle(PlatformBitBuffer *bitBuff,
 	
 	float area = edge_function(v0.xy, v1.xy, v2.xy);
 	
-	float test = MAX(0.0f, MIN(MIN(v0.y, v1.y), v2.y));
-	float test2 = MAX(0.0f, MIN(MIN(v0.x, v1.x), v2.x));
+	u32 test = MAX(y_min, MIN(MIN(v0.y, v1.y), v2.y));
+	u32 test2 = MAX(x_min, MIN(MIN(v0.x, v1.x), v2.x));
 	
-	float test3 = MIN(bitBuff->height, MAX(MAX(v0.y, v1.y), v2.y));
-	float test4 = MIN(bitBuff->width, MAX(MAX(v0.x, v1.x), v2.x));
+	u32 test3 = MIN(y_max, MAX(MAX(v0.y, v1.y), v2.y));
+	u32 test4 = MIN(x_max, MAX(MAX(v0.x, v1.x), v2.x));
 	
-	for (u32 j = (u32)test; j < test3; ++j)
+	for (u32 j = test; j < test3; ++j)
 	{
-        for (u32 i = (u32)test2; i < test4; ++i)
+        for (u32 i = test2; i < test4; ++i)
 		{
             Vec2 p = {i + 0.5f, j + 0.5f};
             float w0 = edge_function(v1.xy, v2.xy, p);
@@ -255,8 +256,8 @@ static void newTextureTriangle(PlatformBitBuffer *bitBuff,
 					t *= z;
 					
 					//int color_ = MakeColor(1*255, r*255, g*255, b*255);
-					//int color_ = SampleTexture(img, s, t);
-					int color_ = BilinearSampleTexture(img, s, t);
+					int color_ = SampleTexture(img, s, t);
+					//int color_ = BilinearSampleTexture(img, s, t);
 					Vec4 unpacked = ColorIntToVec4(color_);
 					color_ = MakeColor(unpacked.a*color.a*255, unpacked.r*color.r*255, unpacked.g*color.g*255, unpacked.b*color.b*255);
 					PlatformDrawPixel(bitBuff, i, j, color_);

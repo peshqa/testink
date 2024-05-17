@@ -3,8 +3,6 @@ main.cpp - entry point
 Console isn't used by the app (initially), so 'wWinMain' is the main function.
 2023/08/10, peshqa
 */
-#define UNICODE
-
 #include "project.h"
 #include "simple_wasapi_renderer.h"
 #include "simple_win32_renderer.h"
@@ -84,7 +82,7 @@ static void InitOpenGL(HWND hwnd)
 	}
 }
 
-// NOTE: not made for files bigger than 4GB (ReadFilee uses DWORD)
+// NOTE: not made for files bigger than 4GB (ReadFile uses DWORD)
 // returns 0 if failed (no memory commited)
 static u32 PlatformReadWholeFile(SharedState *s, char *filename, void *&p)
 {
@@ -310,8 +308,50 @@ static void FillDirectSoundBuffer(LPDIRECTSOUNDBUFFER sound_buffer, SoundWaveInf
 	}
 }
 
+
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
+	static W32ThreadInfo thread_infos[2];
+	int initialCount = 0;
+	int threadCount = ARRAY_LENGTH(thread_infos);
+	
+	HANDLE semaphore = CreateSemaphoreExA(0, initialCount, threadCount, 0, 0, SEMAPHORE_ALL_ACCESS);
+	
+	PlatformWorkQueue queue = {};
+	queue.semaphore_handle = semaphore;
+	
+	for(int i = 0; i < threadCount; i++)
+	{
+		W32ThreadInfo *info = thread_infos + i;
+		info->queue = &queue;
+		HANDLE thread_handle = CreateThread(0, 0, ThreadProc, info, 0, 0);
+		CloseHandle(thread_handle);
+	}
+	
+	PushString(&queue, " A0");
+	PushString(&queue, " A1");
+	PushString(&queue, " A2");
+	PushString(&queue, " A3");
+	PushString(&queue, " A4");
+	PushString(&queue, " A5");
+	PushString(&queue, " A6");
+	PushString(&queue, " A7");
+	PushString(&queue, " A8");
+	PushString(&queue, " A9");
+	
+	PushString(&queue, "B0");
+	PushString(&queue, "B1");
+	PushString(&queue, "B2");
+	PushString(&queue, "B3");
+	PushString(&queue, "B4");
+	PushString(&queue, "B5");
+	PushString(&queue, "B6");
+	PushString(&queue, "B7");
+	PushString(&queue, "B8");
+	PushString(&queue, "B9");
+	
+	W32CompleteAllWork(&queue);
+	
 	srand(time(NULL));
 	
 	MMRESULT tbp = timeBeginPeriod(1);
@@ -343,6 +383,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	int res = InitProjectFunc(&shared_state);
 	ASSERT(res == 0);
 	
+	shared_state.platform_add_entry = W32AddWorkEntry;
+    shared_state.platform_complete_all_work = W32CompleteAllWork;
+    shared_state.high_priority_queue = &queue;
+	
 	shared_state.callback_update_func = projects[current_project].UpdateFunc;
 	
 	DWORD window_styles = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
@@ -351,14 +395,14 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	AdjustWindowRectEx(&window_rect, window_styles, 0, 0);
 	
     // Register the window class.
-    const wchar_t CLASS_NAME[]  = L"Main Window Class";
+    const char CLASS_NAME[]  = "Main Window Class";
     
-    WNDCLASS wc = {};
+    WNDCLASSA wc = {};
 
     wc.lpfnWndProc   = WindowProc;
     wc.hInstance     = hInstance;
     wc.lpszClassName = CLASS_NAME;
-	wc.style = CS_OWNDC; // must have CS_OWNDC for OpenGL
+	wc.style = CS_OWNDC; // window must have CS_OWNDC for OpenGL
 	wc.hCursor = LoadCursor(0, IDC_ARROW);
 
     RegisterClass(&wc);
@@ -368,7 +412,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     HWND hwnd = CreateWindowEx(
         0,                              // Optional window styles.
         CLASS_NAME,                     // Window class
-        L"Learn to Program Windows",    // Window text
+        "Learn to Program Windows",    // Window text
         window_styles,            		// Window style
 
         // position and size
@@ -479,7 +523,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		HDC hdc = GetDC(hwnd);
 		if ((shared_state.input_state[INPUT_F2] & 0b1) == 1)
 		{
-			ProcessCommandBuffer_Software(shared_state.bitBuff, &shared_state.cmdBuff);
+			ProcessCommandBuffer_Software(shared_state.bitBuff, &shared_state.cmdBuff, &queue);
 			/*int res = StretchDIBits(
 			  hdc,
 			  0,

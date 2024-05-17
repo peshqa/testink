@@ -441,10 +441,10 @@ void ProcessCommandBuffer_OpenGL(PlatformBitBuffer *bitBuff, CommandBuffer *cmdB
 				{
 					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, cmd->tex->width, cmd->tex->height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, cmd->tex->pixels);
 
-					//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-					//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+					//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+					//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 					
@@ -483,7 +483,127 @@ void ProcessCommandBuffer_OpenGL(PlatformBitBuffer *bitBuff, CommandBuffer *cmdB
 	}
 }
 
-void ProcessCommandBuffer_Software(PlatformBitBuffer *bitBuff, CommandBuffer *cmdBuff)
+struct PlatformWorkQueueEntry
+{
+  platform_work_queue_callback *callback;
+  void *data;
+};
+
+struct PlatformWorkQueue
+{
+	u32 volatile next_entry_to_read;
+	u32 volatile next_entry_to_write;
+	
+	u32 volatile completion_goal;
+	u32 volatile completion_count;
+	
+	PlatformWorkQueueEntry entries[256];
+	
+	HANDLE semaphore_handle;
+};
+
+struct W32ThreadInfo
+{
+	PlatformWorkQueue *queue;
+};
+
+void W32AddWorkEntry(PlatformWorkQueue *queue, platform_work_queue_callback *callback, void *data)
+{
+	u32 next_entry_to_write = queue->next_entry_to_write;
+	u32 new_next_entry_to_write = (next_entry_to_write + 1) % ARRAY_LENGTH(queue->entries);
+	ASSERT(new_next_entry_to_write != queue->next_entry_to_read);
+	PlatformWorkQueueEntry *entry = queue->entries + next_entry_to_write;
+	entry->callback = callback;
+	entry->data = data;
+	queue->completion_goal++;
+	
+	_mm_sfence();
+	
+	queue->next_entry_to_write = new_next_entry_to_write;
+	ReleaseSemaphore(queue->semaphore_handle, 1, 0);
+}
+
+static b32 W32ProcessNextEntry(PlatformWorkQueue *queue)
+{
+	b32 has_processed = false;
+	u32 next_entry_to_read = queue->next_entry_to_read;
+	u32 new_next_entry_to_read = (next_entry_to_read + 1) % ARRAY_LENGTH(queue->entries);
+	
+	if (next_entry_to_read != queue->next_entry_to_write)
+	{
+		u32 index = InterlockedCompareExchange((LONG volatile*)&queue->next_entry_to_read,
+												new_next_entry_to_read,
+												next_entry_to_read);
+		if (index == next_entry_to_read)
+		{
+			has_processed = true;
+			PlatformWorkQueueEntry *entry = queue->entries + index;
+			entry->callback(queue, entry->data);
+			InterlockedIncrement((LONG*)&queue->completion_count);
+		}
+	}
+	
+	return has_processed;
+}
+
+void W32CompleteAllWork(PlatformWorkQueue *queue)
+{
+	while (queue->completion_count != queue->completion_goal)
+	{
+		W32ProcessNextEntry(queue);
+	}
+	
+	queue->completion_count = 0;
+	queue->completion_goal = 0;
+}
+
+void WorkExample(PlatformWorkQueue *queue, void *data)
+{
+	char buffer[256];
+	wsprintf(buffer, "thread #%d: %s\n", GetCurrentThreadId(), (char*)data);
+	OutputDebugStringA(buffer);
+}
+
+void PushString(PlatformWorkQueue *queue, char *str)
+{
+	W32AddWorkEntry(queue, WorkExample, str);
+}
+
+DWORD ThreadProc(LPVOID lpParameter)
+{
+	W32ThreadInfo *threadInfo = (W32ThreadInfo*)lpParameter;
+	
+	for (;;)
+	{
+		if (!W32ProcessNextEntry(threadInfo->queue))
+		{
+			WaitForSingleObjectEx(threadInfo->queue->semaphore_handle, INFINITE, FALSE);
+		}
+	}
+}
+
+typedef struct
+{
+	PlatformBitBuffer *bitBuff;
+	float *depth_buffer; // TODO: probably not thread safe to pass this to all threads
+	Command_Triangle *cmd;
+	i32 x_min;
+	i32 y_min;
+	i32 x_max;
+	i32 y_max;
+} TriangleRenderWork;
+
+static PLATFORM_WORK_QUEUE_CALLBACK(DoTriangleRenderWork)
+{
+	TriangleRenderWork *work = (TriangleRenderWork*)data;
+	Command_Triangle *cmd = (Command_Triangle*)(work->cmd);
+	newTextureTriangle(work->bitBuff, cmd->points[0], cmd->points[1], cmd->points[2],
+								cmd->tex_points[0], cmd->tex_points[1], cmd->tex_points[2],
+								cmd->tex, work->depth_buffer, cmd->color,
+								work->x_min, work->y_min, work->x_max, work->y_max);
+}
+
+void ProcessCommandBuffer_Software(PlatformBitBuffer *bitBuff, CommandBuffer *cmdBuff, PlatformWorkQueue *queue)
 {
 	float *depth_buffer = new float[bitBuff->width*bitBuff->height]{};
 	for (int i = 0; i < bitBuff->width*bitBuff->height; i++)
@@ -521,31 +641,40 @@ void ProcessCommandBuffer_Software(PlatformBitBuffer *bitBuff, CommandBuffer *cm
 			case COMMAND_TYPE_TRIANGLE:
 			{
 				Command_Triangle *cmd = (Command_Triangle*)(cmdBuff->base_memory + offset);
-				
-				//Project triangle
-				/*Vec3 points[3];
-				Vec3 tex_points[3];
-				for (int i = 0; i < 3; i++)
-				{
-					Vec4 point = { cmd->points[i].x, cmd->points[i].y, cmd->points[i].z, 1.0f };
-					point = point * proj_mat4;
-					tex_points[i].x /= point.w;
-					tex_points[i].y /= point.w;
-					tex_points[i].z = 1.0f / point.w;
-					points[i] = {point.x/point.w+0.5f, point.y/point.w+0.5f, point.z};
-				}*/
-				
-				/*TextureTrianglef(bitBuff,
-							    cmd->points[0].x,    cmd->points[0].y,
-							cmd->tex_points[0].x,cmd->tex_points[0].y, cmd->tex_points[0].z,
-							    cmd->points[1].x,    cmd->points[1].y,
-							cmd->tex_points[1].x,cmd->tex_points[1].y, cmd->tex_points[1].z,
-							    cmd->points[2].x,    cmd->points[2].y,
-							cmd->tex_points[2].x,cmd->tex_points[2].y, cmd->tex_points[2].z,
-							cmd->tex, depth_buffer, cmd->color);*/
+#if 0 // TODO: add a flag for multithreading?
 				newTextureTriangle(bitBuff, cmd->points[0], cmd->points[1], cmd->points[2],
 									cmd->tex_points[0], cmd->tex_points[1], cmd->tex_points[2],
-									cmd->tex, depth_buffer, cmd->color);
+									cmd->tex, depth_buffer, cmd->color,
+									0, 0, bitBuff->width, bitBuff->height);
+#else
+				const int tiles_per_col = 4;
+				const int tiles_per_row = 3;
+				TriangleRenderWork work[tiles_per_col*tiles_per_row];
+				int y_min = 0;
+				int y_step = bitBuff->height / tiles_per_row;
+				int x_min;
+				int x_step = bitBuff->width / tiles_per_col;
+				for (int i = 0; i < tiles_per_row; i++)
+				{
+					x_min = 0;
+					for (int j = 0; j < tiles_per_col; j++)
+					{
+						work[i*tiles_per_col + j].bitBuff = bitBuff;
+						work[i*tiles_per_col + j].depth_buffer = depth_buffer;
+						work[i*tiles_per_col + j].cmd = cmd;
+						work[i*tiles_per_col + j].x_min = x_min;
+						work[i*tiles_per_col + j].y_min = y_min;
+						work[i*tiles_per_col + j].x_max = x_min + x_step;
+						work[i*tiles_per_col + j].y_max = y_min + y_step;
+						W32AddWorkEntry(queue, DoTriangleRenderWork, &work[i*tiles_per_col + j]);
+						x_min += x_step;
+					}
+					y_min += y_step;
+				}
+				
+				
+				W32CompleteAllWork(queue);
+#endif
 				
 				offset += sizeof(*cmd);
 			} break;

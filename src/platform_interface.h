@@ -23,7 +23,7 @@ typedef uintptr_t uptr;
 // figure out if SIMD is supported
 #ifdef _MSC_VER // ms compiler is being used
 #define USING_SIMD_SSE 1
-#else // assume it's clang
+#else // assume it's clang?
 #ifdef __ARM_NEON
 #define USING_SIMD_NEON 1
 #endif //__ARM_NEON
@@ -87,6 +87,15 @@ enum ScreenMode : int
 	SCREEN_MODE_BORDERLESS_FULLSCREEN = 2,
 };
 
+struct PlatformWorkQueue;
+
+#define PLATFORM_WORK_QUEUE_CALLBACK(name) void name(PlatformWorkQueue *queue, void *data)
+typedef PLATFORM_WORK_QUEUE_CALLBACK(platform_work_queue_callback);
+
+typedef void PlatformAddWorkEntry(PlatformWorkQueue *q, platform_work_queue_callback *callback, void *data);
+typedef void PlatformCompleteAllWork(PlatformWorkQueue *q);
+
+
 struct PlatformBitBuffer
 {
 	int width;
@@ -94,7 +103,7 @@ struct PlatformBitBuffer
 	int stride;
 	void *bits;
 	void *info;
-	b32 is_top_to_bottom;
+	b32 is_top_to_bottom; // TODO: is this redundant?
 };
 
 struct PlatformSoundBuffer
@@ -120,7 +129,7 @@ struct SharedState
 	
 	float delta_time;
 	
-	char *asset_path; // TODO: is this a good idea?
+	char *asset_path; // TODO: is this a good idea? // Why wouldn't it be?
 	
 	int is_lmb_down;
 	int mouse_x;
@@ -139,6 +148,10 @@ struct SharedState
 	
 	CommandBuffer cmdBuff;
 	int texture_count;
+	
+	PlatformWorkQueue *high_priority_queue;
+	PlatformAddWorkEntry *platform_add_entry;
+	PlatformCompleteAllWork *platform_complete_all_work;
 	
 	void *extra;
 };
